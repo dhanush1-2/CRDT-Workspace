@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Browser, type Locator, type Page } from '@playwright/test'
 import {
   addMember,
   cleanup,
@@ -251,8 +251,8 @@ test('a column is renamed in place, and the new name reaches a second browser', 
   await cleanup(label)
 })
 
-test('Escape or an empty name puts the column title back', async ({ page }) => {
-  const label = `${LABEL}-rename-revert`
+test('Escape puts the column title back, and does not poison the next edit', async ({ page }) => {
+  const label = `${LABEL}-rename-escape`
   const [columnId] = await openBoard(page, label, 1)
   const title = page.getByTestId(`col-title-${columnId}`)
 
@@ -260,10 +260,92 @@ test('Escape or an empty name puts the column title back', async ({ page }) => {
   await title.press('Escape')
   await expect(title).toHaveValue('New column')
 
+  // A leaked Escape would revert this save as well. A whitespace name could not tell the
+  // two apart, since the empty-name guard reverts it either way.
+  await title.fill('Real')
+  await title.press('Enter')
+  await expect(title).toHaveValue('Real')
+  await page.getByTestId('add-column').focus()
+  await expect(title).toHaveValue('Real')
+
+  await cleanup(label)
+})
+
+test('an empty column name puts the title back', async ({ page }) => {
+  const label = `${LABEL}-rename-empty`
+  const [columnId] = await openBoard(page, label, 1)
+  const title = page.getByTestId(`col-title-${columnId}`)
+
   await title.fill('   ')
   await title.press('Enter')
   await expect(title).toHaveValue('New column')
 
+  await cleanup(label)
+})
+
+/** A second browser, signed in as the same owner, on the same board. */
+async function openPeer(page: Page, browser: Browser) {
+  const context = await browser.newContext()
+  await context.addCookies(await page.context().cookies())
+  const other = await context.newPage()
+  await other.goto(`${page.url().split('?')[0]}?nobc=1`)
+  await expect(other.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+  return { other, context }
+}
+
+test("focusing a column title and leaving it unchanged does not revert a peer's rename", async ({
+  page,
+  browser,
+}) => {
+  const label = `${LABEL}-rename-noop`
+  const [columnId] = await openBoard(page, label, 1)
+  const { other, context } = await openPeer(page, browser)
+  await expect(other.getByTestId(`col-title-${columnId}`)).toHaveValue('New column')
+
+  const title = page.getByTestId(`col-title-${columnId}`)
+  await title.click()
+  await expect(title).toBeFocused()
+
+  const peerTitle = other.getByTestId(`col-title-${columnId}`)
+  await peerTitle.fill('Peer name')
+  await peerTitle.press('Enter')
+  // The focused field is left alone while it is being edited; the delete button's label
+  // carries the shared title, so it shows when the peer's rename has arrived.
+  await expect(page.getByTestId(`col-delete-${columnId}`)).toHaveAttribute(
+    'aria-label',
+    'Delete column Peer name',
+  )
+  await expect(title).toHaveValue('New column')
+
+  await title.press('Tab') // leave without typing anything
+  await expect(title).toHaveValue('Peer name')
+  await expect(peerTitle).toHaveValue('Peer name')
+
+  await context.close()
+  await cleanup(label)
+})
+
+test("typing over a peer's rename wins, by intent", async ({ page, browser }) => {
+  const label = `${LABEL}-rename-lww`
+  const [columnId] = await openBoard(page, label, 1)
+  const { other, context } = await openPeer(page, browser)
+
+  const title = page.getByTestId(`col-title-${columnId}`)
+  await title.click()
+  const peerTitle = other.getByTestId(`col-title-${columnId}`)
+  await peerTitle.fill('Peer name')
+  await peerTitle.press('Enter')
+  await expect(page.getByTestId(`col-delete-${columnId}`)).toHaveAttribute(
+    'aria-label',
+    'Delete column Peer name',
+  )
+
+  await title.fill('Mine')
+  await title.press('Enter')
+  await expect(title).toHaveValue('Mine')
+  await expect(peerTitle).toHaveValue('Mine')
+
+  await context.close()
   await cleanup(label)
 })
 
@@ -342,5 +424,56 @@ test('a viewer sees the column title as text, with no rename or delete', async (
 
   await contextA.close()
   await contextB.close()
+  await cleanup(label)
+})
+
+test('after Cancel, or Escape, in the delete prompt focus returns to the delete button', async ({
+  page,
+}) => {
+  const label = `${LABEL}-focus-cancel`
+  const [columnId] = await openBoard(page, label, 1)
+  await addCard(page, columnId!)
+  const del = page.getByTestId(`col-delete-${columnId}`)
+
+  await del.click()
+  await expect(page.getByTestId(`col-confirm-cancel-${columnId}`)).toBeFocused()
+  await page.getByTestId(`col-confirm-cancel-${columnId}`).click()
+  await expect(page.getByTestId(`col-confirm-${columnId}`)).toHaveCount(0)
+  await expect(del).toBeFocused()
+
+  await del.click()
+  await expect(page.getByTestId(`col-confirm-${columnId}`)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId(`col-confirm-${columnId}`)).toHaveCount(0)
+  await expect(del).toBeFocused()
+  await expect(page.getByTestId(`column-${columnId}`)).toHaveCount(1)
+
+  await cleanup(label)
+})
+
+test('after a column is deleted, focus moves to the next column, else the previous, else Add a list', async ({
+  page,
+}) => {
+  const label = `${LABEL}-focus-delete`
+  const [first, second, third] = await openBoard(page, label, 3)
+  const deleteOf = (id: string) => page.getByTestId(`col-delete-${id}`)
+
+  // Middle column, with a card so the prompt is involved: focus goes to the next one.
+  await addCard(page, second!)
+  await deleteOf(second!).click()
+  await page.getByTestId(`col-confirm-delete-${second}`).click()
+  await expect(page.getByTestId(`column-${second}`)).toHaveCount(0)
+  await expect(deleteOf(third!)).toBeFocused()
+
+  // Last column: there is no next, so the previous one.
+  await deleteOf(third!).click()
+  await expect(page.getByTestId(`column-${third}`)).toHaveCount(0)
+  await expect(deleteOf(first!)).toBeFocused()
+
+  // Only column left: the Add a list button.
+  await deleteOf(first!).click()
+  await expect(page.getByTestId(`column-${first}`)).toHaveCount(0)
+  await expect(page.getByTestId('add-column')).toBeFocused()
+
   await cleanup(label)
 })
