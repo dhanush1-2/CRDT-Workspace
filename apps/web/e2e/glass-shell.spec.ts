@@ -815,3 +815,62 @@ test('alone in a document the pill says Synced, not a count of one', async ({ pa
 
   await cleanup(label)
 })
+
+test('the nav condenses once the page is scrolled, with a dead band on the way back', async ({
+  page,
+}) => {
+  const label = `${LABEL}-condense`
+  const { owner, workspace } = await seedWorkspace(label)
+  // Enough tiles for the overview to be taller than a short viewport.
+  for (let i = 0; i < 8; i++) await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  await page.setViewportSize({ width: 1280, height: 420 })
+  await page.goto(`/workspaces/${workspace.id}`)
+
+  const bar = page.getByTestId('nav-bar')
+  await expect(bar).toHaveAttribute('data-condensed', 'false')
+
+  // Guard the premise: nothing below means anything if the page cannot scroll.
+  const scrollable = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight,
+  )
+  expect(scrollable).toBeGreaterThan(100)
+
+  const tall = (await bar.boundingBox())!
+  expect(Math.round(tall.height)).toBe(56)
+  expect(Math.round(tall.y)).toBe(12)
+
+  await page.evaluate(() => window.scrollTo(0, 40))
+  await expect(bar).toHaveAttribute('data-condensed', 'true')
+  // Polled: the height and the gap are transitioned over 0.4s.
+  await expect.poll(async () => Math.round((await bar.boundingBox())!.height)).toBe(46)
+  await expect.poll(async () => Math.round((await bar.boundingBox())!.y)).toBe(6)
+
+  // Inside the dead band. A single 24px threshold would flip back here, and every
+  // flip re-renders the whole nav; jitter around the threshold would strobe it.
+  await page.evaluate(() => window.scrollTo(0, 18))
+  await expect(bar).toHaveAttribute('data-condensed', 'true')
+
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await expect(bar).toHaveAttribute('data-condensed', 'false')
+  await expect.poll(async () => Math.round((await bar.boundingBox())!.height)).toBe(56)
+
+  await cleanup(label)
+})
+
+test('a page loaded already scrolled starts condensed', async ({ page }) => {
+  const label = `${LABEL}-condense-load`
+  const { owner, workspace } = await seedWorkspace(label)
+  for (let i = 0; i < 8; i++) await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  await page.setViewportSize({ width: 1280, height: 420 })
+  await page.goto(`/workspaces/${workspace.id}#people-heading`)
+
+  // A listener alone never fires here: the browser restores or jumps the scroll
+  // position without a scroll event the effect can hear.
+  await expect(page.getByTestId('nav-bar')).toHaveAttribute('data-condensed', 'true')
+
+  await cleanup(label)
+})

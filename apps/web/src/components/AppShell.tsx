@@ -143,6 +143,32 @@ export function AppShell({
     // belongs to had finished.
   })
 
+  // Condensed once the page has scrolled past the bar's own height. One boolean, so
+  // scrolling costs at most one re-render per crossing.
+  const [condensed, setCondensed] = useState(false)
+
+  useEffect(() => {
+    let frame = 0
+    function read() {
+      frame = 0
+      // A dead band, not a single threshold: at exactly 24px a one-pixel wobble
+      // flips the state on every frame, and each flip re-renders the whole nav.
+      setCondensed((was) => (was ? window.scrollY > 12 : window.scrollY > 24))
+    }
+    function onScroll() {
+      // Coalesce a burst of scroll events into one read per frame.
+      if (frame === 0) frame = requestAnimationFrame(read)
+    }
+    // Read once on mount. A reload part-way down the page, or a #fragment target,
+    // arrives already scrolled and fires no scroll event.
+    read()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame !== 0) cancelAnimationFrame(frame)
+    }
+  }, [])
+
   // Meta on a Mac, Control elsewhere (the e2e suite also runs on Linux CI).
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -157,9 +183,15 @@ export function AppShell({
 
   return (
     <ShareContext.Provider value={workspace ? openShare : noop}>
-      <div className={styles.shell}>
-        <div className={styles.navWrap}>
-          <nav ref={nav} className={styles.nav} aria-label="Primary">
+      <div className={styles.shell} data-nav-condensed={condensed}>
+        <div className={`${styles.navWrap} ${condensed ? styles.navWrapCondensed : ''}`}>
+          <nav
+            ref={nav}
+            className={`${styles.nav} ${condensed ? styles.navCondensed : ''}`}
+            aria-label="Primary"
+            data-testid="nav-bar"
+            data-condensed={condensed}
+          >
             <Link href="/" aria-label="All workspaces">
               <span className={styles.logo} />
             </Link>

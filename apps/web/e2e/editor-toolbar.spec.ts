@@ -43,7 +43,7 @@ test('the toolbar sits above the document sheet, not inside it', async ({ page }
   expect(nested).toBe(false)
 })
 
-test('the toolbar stays 80px from the top while the page scrolls', async ({ page }) => {
+test('the toolbar follows the nav up to 64px from the top while the page scrolls', async ({ page }) => {
   // A short window, so a nearly empty document is still taller than the viewport.
   await page.setViewportSize({ width: 1280, height: 320 })
   await openDocument(page, `${LABEL}-sticky`)
@@ -51,8 +51,10 @@ test('the toolbar stays 80px from the top while the page scrolls', async ({ page
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100)
 
-  const toolbar = (await page.getByTestId('tb-root').boundingBox())!
-  expect(toolbar.y).toBeCloseTo(80, 0)
+  // Polled: the nav condenses on scroll and the toolbar's `top` animates over 0.4s.
+  await expect
+    .poll(async () => (await page.getByTestId('tb-root').boundingBox())!.y)
+    .toBeCloseTo(64, 0)
 })
 
 test('an editor gets Home, Insert and View, with Home open', async ({ page }) => {

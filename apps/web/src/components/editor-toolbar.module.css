@@ -5,11 +5,9 @@
 */
 
 .root {
-  /* 12px under the nav, which is 56px tall at rest with 12px of padding above it. This
-     assumes the uncompacted nav. There is no compact state yet (handoff 5.5); if one is
-     added, the nav shrinks to 46px and this leaves a 22px gap, which is not a collision. */
+  /* 12px under the nav (handoff 12.1), following it when it condenses on scroll. */
   position: sticky;
-  top: 80px;
+  top: calc(var(--nav-bottom, 68px) + 12px);
   z-index: 20;
   max-width: 1000px;
   margin: 24px auto 0;
@@ -19,6 +17,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .root {
     animation: g-pop 0.6s var(--ease);
+    transition: top 0.4s var(--ease);
   }
 }
 

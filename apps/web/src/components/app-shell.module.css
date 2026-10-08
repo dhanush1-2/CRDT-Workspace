@@ -2,6 +2,15 @@
   min-height: 100vh;
 }
 
+/* The nav's bottom edge, for anything sticky under it (the document toolbar). */
+.shell {
+  --nav-bottom: 68px;
+}
+
+.shell[data-nav-condensed='true'] {
+  --nav-bottom: 52px;
+}
+
 /*
   The nav floats over the scrolling page rather than pinning to the viewport
   edge, so the 12px of padding is part of the design, not a margin on the bar.
@@ -47,7 +56,31 @@
     /* Grows and shrinks from the middle as items appear. Needs
        `interpolate-size: allow-keywords` (globals.css) to interpolate against
        fit-content; without it the width simply jumps. */
-    transition: width var(--dur) var(--ease);
+    transition:
+      width var(--dur) var(--ease),
+      height 0.4s var(--ease),
+      background 0.4s var(--ease);
+  }
+}
+
+/*
+  The condensed state. 56 → 46, the wrapper's gap 12 → 6, the glass .72 → .85, over
+  0.4s. All four are design literals: there is no 0.4s token (--dur-fast is 0.3s,
+  --dur is 0.55s), and the .85 background is set here rather than on
+  --glass-mid, which the sheets and popovers also use.
+*/
+.navCondensed {
+  height: 46px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.navWrapCondensed {
+  padding-top: 6px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .navWrap {
+    transition: padding-top 0.4s var(--ease);
   }
 }
 

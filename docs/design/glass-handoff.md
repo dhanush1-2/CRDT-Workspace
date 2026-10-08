@@ -1317,7 +1317,7 @@ marks and nodes, all of which the Y.Doc already represents as ordinary XML.
 | Link popover | "Add" and "Remove" | also prefills an existing link and disables Remove when there is none; saves the selection as Yjs **relative positions**; refuses with a visible message if a peer deleted the text | Offsets linked the wrong span when a peer typed with the popover open (found by a two-browser test). |
 | Opening a link | silent | `openOnClick: false`, and **Cmd/Ctrl-click** follows a link in an editable document | A plain click has to place the caret or an existing link cannot be edited. A viewer's click is untouched. |
 | Table | "a table plugin" | `@tiptap/extension-table`, `resizable: false` | No column-resize handles; nothing in the toolbar drives them. |
-| Sticky offset (§12.1) | "12px under the nav" | `top: 80px`, as written | The nav in this repo does not condense on scroll, so there is no smaller offset to follow. |
+| Sticky offset (§12.1) | "12px under the nav" | `top: calc(var(--nav-bottom) + 12px)`: 80px, and 64px once the nav condenses | `--nav-bottom` is set on the shell from the nav's state (68px, condensed 52px); the toolbar's `top` animates with the nav over .4s. |
 
 **Asked for by §12 and not built**
 
