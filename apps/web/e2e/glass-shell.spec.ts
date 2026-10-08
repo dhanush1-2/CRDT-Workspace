@@ -367,7 +367,12 @@ test('a child transition ending does not cut the nav width animation short', asy
       // A tab's colour transition ending, as it does ~0.3s into a 0.55s width animation.
       const tab = nav.querySelector('[data-testid^="tab-"]') as HTMLElement
       tab.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'color' }))
-      const during = nav.style.width
+      const afterColour = nav.style.width
+      // And a width transition on something other than the bar (a child sizing itself).
+      tab.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'width' }))
+      // And one of the bar's own other properties (its height, its background).
+      nav.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'height' }))
+      const during = afterColour.endsWith('px') ? nav.style.width : afterColour
       await frame()
       await frame()
       return { started: true, during, later: nav.style.width }
@@ -1270,7 +1275,7 @@ test('moving on again while the bar is still animating holds its width until the
     // in the connecting state.
     for (const document of [second, third]) {
       await page.route(`**/api/documents/${document.id}/token`, async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 900))
+        await new Promise((resolve) => setTimeout(resolve, 600))
         await route.continue()
       })
     }

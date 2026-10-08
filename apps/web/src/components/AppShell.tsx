@@ -137,8 +137,9 @@ export function AppShell({
       setExpiredFor(null)
       return
     }
-    // Never hold forever: a document that cannot connect still gets a correct bar.
-    const timer = window.setTimeout(() => setExpiredFor(activeDocumentId ?? null), 1500)
+    // Never hold forever: a document that cannot connect still gets a correct bar. Long
+    // enough for a production connect (token fetch, then the socket handshake).
+    const timer = window.setTimeout(() => setExpiredFor(activeDocumentId ?? null), 3000)
     return () => window.clearTimeout(timer)
   }, [settling, activeDocumentId])
 
@@ -233,7 +234,10 @@ export function AppShell({
       animatingWidth.current = false
       stopAnimation.current = null
     }
-    const done = () => {
+    // transitionend bubbles: a tab's colour or the nav's own height ending would otherwise
+    // end this early. Only the bar's own width counts. (The timeout fallback passes nothing.)
+    const done = (event?: TransitionEvent) => {
+      if (event && (event.target !== bar || event.propertyName !== 'width')) return
       if (settled) return
       stop()
       bar.style.width = ''
@@ -244,11 +248,11 @@ export function AppShell({
       if (bar.isConnected) lastNavWidth = naturalWidth(bar)
     }
 
-    bar.addEventListener('transitionend', done, { once: true })
+    bar.addEventListener('transitionend', done)
     // A transitionend that never arrives -- interrupted, or a value the browser
     // decided not to animate -- would otherwise leave the bar pinned at an inline
     // width forever. `done` is idempotent, so whichever fires first wins.
-    const timeout = window.setTimeout(done, 1000)
+    const timeout = window.setTimeout(() => done(), 1000)
     stopAnimation.current = () => {
       if (!settled) stop()
     }

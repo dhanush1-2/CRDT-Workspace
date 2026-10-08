@@ -932,10 +932,12 @@ sync-server change; one new API route.
 - **Steady nav width.** While the document on screen is still connecting, plus a 300ms
   grace for people to arrive after it connects, the bar does not shrink. It holds its
   width, also when a width animation is already running (it stops that one where it
-  stands), then animates once when the document connects or after 1.5s at most,
-  restarted per document. A `ResizeObserver` keeps `lastNavWidth` equal to the on-screen
+  stands), then animates once when the document connects or after 3s at most (a production
+  connect can take longer than 1.5s), restarted per document. A `ResizeObserver` keeps `lastNavWidth` equal to the on-screen
   width, except while the bar is animating or holding, when it deliberately skips; widths include the 1px border. Under reduced motion the hold still applies and
-  the bar changes size at most once, without animation.
+  the bar changes size at most once, without animation. The width animation ends on the bar's own `width` `transitionend` only
+  (`event.target === bar`, `propertyName === 'width'`): the event bubbles, and a tab's
+  colour transition would otherwise cut it short.
 
 ### Shell routing and nav
 
