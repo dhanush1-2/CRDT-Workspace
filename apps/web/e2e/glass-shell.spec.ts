@@ -893,3 +893,44 @@ test('a page loaded already scrolled starts condensed', async ({ page }) => {
 
   await cleanup(label)
 })
+
+test('entering the dead band from above never makes the nav oscillate', async ({ page }) => {
+  const label = `${LABEL}-condense-entry`
+  const { owner, workspace } = await seedWorkspace(label)
+  for (let i = 0; i < 8; i++) await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+  await page.setViewportSize({ width: 1280, height: 420 })
+
+  // Each rest position just past the condense threshold, reached from the top. If
+  // condensing shortens the page (a sticky wrapper that changes its in-flow height),
+  // scroll anchoring pulls scrollY back under the expand threshold and the bar flips
+  // again, forever. So: at most one flip, and scrollY must stay where the user put it.
+  for (let y = 20; y <= 32; y++) {
+    await page.goto(`/workspaces/${workspace.id}`)
+    await expect(page.getByTestId('nav-bar')).toHaveAttribute('data-condensed', 'false')
+
+    const trace = await page.evaluate(async (target) => {
+      window.scrollTo(0, target)
+      const bar = document.querySelector('[data-testid="nav-bar"]')!
+      const states: string[] = []
+      const ys: number[] = []
+      const start = performance.now()
+      await new Promise<void>((resolve) => {
+        const frame = () => {
+          states.push(bar.getAttribute('data-condensed')!)
+          ys.push(window.scrollY)
+          if (performance.now() - start < 1500) requestAnimationFrame(frame)
+          else resolve()
+        }
+        requestAnimationFrame(frame)
+      })
+      return { states, ys }
+    }, y)
+
+    const flips = trace.states.filter((s, i) => i > 0 && s !== trace.states[i - 1]).length
+    expect(flips, `flips at y=${y}: ${trace.ys.join(',')}`).toBeLessThanOrEqual(1)
+    expect(trace.ys.at(-1), `settled scrollY at y=${y}`).toBe(y)
+  }
+
+  await cleanup(label)
+})
