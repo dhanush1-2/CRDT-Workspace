@@ -52,10 +52,10 @@ ENV NEXT_PUBLIC_SYNC_URL=$NEXT_PUBLIC_SYNC_URL
 
 # next.config.ts loads the repo-root .env directly (see its own comment) but
 # tolerates it being absent, which is the case here and in production. Next's
-# "collecting page data" step imports /documents/[id]/page.tsx to inspect its
-# route config, which transitively constructs the @crdt/db Prisma client at
-# module scope — no query runs, but the module throws if DATABASE_URL is
-# entirely unset, so a placeholder (build-time only, never baked into the
+# "collecting page data" step imports every page to inspect its route config,
+# including any that transitively construct the @crdt/db Prisma client at
+# module scope (the document pages, for one). No query runs, but the module
+# throws if DATABASE_URL is entirely unset, so a placeholder (build-time only, never baked into the
 # image's persistent ENV) is enough to get through page collection.
 RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
     pnpm --filter @crdt/web run build

@@ -904,9 +904,12 @@ test would have to wait that long and would be racing the retry. The prompt sign
 - **A layout is not an access gate here, and every page under it checks for itself.**
   Do not delete the per-page checks as duplication. A layout does not re-render on a
   client navigation between its children, so a check there would run once and then let
-  later navigations through. The canonical document page checks both ids. The old `/documents/[id]`
+  later navigations through. A page can also be fetched without its layout (a client
+  navigation can request a page's RSC payload on its own), so the page has to check
+  for itself. The canonical document page checks both ids. The old `/documents/[id]`
   route checks the role before it redirects, so a document id never reveals its
   workspace id: a non-member gets a 404 with no `location` header (`e2e/routing.spec.ts`).
+  It forwards the query string too, repeated keys included.
 - **Condensed nav (§5.5).** Past 24px of scroll: bar 56 to 46, top gap 12 to 6, fill
   .72 to .85, over 0.4s with `--ease`. It expands again at or below 12px; the 12px dead
   band is there because a single threshold flickered. The duration is a literal because
@@ -930,7 +933,7 @@ test would have to wait that long and would be racing the retry. The prompt sign
 
 | Where | §5.3 says | Built | Why |
 |---|---|---|---|
-| Presence avatars | before the status pill | after it | Recorded, not fixed by this plan. They have followed the pill since the nav consolidation; moving them is its own change to the bar's layout and width animation. |
+| Presence avatars | before the status pill | after it | Recorded, not fixed by this plan. They have followed the pill since `59c0ad0` ("feat(nav): presence avatars and the tab presence dot"), where `NavPresence` was introduced; moving them is its own change to the bar's layout and width animation. |
 | Condensed attribute (§5.5) | `data-compact` | `data-condensed` | Matches the state's name in `AppShell`. |
 | Condensed duration | `.4s` | `0.4s` literal | No token matches. |
 
@@ -1441,6 +1444,18 @@ wrapper, so its 11px type is 7.7px at 70%.
   `updatedAt` column on `Document`; both need schema changes this plan barred.
 - **`@supports not (backdrop-filter)` fallbacks compile but have never been
   exercised** in a browser lacking backdrop-filter support.
+- **Workspace-layout data is not re-fetched on a soft navigation.** What the
+  workspace layout owns (the role-derived controls such as the "View only" chip and
+  Share permissions, the member list, and the tab list) is fetched when the layout
+  renders. Moving between pages in the same workspace does not fetch it again; it
+  updates on `router.refresh()` (which the local create, share and sign-out flows
+  call) or a full load. A role change or a document created by someone else shows
+  only then. UI only: APIs and pages enforce the real role.
+- **The History panel and the tab dropdown blur the nav, not the page.** Both are
+  descendants of the nav, whose `backdrop-filter` makes it a backdrop root, so their
+  own `backdrop-filter` samples the nav rather than the page behind it. They read as
+  more opaque glass (`--glass-sheet` .82, `--glass-menu` .88). It is the same issue
+  the toolbar's stylesheet documents.
 
 ### Deliberate deviation from the design
 
