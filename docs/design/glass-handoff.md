@@ -19,7 +19,7 @@
 | Tokens, fonts, keyframes, body | `app/globals.css`, `app/layout.tsx` |
 | Painted canvas (blobs + weave) | `components/CanvasBackground.tsx`, `canvas-background.module.css` |
 | Paint splatter | `components/PaintSplatter.tsx`, `lib/splatter/geometry.ts`, `lib/splatter/paint.ts`, `lib/splatter/random.ts` |
-| Sticky glass nav | `components/AppShell.tsx`, `app-shell.module.css` |
+| Sticky glass nav | `components/AppShell.tsx`, `app-shell.module.css`, rendered by `app/workspaces/[id]/layout.tsx` (the dashboard renders its own) |
 | Doc tabs + sliding indicator | `components/NavTabs.tsx`, `nav-tabs.module.css` |
 | Status pill + popover | `components/SyncStatus.tsx` |
 | Presence avatars | `components/NavPresence.tsx` (replaces the pill-style `Presence.tsx`) |
@@ -28,12 +28,12 @@
 | Sheet primitive | `components/ui/Sheet.tsx` |
 | Sign-in | `app/(auth)/login/page.tsx`, `signup/page.tsx`, `auth.module.css` |
 | Dashboard | `app/page.tsx` (+ CSS) |
-| Workspace | `app/workspaces/[id]/page.tsx`, `workspace.module.css`, `CreateDocumentForm.tsx`, `MembersPanel.tsx` |
+| Workspace | `app/workspaces/[id]/layout.tsx`, `page.tsx`, `workspace.module.css`, `CreateDocumentForm.tsx`, `MembersPanel.tsx` |
 | Board + card sheet | `components/Board.tsx`, `board.module.css`, new `CardSheet.tsx` |
-| Document page + toolbar | `app/documents/[id]/DocumentClient.tsx`, `document.module.css`, new `EditorToolbar.tsx` |
+| Document page + toolbar | `app/workspaces/[id]/documents/[docId]/DocumentClient.tsx`, `document.module.css`, new `EditorToolbar.tsx` |
 | History | new `HistoryPanel.tsx` + API (see §16) |
 
-**Architecture decision (agreed):** keep the current per-page `AppShell` for now and make the tab indicator remember its last position at module level (§5.4). Moving the nav into a single shared layout, with routes like `/workspaces/[id]/documents/[docId]`, is planned as a separate change.
+**Architecture decision (built):** the nav lives in `app/workspaces/[id]/layout.tsx`, so it is not rebuilt when you move inside a workspace, and documents are at `/workspaces/[id]/documents/[docId]`. See Implementation status, Built. The module-level memory of §5.4 stays for navigations to and from the dashboard.
 
 ---
 
@@ -844,11 +844,10 @@ and the board's column row is centred at 44px below the nav.
   value, which is still correct and usable; only the animation is lost. Not verified in
   a browser that lacks it.
 - **The width animation only plays for changes within a page** — the green dot
-  appearing, the View only pill, the status label hiding below 1100px. It does not play
-  across a navigation, because every page renders its own `AppShell` and the bar is a
-  new node each time. The shared-layout restructure
-  (`2026-10-03-shell-routing-and-nav.md`) is what fixes that, for the same reason it
-  fixes the sliding indicator.
+  appearing, the View only pill, the status label hiding below 1100px. Inside a
+  workspace it also plays across a navigation, because the bar is the same node (see
+  "Shell routing and nav" below). Between the dashboard and a workspace the bar is still
+  a new node, and `lastNavWidth` carries the width across.
 - **The board's `margin: 0 auto` needs `width: fit-content` to do anything**, since the
   scroller is otherwise full width. `justify-content: center` is the obvious
   alternative and is wrong: with overflow it leaves the first column unreachable.
@@ -857,8 +856,8 @@ and the board's column row is centred at 44px below the nav.
 bar's width used to start from nothing on every navigation, because every page renders
 its own `AppShell` and the nav is therefore a new node. Each now remembers its previous
 value in module scope and animates from it: `lastMetrics` in `NavTabs`, `lastNavWidth`
-in `AppShell`. This is the owner's interim fix and the shared-layout restructure
-removes the need for it.
+in `AppShell`. The shared workspace layout removed the need inside a workspace; both are
+kept for navigations to and from the dashboard, which renders its own shell.
 
 - **Set-the-start-then-force-a-reflow does not work on a freshly inserted node.** A
   property's first resolved value on a new element is its initial value, not something
@@ -890,6 +889,50 @@ becomes `disconnected` when its dead-peer timer fires about thirty seconds later
 test would have to wait that long and would be racing the retry. The prompt signal is
 `navigator.onLine`, which arrives with
 `2026-10-04-connection-states-and-telemetry.md`; the dot becomes promptly correct then.
+
+### Shell routing and nav
+
+`2026-10-03-shell-routing-and-nav.md`. No schema, sync-server or API change.
+
+- **One nav per workspace.** `AppShell` is rendered by `app/workspaces/[id]/layout.tsx`
+  and is not rebuilt inside a workspace (`glass-shell.spec.ts`, "moving between the
+  overview and documents keeps the same nav element"). The dashboard still renders its
+  own. Documents are at `/workspaces/[id]/documents/[docId]`; links come from
+  `documentHref` and `activeDocumentIdFrom` in `lib/routes.ts`. The old flat
+  `/documents/[id]` redirects. `lastMetrics` (`NavTabs`) and `lastNavWidth`
+  (`AppShell`) remain, for navigations to and from the dashboard.
+- **A layout is not an access gate here, and every page under it checks for itself.**
+  Do not delete the per-page checks as duplication. A layout does not re-render on a
+  client navigation between its children, so a check there would run once and then let
+  later navigations through. The canonical document page checks both ids. The old `/documents/[id]`
+  route checks the role before it redirects, so a document id never reveals its
+  workspace id: a non-member gets a 404 with no `location` header (`e2e/routing.spec.ts`).
+- **Condensed nav (§5.5).** Past 24px of scroll: bar 56 to 46, top gap 12 to 6, fill
+  .72 to .85, over 0.4s with `--ease`. It expands again at or below 12px; the 12px dead
+  band is there because a single threshold flickered. The duration is a literal because
+  no token is 0.4s. The attribute is `data-condensed` where §5.5 says `data-compact`.
+  `.navWrap` has a fixed in-flow height of 68px so condensing never moves page content;
+  without it the 16px layout shift and scroll anchoring made the nav flip ten times in
+  1.5s at scrollY 25 to 28. Anything floating under the nav must therefore be
+  absolutely positioned, because the wrapper does not grow. `--nav-bottom` (68px, 52px
+  condensed) is set on `.shell`.
+- **Breakpoints.** Beside the 1100px rules, below 760px the tab strip becomes a dropdown
+  (`NavMenu`, testids `nav-menu*`) and the workspace name and its divider hide. The
+  dropdown is a disclosure of links, not an ARIA menu, on purpose: its items are
+  navigation, and the menu pattern would promise arrow-key behaviour and a roving focus
+  that links do not need. It uses `--glass-menu` and `--r-menu`. The presence dot is
+  derived once (`hasOthersHere` in `lib/doc-state.ts`).
+- **Presence count.** The status pill reads `{peers + 1} here` when anyone else is
+  present, and the connection label ("Synced") when alone.
+- **History button.** On documents only, before the status pill, as §5.3 orders it. It
+  opens a panel that says history is not available yet. The panel's contents wait on the
+  history backend.
+
+| Where | §5.3 says | Built | Why |
+|---|---|---|---|
+| Presence avatars | before the status pill | after it | Recorded, not fixed by this plan. They have followed the pill since the nav consolidation; moving them is its own change to the bar's layout and width animation. |
+| Condensed attribute (§5.5) | `data-compact` | `data-condensed` | Matches the state's name in `AppShell`. |
+| Condensed duration | `.4s` | `0.4s` literal | No token matches. |
 
 ### Paint splatter
 
@@ -1194,7 +1237,7 @@ Built, on branch `glass-features`. No backend, route or schema change.
 - **Document glass sheet.** The page is a 780px centred sheet: radius 30
   (`--r-sheet`), padding 56/56/96, `rgba(255,255,255,.78)`, with the glass blur,
   `--glass-border` and the `--glass-highlight` inset. It lives in
-  `app/documents/[id]/document.module.css` and is applied **only when `type ===
+  `app/workspaces/[id]/documents/[docId]/document.module.css` and is applied **only when `type ===
   'doc'`**: the board is a horizontal scroller with its own gutters and would be
   crushed into a 780px column. A test asserts both halves. The editor's temporary 24px
   padding (`.editor .ProseMirror` in `globals.css`) was removed, since the sheet owns
@@ -1218,8 +1261,9 @@ open at a time, which is how the app works today. Alternatives rejected:
 - *Move the provider into `AppShell`.* It relocates working sync code onto a new
   path, and couples the nav to Yjs on every page, including pages with no document.
 - *A shared client layout above the document.* It is the same restructure as making
-  the tab indicator glide across navigations, which is still an open question (see
-  Known limitations). It should be decided once, not twice.
+  the tab indicator glide across navigations. That was decided later: the layout is
+  built (see "Shell routing and nav"), and the store stays a singleton because one
+  document is still open at a time.
 
 **Three assertions were deliberately retargeted** because their subjects were removed
 by design. This was intent-preserving, not an accommodation to make tests pass:
@@ -1365,8 +1409,8 @@ wrapper, so its 11px type is 7.7px at 70%.
   forgotten. They need the Yjs provider, which lives in `DocumentClient` and is not
   reachable from the nav: the store publishes status and peers, not the provider.
   They belong to a plan that exposes provider controls, likely with the popover.
-- **History button, history panel, version preview bar.** Need a snapshot list
-  and fetch API, and authorship on updates.
+- **History panel and version preview bar.** Need a snapshot list and fetch API, and
+  authorship on updates. The History button is built (see "Shell routing and nav").
 - **Card detail sheet.** Blocked on `description` and an activity log on the
   card's `Y.Map`; neither exists in the CRDT shape today, and adding them is a
   schema change this work barred. Two things were left ready or left out on
@@ -1376,25 +1420,14 @@ wrapper, so its 11px type is 7.7px at 70%.
 
 ### Known limitations
 
-- **No phone layout.** At 375px the account avatar sits about 17px off screen, so
-  the account menu, and therefore sign-out, is unreachable on a phone. The
-  handoff defines one breakpoint (1100px) and nothing below it, so this is a
-  design gap, not an implementation defect. The owner has decided to ship
-  desktop-only for now. Candidate fixes: shed the workspace name and search field
-  below about 700px (extends the pattern already used at 1100px), or let the nav
-  scroll horizontally.
-- **The tab indicator does not animate across navigations.** It is positioned
-  correctly on every route and animates on resize, but each page renders its own
-  `AppShell` and no layout sits above the dynamic segment, so the whole nav
-  remounts on navigation and the pill appears at its destination. Measured:
-  sampling its x after a document-to-document click gives the old position on the
-  old node, then the destination on a new DOM node, with no intermediate values.
-  Fixes: put `AppShell` in the root layout (it cannot see a deeper segment's
-  params, so nav data would have to flow through a client store), or nest
-  documents under workspaces as `/workspaces/[id]/documents/[docId]` with a layout
-  at the workspace segment. The second is the better long-term shape, but it
-  rewrites every document URL, every link, the OAuth `next=` targets and several
-  tests.
+- **Phone layout is still broken at 375px.** The 760px dropdown (below) fixed the
+  tab strip and the workspace name, and at 760px the nav no longer overflows. At
+  375px it still overflows by 28px: the account avatar's right edge is at about
+  402.8px, off screen, so the account menu, and therefore sign-out, is unreachable on
+  a phone, and the dropdown trigger is squeezed to 26px. Measured, not looked at in a
+  browser. The owner has decided to ship desktop-first. Candidate fixes: shed the
+  search field and the status pill below about 500px, or let the nav scroll
+  horizontally.
 - **The "updated" line on document tiles shows time only, with no author.** The
   prototype's mock reads "Grace · 2 min ago". Per-update authorship does not
   exist in the schema, so the author half waits for the history and authorship
