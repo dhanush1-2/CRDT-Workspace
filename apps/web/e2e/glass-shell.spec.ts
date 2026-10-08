@@ -849,7 +849,26 @@ test('the nav condenses once the page is scrolled, with a dead band on the way b
 
   // Inside the dead band. A single 24px threshold would flip back here, and every
   // flip re-renders the whole nav; jitter around the threshold would strobe it.
-  await page.evaluate(() => window.scrollTo(0, 18))
+  // Sampled over half a second rather than read once. Condensing shortens the sticky
+  // wrapper, which pulls the content up and nudges scrollY by a few pixels, so a
+  // single threshold does not merely flip once here: it oscillates.
+  const states = await page.evaluate(async () => {
+    window.scrollTo(0, 18)
+    const seen: string[] = []
+    const bar = document.querySelector('[data-testid="nav-bar"]')!
+    const start = performance.now()
+    await new Promise<void>((resolve) => {
+      const frame = () => {
+        seen.push(bar.getAttribute('data-condensed')!)
+        if (performance.now() - start < 500) requestAnimationFrame(frame)
+        else resolve()
+      }
+      requestAnimationFrame(frame)
+    })
+    return seen
+  })
+  expect(states.length).toBeGreaterThan(10)
+  expect(new Set(states)).toEqual(new Set(['true']))
   await expect(bar).toHaveAttribute('data-condensed', 'true')
 
   await page.evaluate(() => window.scrollTo(0, 0))
