@@ -906,7 +906,8 @@ test('opening one menu closes any other', async ({ page }) => {
 
   await openMenu(page, 'style')
   await expect(tb(page, 'highlight-menu')).toHaveCount(0)
-  await expect(page.locator('[data-testid$="-menu"]')).toHaveCount(1)
+  // nav-menu is the nav's tab dropdown trigger, not a toolbar menu.
+  await expect(page.locator('[data-testid$="-menu"]:not([data-testid="nav-menu"])')).toHaveCount(1)
   await expect(tb(page, 'style')).toHaveAttribute('aria-expanded', 'true')
   await expect(tb(page, 'color')).toHaveAttribute('aria-expanded', 'false')
 })
