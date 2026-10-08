@@ -965,6 +965,11 @@ test('History is offered on a document, explains itself, and closes cleanly', as
   // It must not imply it works. Whatever the wording, it has to say it is not here yet.
   await expect(panel).toContainText('not available yet')
 
+  // Clicking the button leaves it focused, so Escape would pass this check even with
+  // no focus return. Clicking the panel's text moves focus to the body first.
+  await panel.getByText('Version history is not available yet').click()
+  await expect(button).not.toBeFocused()
+
   await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)
   await expect(button).toHaveAttribute('aria-expanded', 'false')
