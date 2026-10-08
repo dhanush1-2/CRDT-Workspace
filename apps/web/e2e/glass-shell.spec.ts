@@ -942,3 +942,41 @@ test('entering the dead band from above never makes the nav oscillate', async ({
 
   await cleanup(label)
 })
+
+test('History is offered on a document, explains itself, and closes cleanly', async ({ page }) => {
+  const label = `${LABEL}-history`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  // Not on the overview: the design puts History among the per-document controls.
+  await page.goto(`/workspaces/${workspace.id}`)
+  await expect(page.getByTestId('history')).toHaveCount(0)
+
+  await page.goto(documentPath(document))
+  const button = page.getByTestId('history')
+  await expect(button).toBeVisible()
+  await expect(button).toHaveAttribute('aria-expanded', 'false')
+
+  await button.click()
+  await expect(button).toHaveAttribute('aria-expanded', 'true')
+  const panel = page.getByTestId('history-panel')
+  await expect(panel).toBeVisible()
+  // It must not imply it works. Whatever the wording, it has to say it is not here yet.
+  await expect(panel).toContainText('not available yet')
+
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(button).toHaveAttribute('aria-expanded', 'false')
+  // Escape without a focus return leaves the keyboard at the top of the document.
+  await expect(button).toBeFocused()
+
+  // A click elsewhere closes it too.
+  await button.click()
+  await expect(panel).toBeVisible()
+  await page.getByTestId('search').click()
+  await expect(panel).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await cleanup(label)
+})
