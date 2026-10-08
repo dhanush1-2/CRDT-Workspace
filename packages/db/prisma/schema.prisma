@@ -30,6 +30,7 @@ model User {
   createdAt    DateTime          @default(now())
   memberships  WorkspaceMember[]
   accounts     Account[]
+  updates      DocumentUpdate[]
 }
 
 model Workspace {
@@ -71,10 +72,15 @@ model DocumentUpdate {
   documentId String
   update     Bytes
   clientId   String
+  /// Who made this change. Null for rows written before authorship existed, and for
+  /// updates the server originates with no connection behind them.
+  userId     String?
   createdAt  DateTime @default(now())
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([documentId, id])
+  @@index([userId])
 }
 
 model DocumentSnapshot {

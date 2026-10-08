@@ -54,4 +54,49 @@ describe('schema', () => {
     })
     expect(orphans).toHaveLength(0)
   })
+
+  it('records the author of an update, and keeps the update when the author is deleted', async () => {
+    // Seeded through the real client, so this exercises the column, the relation and
+    // the referential action together.
+    const user = await prisma.user.create({
+      data: { email: 'authorship@test.local', name: 'Author' },
+    })
+    const authorWorkspace = await prisma.workspace.create({
+      data: { name: 'authorship', ownerId: user.id },
+    })
+    const document = await prisma.document.create({
+      data: { workspaceId: authorWorkspace.id, type: 'doc', title: 'authorship' },
+    })
+
+    const authored = await prisma.documentUpdate.create({
+      data: {
+        documentId: document.id,
+        update: Buffer.from([1, 2, 3]),
+        clientId: 'conn-1',
+        userId: user.id,
+      },
+      select: { id: true, userId: true },
+    })
+    expect(authored.userId).toBe(user.id)
+
+    // Nullable on purpose: every row written before this migration has no author, and
+    // a server-originated update has no connection behind it.
+    const anonymous = await prisma.documentUpdate.create({
+      data: { documentId: document.id, update: Buffer.from([4]), clientId: 'server' },
+      select: { userId: true },
+    })
+    expect(anonymous.userId).toBeNull()
+
+    // Deleting an account must not delete the document's history. SetNull, not Cascade:
+    // the change stays, the attribution goes.
+    await prisma.user.delete({ where: { id: user.id } })
+    const after = await prisma.documentUpdate.findUnique({
+      where: { id: authored.id },
+      select: { userId: true },
+    })
+    expect(after).not.toBeNull()
+    expect(after!.userId).toBeNull()
+
+    await prisma.workspace.delete({ where: { id: authorWorkspace.id } })
+  })
 })
