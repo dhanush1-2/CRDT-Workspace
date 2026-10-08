@@ -562,7 +562,13 @@ test('the tool row is one Tab stop, and the arrow keys move within it', async ({
   // The stop follows focus: leave from Clear and come back to Clear.
   await page.keyboard.press('End')
   await page.keyboard.press('Tab')
+  // The title is an editable field now (rename), so it is a stop between the toolbar and
+  // the text; before renaming, Tab went straight from the row into the editor.
+  await expect(page.getByTestId('document-title')).toBeFocused()
+  await page.keyboard.press('Tab')
   await expect(prose(page)).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByTestId('document-title')).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await expect(tb(page, 'clear')).toBeFocused()
   await expect(tb(page, 'undo')).toHaveAttribute('tabindex', '-1')
