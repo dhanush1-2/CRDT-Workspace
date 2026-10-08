@@ -169,8 +169,12 @@ test('a document in a workspace you are not a member of is not found, not forbid
 
   // The legacy path on purpose: it proves the redirect route also 404s rather than
   // leaking a workspace id. routing.spec.ts covers the canonical path's 404.
-  const response = await page.goto(`/documents/${otherDocument.id}`)
-  expect(response?.status()).toBe(404)
+  // Redirects are not followed: following one would land on the canonical page, which
+  // 404s on its own, hiding a legacy route that redirected before checking access.
+  const response = await page.request.get(`/documents/${otherDocument.id}`, { maxRedirects: 0 })
+  expect(response.status()).toBe(404)
+  expect(response.headers()['location']).toBeUndefined()
+  expect(await response.text()).not.toContain(other.workspace.id)
 
   await cleanup(mine)
   await cleanup(theirs)
