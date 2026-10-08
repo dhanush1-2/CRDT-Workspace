@@ -32,7 +32,8 @@ export function InlineTitle({
   className?: string
   testId: string
   autoFocus?: boolean
-  onDone?: () => void
+  // Called with the saved title after a successful save, with nothing otherwise.
+  onDone?: (savedTitle?: string) => void
 }) {
   const router = useRouter()
   const toast = useToast()
@@ -80,7 +81,7 @@ export function InlineTitle({
       return
     }
     setValue(next)
-    onDone?.()
+    onDone?.(next)
     router.refresh()
   }
 

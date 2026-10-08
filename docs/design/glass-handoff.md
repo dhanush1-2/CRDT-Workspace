@@ -924,7 +924,9 @@ sync-server change; one new API route.
   title trimmed, 1 to 200 characters; viewer gets 403, non-member 404), called through
   `lib/rename-document.ts`. `InlineTitle.tsx` saves only typed changes, and on failure
   reverts and toasts "Could not rename. Try again." `DocumentTile.tsx` has the pencil on
-  the overview tile. Viewers see plain text and no controls.
+  the overview tile, and shows the just-saved title (`shown`, cleared when the `title`
+  prop changes) until the refresh returns, so the old name never flashes back.
+  Viewers see plain text and no controls.
 - **The people group.** `NavPresence` shows you first ("<name> (you)", `presence-self`),
   then peers, on every document page from the route, before History and the status
   pill. `SyncStatus` and `NavPresence` ignore store data that belongs to a different

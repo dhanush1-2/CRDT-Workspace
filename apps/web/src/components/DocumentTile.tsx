@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { InlineTitle } from '@/components/InlineTitle'
 import ui from '@/components/ui/ui.module.css'
 
@@ -29,6 +29,11 @@ export function DocumentTile({
   classes: Record<'tile' | 'text' | 'title' | 'updated' | 'rename' | 'field' | 'wrap', string | undefined>
 }) {
   const [renaming, setRenaming] = useState(false)
+  // The title just saved, shown until the refreshed `title` prop arrives. The field is gone
+  // the moment it saves, but the server components take a round trip to catch up, and
+  // showing the stale prop in between would flash the old name.
+  const [shown, setShown] = useState<string | null>(null)
+  useEffect(() => setShown(null), [title])
 
   const body = (
     <>
@@ -39,15 +44,18 @@ export function DocumentTile({
         {renaming ? (
           <InlineTitle
             documentId={documentId}
-            title={title}
-            label={`Rename ${title}`}
+            title={shown ?? title}
+            label={`Rename ${shown ?? title}`}
             className={classes.field}
             testId={`tile-title-${documentId}`}
             autoFocus
-            onDone={() => setRenaming(false)}
+            onDone={(savedTitle) => {
+              if (savedTitle !== undefined) setShown(savedTitle)
+              setRenaming(false)
+            }}
           />
         ) : (
-          <span className={classes.title}>{title}</span>
+          <span className={classes.title}>{shown ?? title}</span>
         )}
         <span className={classes.updated}>{updated}</span>
       </span>
@@ -69,7 +77,7 @@ export function DocumentTile({
         <button
           type="button"
           className={classes.rename}
-          aria-label={`Rename ${title}`}
+          aria-label={`Rename ${shown ?? title}`}
           title="Rename"
           data-testid={`rename-${documentId}`}
           onClick={() => setRenaming(true)}
