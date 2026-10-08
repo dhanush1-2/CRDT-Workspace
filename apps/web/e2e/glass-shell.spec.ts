@@ -841,17 +841,25 @@ test('the nav condenses once the page is scrolled, with a dead band on the way b
   expect(Math.round(tall.height)).toBe(56)
   expect(Math.round(tall.y)).toBe(12)
 
+  const wrapHeight = () =>
+    bar.evaluate((el) => (el.parentElement as HTMLElement).offsetHeight)
+  expect(await wrapHeight()).toBe(68)
+
   await page.evaluate(() => window.scrollTo(0, 40))
   await expect(bar).toHaveAttribute('data-condensed', 'true')
   // Polled: the height and the gap are transitioned over 0.4s.
   await expect.poll(async () => Math.round((await bar.boundingBox())!.height)).toBe(46)
   await expect.poll(async () => Math.round((await bar.boundingBox())!.y)).toBe(6)
+  // The wrapper's in-flow box must not change with the bar, or the page shifts under the
+  // user and the state can oscillate (see the entry test below).
+  expect(await wrapHeight()).toBe(68)
 
   // Inside the dead band. A single 24px threshold would flip back here, and every
   // flip re-renders the whole nav; jitter around the threshold would strobe it.
-  // Sampled over half a second rather than read once. Condensing shortens the sticky
-  // wrapper, which pulls the content up and nudges scrollY by a few pixels, so a
-  // single threshold does not merely flip once here: it oscillates.
+  // Sampled every frame for half a second rather than read once, because the state
+  // is set from a rAF after the scroll event: a single read can pass before it flips.
+  // This covers leaving the condensed side into the band (scrollY 18, between 12 and
+  // 24). Entering the band from above is the next test.
   const states = await page.evaluate(async () => {
     window.scrollTo(0, 18)
     const seen: string[] = []

@@ -20,6 +20,13 @@
   top: 0;
   z-index: 30;
   padding: 12px 16px 0;
+  /* A constant in-flow box: 12 + 56. The condensed state moves the bar inside it (the
+     padding drops to 6) but never changes this height. If it did, everything below
+     would shift up, scroll anchoring would pull scrollY back under the expand
+     threshold, and the bar would flip again for as long as the user rested there.
+     Anything that hangs under the bar (floating pills) overflows rather than grows it. */
+  box-sizing: border-box;
+  height: 68px;
   /* A column, not a row: the bar is centred, and so are the floating offline and
      old-version pills that sit under it. */
   display: flex;
