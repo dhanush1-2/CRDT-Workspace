@@ -340,6 +340,53 @@ test('the nav animates to its new width across a navigation', async ({ page }) =
   await cleanup(label)
 })
 
+// transitionend bubbles, so a transition on anything inside the bar (a tab's colour, the
+// nav's own height or background) used to end the width animation early: a visible snap on
+// the most common path, a tab click. The end of the animation is the bar's own width.
+test('a child transition ending does not cut the nav width animation short', async ({ page }) => {
+  const label = `${LABEL}-child-transition`
+  try {
+    const { owner, workspace } = await seedWorkspace(label)
+    const document = await createDocument(workspace.id, 'doc')
+    await signIn(page, owner.id)
+    await page.setViewportSize({ width: 1600, height: 900 })
+    await page.goto(`/workspaces/${workspace.id}`)
+    await expect(page.getByTestId('tab-overview')).toHaveAttribute('data-active', 'true')
+    const before = (await page.getByRole('navigation', { name: 'Primary' }).boundingBox())!.width
+
+    const result = await page.evaluate(async (documentId) => {
+      const nav = document.querySelector('nav[aria-label="Primary"]') as HTMLElement
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+      ;(document.querySelector(`[data-testid="tab-${documentId}"]`) as HTMLElement).click()
+      // The width animation is running once the bar has a width transition and a pinned width.
+      const t0 = performance.now()
+      while (!(nav.style.transition.includes('width') && nav.style.width.endsWith('px'))) {
+        if (performance.now() - t0 > 10_000) return { started: false, during: '', later: '' }
+        await frame()
+      }
+      // A tab's colour transition ending, as it does ~0.3s into a 0.55s width animation.
+      const tab = nav.querySelector('[data-testid^="tab-"]') as HTMLElement
+      tab.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'color' }))
+      const during = nav.style.width
+      await frame()
+      await frame()
+      return { started: true, during, later: nav.style.width }
+    }, document.id)
+
+    expect(result.started).toBe(true)
+    expect(result.during).toMatch(/px$/)
+    expect(result.later).toMatch(/px$/)
+
+    // The animation still runs to its end: the inline width is released and the bar is at
+    // its natural, wider, width.
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveJSProperty('style.width', '')
+    const after = (await page.getByRole('navigation', { name: 'Primary' }).boundingBox())!.width
+    expect(after).toBeGreaterThan(before + 20)
+  } finally {
+    await cleanup(label)
+  }
+})
+
 test('moving between the overview and documents keeps the same nav element', async ({ page }) => {
   const label = `${LABEL}-same-nav`
   const { owner, workspace } = await seedWorkspace(label)
