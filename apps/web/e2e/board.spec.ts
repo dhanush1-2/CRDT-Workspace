@@ -123,7 +123,7 @@ test('a card is not left dimmed after a completed drop', async ({ page }) => {
 test('the column count chip reflects the number of cards', async ({ page }) => {
   const label = `${LABEL}-count`
   const [column] = await openBoard(page, label, 1)
-  const count = page.getByTestId(`column-${column}`).locator('h2 + span')
+  const count = page.getByTestId(`column-${column}`).locator('[data-testid^="col-title-"] + span')
 
   await expect(count).toHaveText('0')
   await addCard(page, column!)
@@ -218,5 +218,129 @@ test('the column under the pointer shows the accent outline while a card is drag
   // And it goes again, so the outline tracks the drag rather than latching on.
   await expect.poll(shadow).not.toContain(ACCENT_INSET)
 
+  await cleanup(label)
+})
+
+test('a column is renamed in place, and the new name reaches a second browser', async ({
+  page,
+  browser,
+}) => {
+  const label = `${LABEL}-rename-col`
+  const [columnId] = await openBoard(page, label, 1)
+  const title = page.getByTestId(`col-title-${columnId}`)
+  await expect(title).toHaveValue('New column')
+
+  await title.click()
+  await title.fill('Backlog')
+  await title.press('Enter')
+  await expect(title).toHaveValue('Backlog')
+  await expect(title).not.toBeFocused()
+
+  // Live through the CRDT: a second browser on the same board sees it without reloading.
+  const url = page.url()
+  const context = await browser.newContext()
+  await context.addCookies(await page.context().cookies())
+  const other = await context.newPage()
+  await other.goto(`${url}?nobc=1`)
+  await expect(other.getByTestId(`col-title-${columnId}`)).toHaveValue('Backlog')
+  await page.getByTestId(`col-title-${columnId}`).fill('Done')
+  await page.getByTestId(`col-title-${columnId}`).press('Enter')
+  await expect(other.getByTestId(`col-title-${columnId}`)).toHaveValue('Done')
+  await context.close()
+
+  await cleanup(label)
+})
+
+test('Escape or an empty name puts the column title back', async ({ page }) => {
+  const label = `${LABEL}-rename-revert`
+  const [columnId] = await openBoard(page, label, 1)
+  const title = page.getByTestId(`col-title-${columnId}`)
+
+  await title.fill('Something')
+  await title.press('Escape')
+  await expect(title).toHaveValue('New column')
+
+  await title.fill('   ')
+  await title.press('Enter')
+  await expect(title).toHaveValue('New column')
+
+  await cleanup(label)
+})
+
+test('an empty column deletes straight away', async ({ page }) => {
+  const label = `${LABEL}-delete-empty`
+  const [first, second] = await openBoard(page, label, 2)
+  await page.getByTestId(`col-delete-${first}`).click()
+  await expect(page.getByTestId(`column-${first}`)).toHaveCount(0)
+  await expect(page.getByTestId(`column-${second}`)).toHaveCount(1)
+  await expect(page.getByTestId(`col-confirm-${first}`)).toHaveCount(0)
+
+  await cleanup(label)
+})
+
+test('deleting a column with cards asks first, naming the count, and Cancel keeps it', async ({
+  page,
+}) => {
+  const label = `${LABEL}-delete-cards`
+  const [columnId] = await openBoard(page, label, 1)
+  await addCard(page, columnId!)
+  await addCard(page, columnId!)
+  await addCard(page, columnId!)
+
+  await page.getByTestId(`col-delete-${columnId}`).click()
+  const confirm = page.getByTestId(`col-confirm-${columnId}`)
+  await expect(confirm).toContainText('3 cards')
+  await page.getByTestId(`col-confirm-cancel-${columnId}`).click()
+  await expect(confirm).toHaveCount(0)
+  await expect(page.getByTestId(`column-${columnId}`).locator('[data-testid^="card-"]')).toHaveCount(3)
+
+  await page.getByTestId(`col-delete-${columnId}`).click()
+  await page.getByTestId(`col-confirm-delete-${columnId}`).click()
+  await expect(page.getByTestId(`column-${columnId}`)).toHaveCount(0)
+
+  await cleanup(label)
+})
+
+test('one card is "1 card", not "1 cards"', async ({ page }) => {
+  const label = `${LABEL}-delete-one`
+  const [columnId] = await openBoard(page, label, 1)
+  await addCard(page, columnId!)
+  await page.getByTestId(`col-delete-${columnId}`).click()
+  await expect(page.getByTestId(`col-confirm-${columnId}`)).toContainText('1 card')
+  await expect(page.getByTestId(`col-confirm-${columnId}`)).not.toContainText('1 cards')
+
+  await cleanup(label)
+})
+
+test('a viewer sees the column title as text, with no rename or delete', async ({ browser }) => {
+  const label = `${LABEL}-col-viewer`
+  const { owner, workspace } = await seedWorkspace(label)
+  const viewer = await addMember(workspace.id, label, 'viewer')
+  const document = await createDocument(workspace.id, 'board')
+
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  await contextA.addCookies([await sessionCookieFor(owner.id)])
+  await contextB.addCookies([await sessionCookieFor(viewer.id)])
+  const ownerPage = await contextA.newPage()
+  const viewerPage = await contextB.newPage()
+  for (const page of [ownerPage, viewerPage]) {
+    await page.goto(`${documentPath(document)}?nobc=1`)
+    await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+  }
+
+  await ownerPage.getByTestId('add-column').click()
+  await expect(viewerPage.locator('[data-testid^="column-"]')).toHaveCount(1)
+  const columnId = (
+    await viewerPage.locator('[data-testid^="column-"]').first().getAttribute('data-testid')
+  )!.replace('column-', '')
+
+  await expect(viewerPage.getByTestId(`col-title-${columnId}`)).toBeVisible()
+  await expect(viewerPage.getByTestId(`col-title-${columnId}`)).toHaveText('New column')
+  await expect(viewerPage.locator(`input[data-testid="col-title-${columnId}"]`)).toHaveCount(0)
+  await expect(viewerPage.getByTestId(`col-delete-${columnId}`)).toHaveCount(0)
+
+  await contextA.close()
+  await contextB.close()
   await cleanup(label)
 })

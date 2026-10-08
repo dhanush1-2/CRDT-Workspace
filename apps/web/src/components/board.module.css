@@ -240,3 +240,92 @@
     transform: scale(0.97);
   }
 }
+
+/* The column title as an input that reads as the heading it replaces. */
+.columnTitleInput {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 0;
+  border-radius: var(--r-item);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.columnTitleInput:hover {
+  background: rgba(255, 255, 255, 0.6); /* the design's hover white for glass rows */
+}
+
+.columnTitleInput:focus-visible,
+.columnTitleInput:focus {
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-ring);
+}
+
+.columnDelete {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.columnDelete:hover {
+  background: rgba(0, 0, 0, 0.06); /* same as the count chip's tint, slightly stronger */
+  color: var(--danger);
+}
+
+.columnConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.columnConfirmText {
+  flex: 1 1 100%;
+}
+
+.columnConfirmDelete,
+.columnConfirmCancel {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.columnConfirmDelete {
+  background: var(--danger);
+  color: #fff;
+}
+
+.columnConfirmCancel {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .columnTitleInput,
+  .columnDelete {
+    transition: background var(--dur-fast) var(--ease);
+  }
+}

@@ -7,6 +7,7 @@ import { addCard, addColumn, moveCard, removeCard } from '@crdt/shared/board'
 import { useBoard } from '@/hooks/use-board'
 import { setCardFocus, usePresence } from '@/hooks/use-presence'
 import { CardPresence } from '@/components/Presence'
+import { ColumnHead } from './ColumnHead'
 import styles from './board.module.css'
 
 interface BoardProps {
@@ -60,10 +61,13 @@ export function Board({ doc, provider, readOnly = false }: BoardProps) {
           onDrop={(event) => handleDrop(event, column.id)}
           className={`${styles.column} ${dragOver === column.id ? styles.columnOver : ''}`}
         >
-          <div className={styles.columnHead}>
-            <h2 className={styles.columnTitle}>{column.title}</h2>
-            <span className={styles.count}>{(cardsByColumn.get(column.id) ?? []).length}</span>
-          </div>
+          <ColumnHead
+            doc={doc}
+            columnId={column.id}
+            title={column.title}
+            count={(cardsByColumn.get(column.id) ?? []).length}
+            readOnly={readOnly}
+          />
 
           <div className={styles.cards}>
             {(cardsByColumn.get(column.id) ?? []).map((card) => {
