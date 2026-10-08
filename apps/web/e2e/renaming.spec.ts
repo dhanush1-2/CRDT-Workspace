@@ -145,6 +145,52 @@ test('a document is renamed from its tile on the workspace overview', async ({ p
   await expect(page.getByTestId(`tab-${document.id}`)).toContainText('Roadmap')
 })
 
+// After a save the field goes away at once, but the new title only reaches the tile when
+// router.refresh() returns, a network round trip in production. Until then the tile must
+// show the title that was just saved, not the stale prop: new, old, new is a flash.
+test('a renamed tile never shows the old title while the refresh is in flight', async ({ page }) => {
+  seeded.push(`${LABEL}-tile-flash`)
+  const { owner, workspace } = await seedWorkspace(`${LABEL}-tile-flash`)
+  const document = await createDocument(workspace.id, 'board')
+  await signIn(page, owner.id)
+  await page.goto(`/workspaces/${workspace.id}`)
+
+  // Hold the server-component refresh (an RSC request for the overview) for a while, so the
+  // window between "saved" and "refreshed" is long enough to sample. Prefetches are left alone.
+  let delayed = 0
+  await page.route(`**/workspaces/${workspace.id}?*`, async (route) => {
+    const headers = route.request().headers()
+    if (headers['rsc'] === '1' && !headers['next-router-prefetch']) {
+      delayed += 1
+      await new Promise((resolve) => setTimeout(resolve, 800))
+    }
+    await route.continue()
+  })
+
+  await page.getByTestId(`rename-${document.id}`).click()
+  const field = page.getByTestId(`tile-title-${document.id}`)
+  await expect(field).toBeFocused()
+  await field.fill('Roadmap')
+
+  const sampling = page.evaluate(async (id) => {
+    const seen: string[] = []
+    const t0 = performance.now()
+    while (performance.now() - t0 < 2200) {
+      const tile = document.querySelector(`[data-testid="document-${id}"]`)
+      if (tile && !tile.querySelector('input')) seen.push(tile.textContent ?? '')
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    }
+    return seen
+  }, document.id)
+  await field.press('Enter')
+  const seen = await sampling
+
+  expect(delayed).toBeGreaterThan(0)
+  expect(seen.some((text) => text.includes('Roadmap'))).toBe(true)
+  expect(seen.filter((text) => text.includes('e2e board'))).toEqual([])
+  await expect(page.getByTestId(`document-${document.id}`)).toContainText('Roadmap')
+})
+
 test('a viewer sees the title as text and no rename control', async ({ browser }) => {
   const label = `${LABEL}-viewer`
   seeded.push(label)
