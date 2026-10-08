@@ -31,7 +31,8 @@ async function startServer(store: DocumentStore): Promise<{ server: SyncServer; 
     port: 0,
     jwtSecret: SECRET,
     loadDocument: (id) => store.load(id),
-    onPersist: (id, update, clientId) => queue.enqueue(id, { update, clientId }),
+    onPersist: (id, update, clientId, userId) =>
+      queue.enqueue(id, { update, clientId, userId }),
     onDocumentPersisted: async (id, doc) => {
       if (store.needsSnapshot(id)) await store.snapshot(id, doc)
     },
@@ -121,7 +122,7 @@ describe('durability', () => {
     const store = new DocumentStore(prisma, { snapshotEvery: 100 })
     const seed = new Y.Doc()
     seed.getText('t').insert(0, 'seeded before cold load')
-    await store.append(documentId, [{ update: Y.encodeStateAsUpdate(seed), clientId: 'seed' }])
+    await store.append(documentId, [{ update: Y.encodeStateAsUpdate(seed), clientId: 'seed', userId: null }])
 
     const server = await createSyncServer({
       port: 0,

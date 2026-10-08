@@ -23,7 +23,7 @@ export interface Connection {
 export const LOAD_ORIGIN = Symbol('load')
 
 export interface RoomOptions {
-  onPersist(update: Uint8Array, clientId: string): void
+  onPersist(update: Uint8Array, clientId: string, userId: string | null): void
   onReject?(reason: string, conn: Connection): void
 }
 
@@ -46,7 +46,10 @@ export class DocumentRoom {
       if (origin !== LOAD_ORIGIN) {
         const sender = origin as Connection | undefined
         this.broadcast(encodeUpdate(update), sender)
-        this.options.onPersist(update, sender?.id ?? 'server')
+        // The connection carries the verified user from its doc token, so the author
+        // is known here without a lookup. No connection means the server itself made
+        // the change and there is nobody to attribute it to.
+        this.options.onPersist(update, sender?.id ?? 'server', sender?.userId ?? null)
       }
     })
 

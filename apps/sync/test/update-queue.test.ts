@@ -25,6 +25,7 @@ function failingSink(failures: number) {
 const update = (n: number): PendingUpdate => ({
   update: new Uint8Array([n]),
   clientId: `c${n}`,
+  userId: null,
 })
 
 beforeEach(() => { vi.useFakeTimers() })

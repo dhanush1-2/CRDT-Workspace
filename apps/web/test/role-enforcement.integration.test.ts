@@ -61,7 +61,8 @@ beforeAll(async () => {
     port: 0,
     jwtSecret: SECRET,
     loadDocument: (id) => store.load(id),
-    onPersist: (id, update, clientId) => queue.enqueue(id, { update, clientId }),
+    onPersist: (id, update, clientId, userId) =>
+      queue.enqueue(id, { update, clientId, userId }),
     onReject: (id, reason) => {
       rejections.push({ documentId: id, reason })
     },

@@ -53,6 +53,28 @@ function eventually(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 }
 
 describe('sync server', () => {
+  it('hands the verified user of the sending socket to onPersist', async () => {
+    const persisted: { documentId: string; clientId: string; userId: string | null }[] = []
+    const capturing = await createSyncServer({
+      port: 0,
+      jwtSecret: SECRET,
+      onPersist: (documentId, _update, clientId, userId) =>
+        persisted.push({ documentId, clientId, userId }),
+    })
+    try {
+      const a = await connect('doc_author', 'alice', 'editor', capturing)
+      a.doc.getText('t').insert(0, 'hello')
+
+      await eventually(() => persisted.length > 0)
+
+      expect(persisted.map((p) => p.userId)).toEqual(persisted.map(() => 'usr_alice'))
+      expect(persisted[0]!.documentId).toBe('doc_author')
+      a.provider.destroy()
+    } finally {
+      await capturing.close()
+    }
+  })
+
   it('converges two clients on the same document', async () => {
     const a = await connect('doc_1', 'alice')
     const b = await connect('doc_1', 'bob')

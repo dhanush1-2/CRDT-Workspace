@@ -29,6 +29,34 @@ function fakeConnection(id: string, role: Role = 'editor') {
 }
 
 describe('DocumentRoom', () => {
+  it("reports the connection's user as the author of an update", () => {
+    const persisted: { clientId: string; userId: string | null }[] = []
+    const room = new DocumentRoom('doc_1', {
+      onPersist: (_update, clientId, userId) => persisted.push({ clientId, userId }),
+    })
+    const a = fakeConnection('conn-1')
+    room.add(a.conn)
+
+    const source = new Y.Doc()
+    source.getText('t').insert(0, 'hello')
+    room.handleFrame(a.conn, encodeUpdate(Y.encodeStateAsUpdate(source)))
+
+    expect(persisted).toEqual([{ clientId: 'conn-1', userId: 'usr_conn-1' }])
+  })
+
+  it('reports no author for an update with no connection behind it', () => {
+    const persisted: { clientId: string; userId: string | null }[] = []
+    const room = new DocumentRoom('doc_1', {
+      onPersist: (_update, clientId, userId) => persisted.push({ clientId, userId }),
+    })
+
+    // No origin: the server itself changed the document. There is no user to name, and
+    // naming one would be a lie about who did it.
+    room.doc.getText('t').insert(0, 'hello')
+
+    expect(persisted).toEqual([{ clientId: 'server', userId: null }])
+  })
+
   it('relays an editor update to peers but not back to the sender', () => {
     const room = new DocumentRoom('doc_1', { onPersist: () => {} })
     const a = fakeConnection('a')

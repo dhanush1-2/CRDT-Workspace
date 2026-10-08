@@ -40,7 +40,8 @@ const server = await createSyncServer({
   idleEvictMs: config.idleEvictMs,
   metrics,
   loadDocument: (documentId) => store.load(documentId),
-  onPersist: (documentId, update, clientId) => queue.enqueue(documentId, { update, clientId }),
+  onPersist: (documentId, update, clientId, userId) =>
+    queue.enqueue(documentId, { update, clientId, userId }),
   onDocumentPersisted: async (documentId, doc) => {
     if (store.needsSnapshot(documentId)) {
       await store.snapshot(documentId, doc)

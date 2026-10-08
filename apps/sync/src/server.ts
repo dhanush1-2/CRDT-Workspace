@@ -11,7 +11,7 @@ export interface SyncServerOptions {
   port: number
   jwtSecret: string
   idleEvictMs?: number
-  onPersist?(documentId: string, update: Uint8Array, clientId: string): void
+  onPersist?(documentId: string, update: Uint8Array, clientId: string, userId: string | null): void
   loadDocument?(documentId: string): Promise<Uint8Array | null>
   onDocumentPersisted?(documentId: string, doc: Y.Doc): void | Promise<void>
   onReject?(documentId: string, reason: string): void
@@ -75,9 +75,9 @@ export async function createSyncServer(options: SyncServerOptions): Promise<Sync
       // event, never during construction — by the time it runs, `room` has already
       // been assigned.
       const room: DocumentRoom = new DocumentRoom(documentId, {
-        onPersist: (update, clientId) => {
+        onPersist: (update, clientId, userId) => {
           metrics.inc('sync_updates_received_total', { role: 'writer' })
-          options.onPersist?.(documentId, update, clientId)
+          options.onPersist?.(documentId, update, clientId, userId)
           void Promise.resolve(options.onDocumentPersisted?.(documentId, room.doc)).catch(
             (error: unknown) => {
               console.error(

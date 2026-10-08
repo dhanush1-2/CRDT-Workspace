@@ -1,6 +1,8 @@
 export interface PendingUpdate {
   update: Uint8Array
   clientId: string
+  /** Null for updates the server originates, and never backfilled. */
+  userId: string | null
 }
 
 export interface UpdateSink {
