@@ -1255,6 +1255,7 @@ test('moving on again while the bar is still animating holds its width until the
         let clickedSecond = false
         let clickedThird = false
         let thirdIsActive = false
+        let armedAt = -1
         const t0 = performance.now()
         while (performance.now() - t0 < 6000) {
           const width = nav.getBoundingClientRect().width
@@ -1266,8 +1267,13 @@ test('moving on again while the bar is still animating holds its width until the
             active(secondId) &&
             document.querySelector('[data-testid="status"]')?.textContent === 'Synced'
           ) {
-            clickedThird = true
-            ;(document.querySelector(`[data-testid="tab-${thirdId}"]`) as HTMLElement).click()
+            // The second document has connected: the bar is about to start narrowing to it.
+            // Wait for that to be under way, then move on.
+            if (armedAt < 0) armedAt = width
+            if (width < armedAt - 4) {
+              clickedThird = true
+              ;(document.querySelector(`[data-testid="tab-${thirdId}"]`) as HTMLElement).click()
+            }
           }
           // From the frame the third document becomes the open one until it has connected.
           if (!thirdIsActive && active(thirdId)) thirdIsActive = true
