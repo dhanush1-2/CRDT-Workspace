@@ -1101,3 +1101,45 @@ test('the dropdown trigger carries the presence dot the strip would', async ({ b
   await b.context.close()
   await cleanup(label)
 })
+
+test('on a document you are in the people group, before History and the status pill', async ({ page }) => {
+  const label = `${LABEL}-self`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const self = page.getByTestId('presence-self')
+  await expect(self).toBeVisible()
+  await expect(self).toHaveAttribute('aria-label', /\(you\)/)
+
+  // Order along the bar: people, History, status, Share, account.
+  const order = await page.getByRole('navigation', { name: 'Primary' }).evaluate((nav) =>
+    ['presence', 'history', 'status', 'share', 'account-trigger'].map((id) => {
+      const el = nav.querySelector(`[data-testid="${id}"]`)
+      return el ? el.getBoundingClientRect().left : Number.NaN
+    }),
+  )
+  expect(order.every((x) => !Number.isNaN(x))).toBe(true)
+  expect([...order].sort((a, b) => a - b)).toEqual(order)
+
+  await page.goto(`/workspaces/${workspace.id}`)
+  await expect(page.getByTestId('presence')).toHaveCount(0)
+  await cleanup(label)
+})
+
+test('the account button does not look like a person in the document', async ({ page }) => {
+  const label = `${LABEL}-account-look`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const self = page.getByTestId('presence-self')
+  const account = page.getByTestId('account-trigger')
+  const fill = (locator: typeof self) => locator.evaluate((el) => getComputedStyle(el).backgroundColor)
+  // The people group is filled with each person's colour; the account button is not.
+  expect(await fill(account)).toBe('rgb(255, 255, 255)')
+  expect(await fill(self)).not.toBe('rgb(255, 255, 255)')
+  await cleanup(label)
+})

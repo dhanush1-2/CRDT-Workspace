@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Role } from '@crdt/shared/types'
+import { colorFor } from '@/lib/color'
 import { useDocState } from '@/lib/doc-state'
 import { activeDocumentIdFrom } from '@/lib/routes'
 import type { SessionUser } from '@/lib/current-user'
@@ -67,7 +68,8 @@ export function AppShell({
   // Read from the path rather than from the doc-state store: the store is populated
   // by the page after it mounts, so the button would pop into the nav a beat after
   // the rest of it.
-  const onDocument = activeDocumentIdFrom(usePathname()) !== undefined
+  const activeDocumentId = activeDocumentIdFrom(usePathname())
+  const onDocument = activeDocumentId !== undefined
   // Which overlay is open, if any. One slot rather than a boolean per overlay, so
   // opening one can never leave another open behind it.
   const [overlay, setOverlay] = useState<'share' | 'palette' | null>(null)
@@ -248,9 +250,14 @@ export function AppShell({
               <span className={styles.kbd}>⌘K</span>
             </button>
 
+            {onDocument && (
+              <NavPresence
+                self={{ name: user.name, color: colorFor(user.id) }}
+                documentId={activeDocumentId ?? null}
+              />
+            )}
             {onDocument && <HistoryButton />}
-            <SyncStatus />
-            <NavPresence />
+            <SyncStatus documentId={activeDocumentId ?? null} />
 
             {workspace && (
               <Button variant="accent" onClick={openShare} data-testid="share">

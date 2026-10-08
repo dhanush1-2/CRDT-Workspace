@@ -13,9 +13,14 @@ const DISPLAY: Record<DocStatus, { label: string; dot: string }> = {
 
 // Reads the document the page below has published. Renders nothing where there is
 // no document (dashboard, workspace page), so the nav has no empty pill there.
-export function SyncStatus() {
-  const { documentId, status, peers } = useDocState()
+export function SyncStatus({ documentId }: { documentId: string | null }) {
+  const state = useDocState()
   if (documentId === null) return null
+  // The store may still describe the document you just left; until this one has
+  // published, it is connecting.
+  const current = state.documentId === documentId
+  const status = current ? state.status : 'connecting'
+  const peers = current ? state.peers : []
 
   const { label, dot } = DISPLAY[status]
   // `peers` excludes this tab's own client, so the count is peers plus you — what

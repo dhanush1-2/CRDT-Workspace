@@ -41,7 +41,8 @@ export function UserMenu({ user }: { user: SessionUser }) {
       <button
         type="button"
         className={styles.avatar}
-        style={{ background: colorFor(user.id) }}
+        style={{ color: colorFor(user.id) }}
+        data-testid="account-trigger"
         ref={button}
         aria-expanded={open}
         aria-label="Account"

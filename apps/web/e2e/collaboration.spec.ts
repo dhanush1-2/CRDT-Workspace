@@ -90,9 +90,12 @@ test('both users see each other in the presence bar', async ({ browser }) => {
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
   const pageA = await openAs(contextA, owner.id, documentPath(document))
-  await openAs(contextB, editor.id, documentPath(document))
+  const pageB = await openAs(contextB, editor.id, documentPath(document))
 
   await expect(avatar(pageA, 'Eddie')).toBeVisible()
+  // The group holds you and the other person, in each browser.
+  await expect(pageA.getByTestId('presence').locator('[role="img"]')).toHaveCount(2)
+  await expect(pageB.getByTestId('presence').locator('[role="img"]')).toHaveCount(2)
   // The count includes you. Two browsers are open, so it says two, not one.
   await expect(pageA.getByTestId('status')).toHaveText('2 here')
 
@@ -111,9 +114,10 @@ test('the nav shows who else is here and the active tab carries a dot', async ({
   const contextB = await browser.newContext()
   const pageA = await openAs(contextA, owner.id, documentPath(document))
 
-  // Alone: no avatars and no dot. A dot that always rendered would pass the check
-  // below, so assert its absence first.
-  await expect(pageA.getByTestId('presence')).toHaveCount(0)
+  // Alone: only you in the group, and no dot. A dot that always rendered would pass the
+  // check below, so assert its absence first.
+  await expect(pageA.getByTestId('presence-self')).toBeVisible()
+  await expect(pageA.getByTestId('presence').locator('[role="img"]')).toHaveCount(1)
   await expect(pageA.getByTestId(`tab-dot-${document.id}`)).toHaveCount(0)
 
   const pageB = await openAs(contextB, editor.id, documentPath(document))
@@ -152,7 +156,9 @@ test('the avatar and the dot go when the other person leaves', async ({ browser 
   await contextB.close()
 
   await expect(avatar(pageA, 'Eddie')).toHaveCount(0)
-  await expect(pageA.getByTestId('presence')).toHaveCount(0)
+  // Only you are left in the group.
+  await expect(pageA.getByTestId('presence').locator('[role="img"]')).toHaveCount(1)
+  await expect(pageA.getByTestId('presence-self')).toBeVisible()
   await expect(pageA.getByTestId(`tab-dot-${document.id}`)).toHaveCount(0)
 
   await contextA.close()
