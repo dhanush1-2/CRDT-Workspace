@@ -3,11 +3,18 @@ import { prisma } from '@crdt/db'
 import { addMember, cleanup, createDocument, documentPath, seedWorkspace, sessionCookieFor, signIn } from './fixtures.js'
 
 const LABEL = 'e2e-rename'
-test.afterAll(async () => {
-  await cleanup(LABEL)
+
+// Every test seeds a workspace named after its own label (`e2e-rename-doc`, ...), and
+// cleanup() matches a workspace name exactly, so one cleanup('e2e-rename') in afterAll
+// removed none of them. Each test records its label here; afterEach removes them, pass
+// or fail.
+const seeded: string[] = []
+test.afterEach(async () => {
+  for (const label of seeded.splice(0)) await cleanup(label)
 })
 
 async function open(page: Page, label: string, type: 'doc' | 'board') {
+  seeded.push(label)
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, type)
   await signIn(page, owner.id)
@@ -97,7 +104,33 @@ test('a title changed elsewhere while the field is focused is not overwritten on
   expect(row.title).toBe('Renamed by a peer')
 })
 
+test('a rename that fails at the network puts the name back, says so, and does not wedge the field', async ({ page }) => {
+  const { document } = await open(page, `${LABEL}-offline`, 'doc')
+  const title = page.getByTestId('document-title')
+
+  // fetch() rejects (it does not return a non-2xx response): offline, a reset connection.
+  await page.route('**/api/documents/**', (route) =>
+    route.request().method() === 'PATCH' ? route.abort() : route.continue(),
+  )
+  await title.fill('Never saved')
+  await title.press('Enter')
+  await expect(page.getByTestId('toast')).toHaveText('Could not rename. Try again.')
+  await expect(title).toHaveValue('e2e doc')
+  await expect(title).not.toHaveAttribute('aria-busy', 'true')
+
+  // Back online: the same field renames. A stuck "saving" would ignore this.
+  await page.unroute('**/api/documents/**')
+  await title.fill('Saved this time')
+  await title.press('Enter')
+  // The field shows the typed text whether or not it saved, so wait for the nav tab,
+  // which only follows a saved name, before reloading.
+  await expect(page.getByTestId(`tab-${document.id}`)).toContainText('Saved this time')
+  await page.reload()
+  await expect(page.getByTestId('document-title')).toHaveValue('Saved this time')
+})
+
 test('a document is renamed from its tile on the workspace overview', async ({ page }) => {
+  seeded.push(`${LABEL}-tile`)
   const { owner, workspace } = await seedWorkspace(`${LABEL}-tile`)
   const document = await createDocument(workspace.id, 'board')
   await signIn(page, owner.id)
@@ -114,6 +147,7 @@ test('a document is renamed from its tile on the workspace overview', async ({ p
 
 test('a viewer sees the title as text and no rename control', async ({ browser }) => {
   const label = `${LABEL}-viewer`
+  seeded.push(label)
   const { workspace } = await seedWorkspace(label)
   const viewer = await addMember(workspace.id, label, 'viewer')
   const document = await createDocument(workspace.id, 'doc')

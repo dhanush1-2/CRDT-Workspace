@@ -66,8 +66,13 @@ export function InlineTitle({
       return
     }
     setSaving(true)
-    const saved = await renameDocument(documentId, next)
-    setSaving(false)
+    // finally, so `saving` can never stay true: it gates every later commit.
+    let saved = false
+    try {
+      saved = await renameDocument(documentId, next)
+    } finally {
+      setSaving(false)
+    }
     if (!saved) {
       setValue(title)
       toast('Could not rename. Try again.')
