@@ -330,6 +330,30 @@ test('the nav animates to its new width across a navigation', async ({ page }) =
   await cleanup(label)
 })
 
+test('moving between the overview and documents keeps the same nav element', async ({ page }) => {
+  const label = `${LABEL}-same-nav`
+  const { owner, workspace } = await seedWorkspace(label)
+  const first = await createDocument(workspace.id, 'board')
+  const second = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  await page.goto(`/workspaces/${workspace.id}`)
+  const nav = page.getByRole('navigation', { name: 'Primary' })
+  await expect(nav).toBeVisible()
+  // A marker on the DOM node itself. A rebuilt nav is a new node without it.
+  await nav.evaluate((el) => el.setAttribute('data-e2e-marker', 'kept'))
+
+  // Overview -> document -> another document -> overview: the two hard directions
+  // (different pages) and the easy one (two instances of the same page).
+  for (const tab of [`tab-${first.id}`, `tab-${second.id}`, 'tab-overview']) {
+    await page.getByTestId(tab).click()
+    await expect(page.getByTestId(tab)).toHaveAttribute('data-active', 'true')
+    await expect(nav).toHaveAttribute('data-e2e-marker', 'kept')
+  }
+
+  await cleanup(label)
+})
+
 test('no splatter is painted behind the nav', async ({ page }) => {
   await page.goto('/login')
   await waitUntilDrawn(page)
