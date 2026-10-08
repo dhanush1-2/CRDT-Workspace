@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import {
-  addCard, addColumn, listCards, listColumns, moveCard, removeCard, renameCard,
+  addCard, addColumn, listCards, listColumns, moveCard, removeCard, removeColumn, renameCard,
+  renameColumn,
 } from '../src/board.js'
 
 function board(): Y.Doc {
@@ -131,5 +132,53 @@ describe('board', () => {
     expect(() => moveCard(doc, 'missing', { columnId: 'doing' })).not.toThrow()
     expect(() => renameCard(doc, 'missing', 'x')).not.toThrow()
     expect(() => removeCard(doc, 'missing')).not.toThrow()
+  })
+
+  it('renames a column in place, keeping its id and position', () => {
+    const doc = board()
+    renameColumn(doc, 'todo', 'Backlog')
+    expect(listColumns(doc).map((c) => [c.id, c.title])).toEqual([
+      ['todo', 'Backlog'],
+      ['doing', 'Doing'],
+    ])
+  })
+
+  it('renaming a column that does not exist does nothing', () => {
+    const doc = board()
+    renameColumn(doc, 'nope', 'x')
+    expect(listColumns(doc).map((c) => c.title)).toEqual(['To do', 'Doing'])
+  })
+
+  it('removing a column deletes it and every card in it, and only those', () => {
+    const doc = board()
+    addCard(doc, { id: 'a', title: 'A', columnId: 'todo' })
+    addCard(doc, { id: 'b', title: 'B', columnId: 'todo' })
+    addCard(doc, { id: 'c', title: 'C', columnId: 'doing' })
+
+    expect(removeColumn(doc, 'todo')).toBe(2)
+    expect(listColumns(doc).map((c) => c.id)).toEqual(['doing'])
+    expect(listCards(doc, 'todo')).toEqual([])
+    expect(listCards(doc, 'doing').map((c) => c.id)).toEqual(['c'])
+    // Gone from the shared map, not merely hidden: nothing is left to resurface if a
+    // column with the same id were ever recreated.
+    expect(doc.getMap('cards').has('a')).toBe(false)
+  })
+
+  it('removing a column is one transaction, so a peer sees it all at once', () => {
+    const doc = board()
+    addCard(doc, { id: 'a', title: 'A', columnId: 'todo' })
+    let transactions = 0
+    doc.on('afterTransaction', () => { transactions += 1 })
+    removeColumn(doc, 'todo')
+    expect(transactions).toBe(1)
+  })
+
+  it('a rename made on one replica reaches the other', () => {
+    const a = board()
+    const b = new Y.Doc()
+    sync(a, b)
+    renameColumn(b, 'doing', 'In progress')
+    sync(a, b)
+    expect(listColumns(a).find((c) => c.id === 'doing')?.title).toBe('In progress')
   })
 })

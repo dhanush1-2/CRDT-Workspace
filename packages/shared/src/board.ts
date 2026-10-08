@@ -48,6 +48,37 @@ export function addColumn(doc: Y.Doc, input: { id: string; title: string }): voi
   })
 }
 
+/** Writes the title field on the column's existing entry, like renameCard. */
+export function renameColumn(doc: Y.Doc, columnId: string, title: string): void {
+  doc.transact(() => {
+    columnsOf(doc).get(columnId)?.set('title', title)
+  })
+}
+
+/**
+ * Deletes a column and every card in it, in one transaction so a peer never sees the
+ * column gone with its cards still listed, or the reverse. Returns the number of cards
+ * deleted, which is what the confirmation shows.
+ *
+ * A card a peer moves into this column concurrently, before this deletion reaches them,
+ * keeps a columnId that no longer exists and is not listed anywhere. That is the same
+ * outcome as deleting it, which is what the person deleting the column asked for.
+ */
+export function removeColumn(doc: Y.Doc, columnId: string): number {
+  let removed = 0
+  doc.transact(() => {
+    const cards = cardsOf(doc)
+    for (const [cardId, entry] of [...cards.entries()]) {
+      if (entry.get('columnId') === columnId) {
+        cards.delete(cardId)
+        removed += 1
+      }
+    }
+    columnsOf(doc).delete(columnId)
+  })
+  return removed
+}
+
 export function listColumns(doc: Y.Doc): ColumnView[] {
   const out: ColumnView[] = []
   for (const [id, entry] of columnsOf(doc).entries()) {
