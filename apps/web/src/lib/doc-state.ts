@@ -7,6 +7,15 @@ import type { DocStatus } from '@/lib/doc-session'
 export type DocPeer = { clientId: number; name: string; color: string }
 export type DocState = { documentId: string | null; status: DocStatus; peers: DocPeer[] }
 
+/**
+ * Whether the nav may claim other people are in this document right now. Only while
+ * connected: a disconnected client's awareness goes stale rather than empty. One
+ * definition, used by the tab strip and the dropdown so they cannot disagree.
+ */
+export function hasOthersHere(state: Pick<DocState, 'status' | 'peers'>): boolean {
+  return state.status === 'connected' && state.peers.length > 0
+}
+
 const EMPTY: DocState = { documentId: null, status: 'connecting', peers: [] }
 
 let state: DocState = EMPTY

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useDocState } from '@/lib/doc-state'
+import { hasOthersHere, useDocState } from '@/lib/doc-state'
 import { activeDocumentIdFrom, documentHref } from '@/lib/routes'
 import type { NavDocument } from './AppShell'
 import { NavMenu } from './NavMenu'
@@ -62,7 +62,7 @@ export function NavTabs({
   // now, and a disconnected tab cannot know that -- awareness goes stale rather
   // than empty, so without this the dot would keep asserting it after the socket
   // dropped.
-  const othersHere = status === 'connected' && peers.length > 0
+  const othersHere = hasOthersHere({ status, peers })
   const strip = useRef<HTMLDivElement>(null)
   const [metrics, setMetrics] = useState<Metrics | null>(lastMetrics)
   const [overflowing, setOverflowing] = useState(false)
@@ -213,7 +213,7 @@ export function NavTabs({
           )
         })}
       </div>
-      <NavMenu workspaceId={workspaceId} documents={documents} />
+      <NavMenu workspaceId={workspaceId} documents={documents} othersHere={othersHere} />
     </>
   )
 }

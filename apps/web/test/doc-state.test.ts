@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { publishDocState, clearDocState, getDocState, subscribeDocState } from '@/lib/doc-state'
+import { hasOthersHere, publishDocState, clearDocState, getDocState, subscribeDocState } from '@/lib/doc-state'
 
 describe('doc state store', () => {
   it('notifies subscribers and returns a stable snapshot', () => {
@@ -81,5 +81,17 @@ describe('doc state store', () => {
     expect(calls).toBe(1)
     expect(getDocState().status).toBe('connected')
     stop()
+  })
+})
+
+describe('hasOthersHere', () => {
+  const peer = { clientId: 1, name: 'A', color: '#000' }
+  it('is true only when connected with peers', () => {
+    expect(hasOthersHere({ status: 'connected', peers: [peer] })).toBe(true)
+    expect(hasOthersHere({ status: 'connected', peers: [] })).toBe(false)
+  })
+  it('is false while not connected, however stale the peers are', () => {
+    expect(hasOthersHere({ status: 'disconnected', peers: [peer] })).toBe(false)
+    expect(hasOthersHere({ status: 'connecting', peers: [peer] })).toBe(false)
   })
 })

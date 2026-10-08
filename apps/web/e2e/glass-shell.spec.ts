@@ -6,6 +6,7 @@ import {
   createDocument,
   documentPath,
   seedWorkspace,
+  sessionCookieFor,
   signIn,
 } from './fixtures.js'
 
@@ -1054,5 +1055,40 @@ test('at 760px the nav does not force the page to scroll sideways', async ({ pag
   )
   expect(overflow).toBeLessThanOrEqual(0)
 
+  await cleanup(label)
+})
+
+test('the dropdown trigger carries the presence dot the strip would', async ({ browser }) => {
+  const label = `${LABEL}-menu-dot`
+  const { owner, workspace } = await seedWorkspace(label)
+  const editor = await addMember(workspace.id, label, 'editor')
+  const document = await createDocument(workspace.id, 'doc')
+
+  const open = async (userId: string) => {
+    const context = await browser.newContext({ viewport: { width: 700, height: 800 } })
+    await context.addCookies([await sessionCookieFor(userId)])
+    const page = await context.newPage()
+    // Sync through the server so the two browsers see each other's awareness.
+    await page.goto(`${documentPath(document)}?nobc=1`)
+    await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+    return { context, page }
+  }
+
+  const a = await open(owner.id)
+  // Alone: no dot. Asserted first, because a dot that always rendered would pass below.
+  await expect(a.page.getByTestId('nav-menu')).toBeVisible()
+  await expect(a.page.getByTestId('nav-menu-dot')).toHaveCount(0)
+
+  const b = await open(editor.id)
+  await expect(a.page.getByTestId('nav-menu-dot')).toBeVisible()
+  await expect(b.page.getByTestId('nav-menu-dot')).toBeVisible()
+  await expect(a.page.getByTestId('nav-menu').getByTestId('nav-menu-dot')).toHaveCount(1)
+
+  // The disconnected half is a unit test (doc-state.test.ts, hasOthersHere): y-websocket
+  // only reports 'disconnected' for an instant after ~30s offline, so it cannot be held
+  // long enough to assert on. Both dots read that one derivation.
+
+  await a.context.close()
+  await b.context.close()
   await cleanup(label)
 })

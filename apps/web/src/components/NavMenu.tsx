@@ -23,13 +23,16 @@ import styles from './nav-tabs.module.css'
 export function NavMenu({
   workspaceId,
   documents,
+  othersHere,
 }: {
   workspaceId: string
   documents: NavDocument[]
+  /** Derived once in NavTabs, so the dot here and on the strip cannot disagree. */
+  othersHere: boolean
 }) {
   const pathname = usePathname()
   const activeDocumentId = activeDocumentIdFrom(pathname)
-  const { documentId, peers } = useDocState()
+  const { documentId } = useDocState()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLUListElement>(null)
@@ -74,7 +77,7 @@ export function NavMenu({
         <span className={styles.menuLabel}>{label}</span>
         {/* The strip puts this dot on the open document's tab; here the trigger is
             the open document, so it carries it. */}
-        {activeDocumentId !== undefined && activeDocumentId === documentId && peers.length > 0 && (
+        {activeDocumentId !== undefined && activeDocumentId === documentId && othersHere && (
           <span className={styles.presenceDot} aria-hidden="true" data-testid="nav-menu-dot" />
         )}
         <span className={styles.menuCaret} aria-hidden="true" />
