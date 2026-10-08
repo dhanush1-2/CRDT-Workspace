@@ -1196,3 +1196,82 @@ test('moving between two busy documents does not collapse the nav', async ({ pag
   await peerContext.close()
   await cleanup(label)
 })
+
+test('switching documents again before the bar has settled still never collapses it', async ({
+  page,
+  browser,
+}) => {
+  const label = `${LABEL}-rapid-switch`
+  const peerContext = await browser.newContext()
+  try {
+    const { owner, workspace } = await seedWorkspace(label)
+    const first = await createDocument(workspace.id, 'doc')
+    const second = await createDocument(workspace.id, 'doc')
+    const third = await createDocument(workspace.id, 'doc')
+    const peer = await addMember(workspace.id, label, 'editor')
+
+    // The same other person sits in all three documents, so each reads "2 here" with the
+    // same avatars and the settled bar is the same width on each.
+    await peerContext.addCookies([await sessionCookieFor(peer.id)])
+    for (const document of [first, second, third]) {
+      const tab = await peerContext.newPage()
+      await tab.goto(`${documentPath(document)}?nobc=1`)
+      await expect(tab.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+    }
+
+    await signIn(page, owner.id)
+    await page.goto(`${documentPath(first)}?nobc=1`)
+    await expect(page.getByTestId('status')).toHaveText('2 here')
+
+    // Deliberately no wait for the bar to settle: the first load is still animating it,
+    // and the next move starts on top of that. Then the second move starts on top of the
+    // first one's connecting phase.
+    const result = page.evaluate(
+      async ({ secondId, thirdId }) => {
+        const nav = document.querySelector('nav[aria-label="Primary"]')!
+        const active = (id: string) =>
+          document.querySelector(`[data-testid="tab-${id}"]`)?.getAttribute('data-active') === 'true'
+        const out: number[] = []
+        let startWidth = -1
+        let clickedThird = false
+        const t0 = performance.now()
+        while (performance.now() - t0 < 3500) {
+          const width = nav.getBoundingClientRect().width
+          if (startWidth < 0) {
+            startWidth = width
+            ;(document.querySelector(`[data-testid="tab-${secondId}"]`) as HTMLElement).click()
+          } else if (!clickedThird && active(secondId)) {
+            clickedThird = true
+            ;(document.querySelector(`[data-testid="tab-${thirdId}"]`) as HTMLElement).click()
+          }
+          out.push(width)
+          await new Promise((r) => requestAnimationFrame(r))
+        }
+        return { widths: out, startWidth, clickedThird, finalPath: location.pathname }
+      },
+      { secondId: second.id, thirdId: third.id },
+    )
+    const { widths, startWidth, clickedThird, finalPath } = await result
+    expect(clickedThird).toBe(true)
+    expect(finalPath.endsWith(third.id)).toBe(true)
+    await expect(page.getByTestId('status')).toHaveText('2 here')
+
+    // Let the bar come to rest, then compare against where it started and where it ended.
+    const bar = page.getByRole('navigation', { name: 'Primary' })
+    let last = -1
+    await expect
+      .poll(async () => {
+        const width = (await bar.boundingBox())!.width
+        const settled = Math.abs(width - last) < 0.05
+        last = width
+        return settled
+      }, { intervals: [300] })
+      .toBe(true)
+    const settledWidth = (await bar.boundingBox())!.width
+
+    expect(Math.min(...widths)).toBeGreaterThanOrEqual(Math.min(startWidth, settledWidth) - 2)
+  } finally {
+    await peerContext.close()
+    await cleanup(label)
+  }
+})
