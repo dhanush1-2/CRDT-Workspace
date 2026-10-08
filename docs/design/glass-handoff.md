@@ -847,7 +847,9 @@ screenshot review:
 centred flex column; the bar is `fit-content` with `max-width:100%`; its width
 transitions over `--dur` with `interpolate-size: allow-keywords` on `:root`; the tabs
 strip and the dashboard's label slot both dropped from `flex:1 1 auto` to `0 1 auto`;
-and the board's column row is centred at 44px below the nav.
+and the board's column row is centred. (It was 44px below the nav; since 2026-10-08 the
+scroller's top padding is 20px under the board's title, which sits 24px below the nav.
+See the deviation table under "Shell routing and nav".)
 
 - **`flex: 0 1 auto` on the strip and the slot is load-bearing, not tidying.** The bar
   sizes itself to that row, so a child that grows to fill the bar makes the bar grow to
@@ -916,7 +918,7 @@ sync-server change; one new API route.
   peer's rename survives a blur with no change) and the delete button. An empty column
   deletes at once; otherwise an in-place confirm names the card count. Focus returns to
   the delete button after Cancel or Escape, and after a delete moves to the next
-  column's delete button, else Add list. Test ids use the `col-` prefix so the
+  column's delete button, else the previous one's, else Add list. Test ids use the `col-` prefix so the
   `column-` and `card-` prefix selectors in `e2e/board.spec.ts` keep counting correctly.
 - **Renaming documents and boards.** `PATCH /api/documents/[id]` (editor or owner;
   title trimmed, 1 to 200 characters; viewer gets 403, non-member 404), called through
@@ -932,7 +934,7 @@ sync-server change; one new API route.
   width, also when a width animation is already running (it stops that one where it
   stands), then animates once when the document connects or after 1.5s at most,
   restarted per document. A `ResizeObserver` keeps `lastNavWidth` equal to the on-screen
-  width; widths include the 1px border. Under reduced motion the hold still applies and
+  width, except while the bar is animating or holding, when it deliberately skips; widths include the 1px border. Under reduced motion the hold still applies and
   the bar changes size at most once, without animation.
 
 ### Shell routing and nav
