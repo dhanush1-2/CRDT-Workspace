@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useDocState } from '@/lib/doc-state'
+import { activeDocumentIdFrom, documentHref } from '@/lib/routes'
 import type { NavDocument } from './AppShell'
 import styles from './nav-tabs.module.css'
 
@@ -24,8 +26,9 @@ type Metrics = { x: number; w: number }
  *
  * It can be stale across workspaces -- a position measured in one workspace's strip
  * means little in another's -- in which case the pill slides from a slightly wrong
- * place. Still better than materialising out of nothing. The shared-layout
- * restructure removes the need for this entirely, because the nav stops being rebuilt.
+ * place. Still better than materialising out of nothing. Within a workspace the nav now
+ * lives in the workspace layout and is not rebuilt, so this only matters for a navigation
+ * to or from the dashboard, which is outside that layout.
  */
 let lastMetrics: Metrics | null = null
 
@@ -41,12 +44,15 @@ function isOverflowing(element: HTMLElement) {
 export function NavTabs({
   workspaceId,
   documents,
-  activeDocumentId,
 }: {
   workspaceId: string
   documents: NavDocument[]
-  activeDocumentId?: string
 }) {
+  // The nav lives in the workspace layout, which cannot see the [docId] param of the
+  // segment below it. usePathname resolves during the server render too, so the
+  // active tab is already marked in the HTML and hydration has nothing to correct.
+  const pathname = usePathname()
+  const activeDocumentId = activeDocumentIdFrom(pathname)
   // The store holds the open document only, so a dot can only ever appear on the active
   // tab. Presence on other documents needs per-document awareness the client does not
   // subscribe to.
@@ -188,7 +194,7 @@ export function NavTabs({
           <Link
             key={document.id}
             className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
-            href={`/documents/${document.id}`}
+            href={documentHref(workspaceId, document.id)}
             aria-current={isActive ? 'page' : undefined}
             data-active={isActive}
             data-testid={`tab-${document.id}`}

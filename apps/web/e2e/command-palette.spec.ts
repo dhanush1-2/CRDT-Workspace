@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { prisma } from '@crdt/db'
-import { cleanup, seedWorkspace, signIn } from './fixtures.js'
+import { cleanup, documentPath, seedWorkspace, signIn } from './fixtures.js'
 
 const LABEL = 'e2e-command-palette'
 
@@ -97,7 +97,7 @@ test('ArrowDown then Enter navigates to the selected document', async ({ page })
 
   const target = [alpha, beta].find((document) => second === `palette-item-doc-${document.id}`)
   if (!target) throw new Error(`the second option was not a document: ${second}`)
-  await expect(page).toHaveURL(new RegExp(`/documents/${target.id}$`))
+  await expect(page).toHaveURL(documentPath(target))
   await expect(page.getByTestId('palette')).toHaveCount(0)
 
   await cleanup(label)

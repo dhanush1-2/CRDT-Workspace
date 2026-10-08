@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { NavDocument } from './AppShell'
+import { documentHref } from '@/lib/routes'
 import { containTab } from './ui/focus-trap'
 import styles from './command-palette.module.css'
 
@@ -44,7 +45,7 @@ export function CommandPalette({
         id: `doc-${document.id}`,
         label: document.title,
         kind: document.type === 'board' ? 'Board' : 'Page',
-        run: go(`/documents/${document.id}`),
+        run: go(workspace ? documentHref(workspace.id, document.id) : `/documents/${document.id}`),
       })
     }
     for (const entry of workspaces ?? []) {

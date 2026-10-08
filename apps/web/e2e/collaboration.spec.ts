@@ -1,5 +1,12 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test'
-import { addMember, cleanup, createDocument, seedWorkspace, sessionCookieFor } from './fixtures.js'
+import {
+  addMember,
+  cleanup,
+  createDocument,
+  documentPath,
+  seedWorkspace,
+  sessionCookieFor,
+} from './fixtures.js'
 
 const LABEL = 'e2e-collab'
 
@@ -16,12 +23,12 @@ function avatar(page: Page, name: string) {
 async function openAs(
   context: BrowserContext,
   userId: string,
-  documentId: string,
+  path: string,
 ): Promise<Page> {
   await context.addCookies([await sessionCookieFor(userId)])
   const page = await context.newPage()
   // ?nobc=1 forces this tab to sync through the server rather than BroadcastChannel.
-  await page.goto(`/documents/${documentId}?nobc=1`)
+  await page.goto(`${path}?nobc=1`)
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
   return page
 }
@@ -33,8 +40,8 @@ test('a card added in one browser appears in the other', async ({ browser }) => 
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
-  const pageB = await openAs(contextB, editor.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
+  const pageB = await openAs(contextB, editor.id, documentPath(document))
 
   await pageA.getByTestId('add-column').click()
   await expect(pageB.locator('[data-testid^="column-"]')).toHaveCount(1)
@@ -60,8 +67,8 @@ test('a viewer sees edits but cannot make them', async ({ browser }) => {
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const editorPage = await openAs(contextA, owner.id, document.id)
-  const viewerPage = await openAs(contextB, viewer.id, document.id)
+  const editorPage = await openAs(contextA, owner.id, documentPath(document))
+  const viewerPage = await openAs(contextB, viewer.id, documentPath(document))
 
   await expect(viewerPage.getByTestId('view-only')).toBeVisible()
   await expect(viewerPage.getByTestId('add-column')).toHaveCount(0)
@@ -82,8 +89,8 @@ test('both users see each other in the presence bar', async ({ browser }) => {
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
-  await openAs(contextB, editor.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
+  await openAs(contextB, editor.id, documentPath(document))
 
   await expect(avatar(pageA, 'Eddie')).toBeVisible()
 
@@ -100,14 +107,14 @@ test('the nav shows who else is here and the active tab carries a dot', async ({
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
 
   // Alone: no avatars and no dot. A dot that always rendered would pass the check
   // below, so assert its absence first.
   await expect(pageA.getByTestId('presence')).toHaveCount(0)
   await expect(pageA.getByTestId(`tab-dot-${document.id}`)).toHaveCount(0)
 
-  const pageB = await openAs(contextB, editor.id, document.id)
+  const pageB = await openAs(contextB, editor.id, documentPath(document))
 
   // The second user's nav shows the first user, by name, inside the nav.
   const ownerAvatar = pageB.getByRole('navigation', { name: 'Primary' }).getByRole('img', { name: 'Owner' })
@@ -135,8 +142,8 @@ test('the avatar and the dot go when the other person leaves', async ({ browser 
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
-  await openAs(contextB, editor.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
+  await openAs(contextB, editor.id, documentPath(document))
   await expect(avatar(pageA, 'Eddie')).toBeVisible()
   await expect(pageA.getByTestId(`tab-dot-${document.id}`)).toBeVisible()
 
@@ -158,8 +165,8 @@ test('navigating away client-side clears the nav status and presence', async ({ 
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
-  await openAs(contextB, editor.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
+  await openAs(contextB, editor.id, documentPath(document))
   await expect(avatar(pageA, 'Eddie')).toBeVisible()
   await expect(pageA.getByTestId('status')).toBeVisible()
 
@@ -200,8 +207,8 @@ test('below 1100px the avatars and the status label stay available to assistive 
 
   const contextA = await browser.newContext({ viewport: { width: 1000, height: 800 } })
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
-  await openAs(contextB, editor.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
+  await openAs(contextB, editor.id, documentPath(document))
 
   // Found by role and name, which excludes display:none. Clipped, not removed.
   await expect(pageA.getByRole('img', { name: 'Eddie' })).toHaveCount(1)
@@ -226,8 +233,8 @@ test('text typed while offline merges on reconnect', async ({ browser }) => {
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAs(contextA, owner.id, document.id)
-  const pageB = await openAs(contextB, editor.id, document.id)
+  const pageA = await openAs(contextA, owner.id, documentPath(document))
+  const pageB = await openAs(contextB, editor.id, documentPath(document))
 
   await pageA.locator('.ProseMirror').click()
   await pageA.keyboard.type('online-a ')

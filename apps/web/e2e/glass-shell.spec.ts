@@ -1,6 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
 import { prisma } from '@crdt/db'
-import { addMember, cleanup, createDocument, seedWorkspace, signIn } from './fixtures.js'
+import {
+  addMember,
+  cleanup,
+  createDocument,
+  documentPath,
+  seedWorkspace,
+  signIn,
+} from './fixtures.js'
 
 const LABEL = 'e2e-glass-shell'
 
@@ -106,7 +113,7 @@ test('a document shows its title and sits below the nav', async ({ page }) => {
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
 
   const heading = page.getByTestId('document-heading')
   await expect(heading).toBeVisible()
@@ -131,7 +138,7 @@ test('a board keeps the title for screen readers without showing it', async ({ p
   const { owner, workspace } = await seedWorkspace(label)
   const board = await createDocument(workspace.id, 'board')
   await signIn(page, owner.id)
-  await page.goto(`/documents/${board.id}`)
+  await page.goto(documentPath(board))
 
   // The design gives a board no title slot -- columns start below the nav. But the
   // page still needs an accessible name, so the heading stays, clipped. This is the
@@ -158,7 +165,7 @@ test('the nav is a pill sized to its contents and centred', async ({ page }) => 
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
   await page.setViewportSize({ width: 1600, height: 900 })
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
 
   const nav = page.getByRole('navigation', { name: 'Primary' })
   const box = (await nav.boundingBox())!
@@ -192,7 +199,7 @@ test('the board starts 44px below the nav and its columns are centred', async ({
   const board = await createDocument(workspace.id, 'board')
   await signIn(page, owner.id)
   await page.setViewportSize({ width: 1600, height: 900 })
-  await page.goto(`/documents/${board.id}`)
+  await page.goto(documentPath(board))
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
 
   await page.getByTestId('add-column').click()
@@ -268,7 +275,7 @@ test('the pill slides to the new tab across a navigation instead of appearing th
   })
   await signIn(page, owner.id)
   await page.setViewportSize({ width: 1600, height: 900 })
-  await page.goto(`/documents/${first.id}`)
+  await page.goto(documentPath(first))
   await expect(page.getByTestId(`tab-${first.id}`)).toHaveAttribute('data-active', 'true')
 
   const from = await tabOffset(page, `tab-${first.id}`)
@@ -536,7 +543,7 @@ test('the nav shows a tab per document and marks the open one active', async ({ 
   const doc = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
 
-  await page.goto(`/documents/${board.id}`)
+  await page.goto(documentPath(board))
 
   await expect(page.getByTestId('tab-overview')).toBeVisible()
   await expect(page.getByTestId(`tab-${board.id}`)).toHaveAttribute('data-active', 'true')
@@ -560,7 +567,7 @@ test('a viewer sees the View only pill after the tabs and an editor does not', a
 
   // Both pages compute the role, and both pass it down.
   await signIn(page, viewer.id)
-  for (const path of [`/workspaces/${workspace.id}`, `/documents/${doc.id}`]) {
+  for (const path of [`/workspaces/${workspace.id}`, documentPath(doc)]) {
     await page.goto(path)
     const pill = page.getByTestId('view-only')
     await expect(pill).toBeVisible()
@@ -573,7 +580,7 @@ test('a viewer sees the View only pill after the tabs and an editor does not', a
   // The other half: a pill that rendered for everyone would pass the above.
   await page.context().clearCookies()
   await signIn(page, editor.id)
-  for (const path of [`/workspaces/${workspace.id}`, `/documents/${doc.id}`]) {
+  for (const path of [`/workspaces/${workspace.id}`, documentPath(doc)]) {
     await page.goto(path)
     await expect(page.getByTestId('tab-overview')).toBeVisible()
     await expect(page.getByTestId('view-only')).toHaveCount(0)
@@ -589,7 +596,7 @@ test('the indicator tracks the active tab', async ({ page }) => {
   const second = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
 
-  await page.goto(`/documents/${first.id}`)
+  await page.goto(documentPath(first))
   await expect.poll(() => indicatorGap(page, `tab-${first.id}`)).toBeLessThanOrEqual(1)
 
   await page.getByTestId(`tab-${second.id}`).click()
@@ -621,7 +628,7 @@ test('a strip the user has scrolled by hand is not pulled back to the active tab
 
   // The first document, so the active tab sits at the left edge and anything
   // scrolling the strip back toward it would be visible as scrollLeft dropping.
-  await page.goto(`/documents/${documents[0]!.id}`)
+  await page.goto(documentPath(documents[0]!))
   const strip = page.locator('[class*="strip"]')
   await expect(page.getByTestId(`tab-${documents[0]!.id}`)).toHaveAttribute('data-active', 'true')
 
@@ -710,7 +717,7 @@ test('the nav status pill shows Synced on a document and does not exist on the d
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
 
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
   // The visible text is the human label, not the raw status value.
   await expect(page.getByTestId('status')).toHaveText('Synced')
@@ -748,7 +755,7 @@ test('a document sits on the 780px glass sheet and a board does not', async ({ p
       return null
     })
 
-  await page.goto(`/documents/${doc.id}`)
+  await page.goto(documentPath(doc))
   await expect(page.locator('.editor .ProseMirror')).toBeVisible()
   const sheet = await sheetAbove('.editor')
   expect(sheet).not.toBeNull()
@@ -764,7 +771,7 @@ test('a document sits on the 780px glass sheet and a board does not', async ({ p
   expect(editorPadding).toBe('0px')
 
   // The board is a horizontal scroller with its own gutters: no 780px ancestor.
-  await page.goto(`/documents/${board.id}`)
+  await page.goto(documentPath(board))
   await expect(page.getByTestId('add-column')).toBeVisible()
   expect(await sheetAbove('[data-testid="add-column"]')).toBeNull()
 

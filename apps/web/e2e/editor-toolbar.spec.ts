@@ -3,6 +3,7 @@ import {
   addMember,
   cleanup,
   createDocument,
+  documentPath,
   seedWorkspace,
   sessionCookieFor,
   signIn,
@@ -19,7 +20,7 @@ async function openDocument(page: Page, label: string) {
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
   await expect(page.locator('.editor .ProseMirror')).toHaveAttribute('contenteditable', 'true')
   return { owner, workspace, document }
@@ -140,7 +141,7 @@ test('a viewer gets the View tab and a View only chip, and nothing else', async 
   const viewer = await addMember(workspace.id, label, 'viewer')
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, viewer.id)
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
 
   await expect(page.getByRole('tab')).toHaveText(['View'])
@@ -158,7 +159,7 @@ test('a board has no toolbar at all', async ({ page }) => {
   const { owner, workspace } = await seedWorkspace(label)
   const board = await createDocument(workspace.id, 'board')
   await signIn(page, owner.id)
-  await page.goto(`/documents/${board.id}`)
+  await page.goto(documentPath(board))
   await expect(page.getByTestId('add-column')).toBeVisible()
 
   await expect(page.getByTestId('tb-root')).toHaveCount(0)
@@ -436,7 +437,7 @@ test('formatting made in one browser appears in the other', async ({ browser }) 
     const page = await context.newPage()
     // ?nobc=1 forces this tab to sync through the server rather than BroadcastChannel,
     // so what B sees has been through the CRDT and the wire, not a local shortcut.
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
     await expect(prose(page)).toHaveAttribute('contenteditable', 'true')
     return { page, close: () => context.close() }
@@ -477,7 +478,7 @@ test('a viewer gets none of the Home controls', async ({ page }) => {
   const viewer = await addMember(workspace.id, label, 'viewer')
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, viewer.id)
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
 
   await expect(page.getByTestId('tb-row-view')).toBeVisible()
@@ -1110,7 +1111,7 @@ test('colour and highlight made in one browser appear in the other', async ({ br
     await context.addCookies([await sessionCookieFor(userId)])
     const page = await context.newPage()
     // ?nobc=1: sync through the server, so B sees what went through the CRDT and the wire.
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
     await expect(prose(page)).toHaveAttribute('contenteditable', 'true')
     return { page, close: () => context.close() }
@@ -1297,7 +1298,7 @@ test('the selection is mapped through a peer’s edit made while the popover is 
     const context = await browser.newContext()
     await context.addCookies([await sessionCookieFor(userId)])
     const page = await context.newPage()
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
     await expect(prose(page)).toHaveAttribute('contenteditable', 'true')
     return { page, close: () => context.close() }
@@ -1498,7 +1499,7 @@ test('a viewer clicking a link still opens it', async ({ browser }) => {
   const ownerContext = await browser.newContext()
   await ownerContext.addCookies([await sessionCookieFor(owner.id)])
   const author = await ownerContext.newPage()
-  await author.goto(`/documents/${document.id}?nobc=1`)
+  await author.goto(`${documentPath(document)}?nobc=1`)
   await expect(author.getByTestId('status')).toHaveAttribute('data-status', 'connected')
   await expect(prose(author)).toHaveAttribute('contenteditable', 'true')
   await typeAndSelect(author, 'viewer link')
@@ -1513,7 +1514,7 @@ test('a viewer clicking a link still opens it', async ({ browser }) => {
     route.fulfill({ contentType: 'text/html', body: '<title>stub</title>' }),
   )
   const viewer = await viewerContext.newPage()
-  await viewer.goto(`/documents/${document.id}?nobc=1`)
+  await viewer.goto(`${documentPath(document)}?nobc=1`)
   await expect(prose(viewer)).toHaveAttribute('contenteditable', 'false')
   const link = prose(viewer).locator('a')
   await expect(link).toHaveText('viewer link')
@@ -1544,7 +1545,7 @@ test('text a peer deleted while the popover was open is not linked, or replaced 
     const context = await browser.newContext()
     await context.addCookies([await sessionCookieFor(userId)])
     const page = await context.newPage()
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
     await expect(prose(page)).toHaveAttribute('contenteditable', 'true')
     return { page, close: () => context.close() }
@@ -1803,7 +1804,7 @@ test('a table made in one browser, and what is typed in it, appears in the other
     await context.addCookies([await sessionCookieFor(userId)])
     const page = await context.newPage()
     // ?nobc=1: through the server and the wire, not a BroadcastChannel shortcut.
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
     await expect(prose(page)).toHaveAttribute('contenteditable', 'true')
     return { page, close: () => context.close() }
@@ -1846,7 +1847,7 @@ test('a viewer gets no Insert tab, so none of the Insert tools', async ({ page }
   const viewer = await addMember(workspace.id, label, 'viewer')
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, viewer.id)
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(page.getByTestId('tb-tab-view')).toBeVisible()
   await expect(page.getByTestId('tb-tab-insert')).toHaveCount(0)
   await expect(page.locator('[data-testid^="tb-insert-"]')).toHaveCount(0)
@@ -2070,7 +2071,7 @@ test('a viewer gets the View tab, and zoom and page width work in it', async ({ 
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, viewer.id)
   await page.setViewportSize({ width: 1500, height: 800 })
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(prose(page)).toHaveAttribute('contenteditable', 'false')
 
   // View is the only tab, and it is open: the viewer lands on it, not on an empty row.
@@ -2145,7 +2146,7 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 } })
     await context.addCookies([await sessionCookieFor(userId)])
     const page = await context.newPage()
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
     await expect(prose(page)).toHaveAttribute('contenteditable', 'true')
     return { page, close: () => context.close() }

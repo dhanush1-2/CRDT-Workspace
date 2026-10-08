@@ -30,7 +30,7 @@ export type NavDocument = { id: string; title: string; type: 'doc' | 'board' }
  * fixes it in Safari and Firefox too, where `interpolate-size` does nothing at all.
  *
  * Only written from a layout effect, so it is always null during SSR and every render
- * agrees. The shared-layout restructure removes the need for it.
+ * agrees.
  */
 let lastNavWidth: number | null = null
 
@@ -42,7 +42,6 @@ export function AppShell({
   workspace,
   documents,
   workspaces,
-  activeDocumentId,
   members = [],
   canManage = false,
   role,
@@ -54,7 +53,6 @@ export function AppShell({
   documents?: NavDocument[]
   /** Every workspace, for the palette on the dashboard where there is no current one. */
   workspaces?: { id: string; name: string }[]
-  activeDocumentId?: string
   /** The workspace's members, for the share sheet. */
   members?: WorkspaceMemberView[]
   /** Whether the viewer may invite people and change roles (workspace owners). */
@@ -109,10 +107,11 @@ export function AppShell({
     animatingWidth.current = true
     // Pin the start width with no transition, let it paint, and only then change to
     // the target. The usual set-then-force-a-reflow trick is not enough here: the bar
-    // is a brand-new node on every navigation, and a property's first resolved value
-    // on a freshly inserted element is its initial value, not something to transition
-    // from -- measured, the transition was swallowed and the width simply jumped. A
-    // real frame in between gives the browser a painted "before".
+    // is a brand-new node on a navigation to or from the dashboard, and a property's
+    // first resolved value on a freshly inserted element is its initial value, not
+    // something to transition from -- measured, the transition was swallowed and the
+    // width simply jumped. A real frame in between gives the browser a painted
+    // "before".
     bar.style.transition = 'none'
     bar.style.width = `${from}px`
     const frame = requestAnimationFrame(() => {
@@ -180,11 +179,7 @@ export function AppShell({
             )}
 
             {workspace && documents ? (
-              <NavTabs
-                workspaceId={workspace.id}
-                documents={documents}
-                activeDocumentId={activeDocumentId}
-              />
+              <NavTabs workspaceId={workspace.id} documents={documents} />
             ) : (
               /* No workspace in context, so there are no tabs. The bar is now sized to
                  its contents, so an unlabelled slot here would be a visible hole. */

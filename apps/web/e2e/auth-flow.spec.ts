@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { addMember, cleanup, createDocument, seedWorkspace, signIn } from './fixtures.js'
+import {
+  addMember,
+  cleanup,
+  createDocument,
+  documentPath,
+  seedWorkspace,
+  signIn,
+} from './fixtures.js'
 
 const LABEL = 'e2e-auth'
 
@@ -160,6 +167,8 @@ test('a document in a workspace you are not a member of is not found, not forbid
   const otherDocument = await createDocument(other.workspace.id, 'doc')
   await signIn(page, owner.id)
 
+  // The legacy path on purpose: it proves the redirect route also 404s rather than
+  // leaking a workspace id. routing.spec.ts covers the canonical path's 404.
   const response = await page.goto(`/documents/${otherDocument.id}`)
   expect(response?.status()).toBe(404)
 
@@ -234,6 +243,7 @@ test('an unauthenticated visit to a document redirects to sign-in carrying the d
   // here, confirm the destination itself works once signed in.
   await signIn(page, owner.id)
   await page.goto(`/documents/${document.id}`)
+  await expect(page).toHaveURL(documentPath(document))
   await expect(page.locator('[aria-current="page"]')).toHaveText('e2e board')
   await expect(page.getByTestId('workspace-link')).toHaveText(label)
   // The design has no role indicator for owners; only viewers get the View only pill.

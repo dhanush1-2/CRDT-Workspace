@@ -286,7 +286,7 @@ textarea {
 }
 
 /* Tiptap editor surface. Typography follows the Glass document spec, handoff 12.7's
-   element table. The page sheet (documents/[id]/document.module.css) supplies the
+   element table. The page sheet (workspaces/[id]/documents/[docId]/document.module.css) supplies the
    56/56/96 padding.
 
    Two deliberate departures from that table, both recorded in the handoff's Precedence

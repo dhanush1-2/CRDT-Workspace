@@ -1,86 +1,35 @@
 import { notFound, redirect } from 'next/navigation'
-import { prisma } from '@crdt/db'
-import type { Role } from '@crdt/shared/types'
-import { requireDocumentRole, HttpError } from '@/lib/auth-guard'
+import { HttpError, requireDocumentRole } from '@/lib/auth-guard'
 import { getCurrentUser } from '@/lib/current-user'
-import { colorFor } from '@/lib/color'
-import type { WorkspaceMemberView } from '@/lib/members'
-import { AppShell } from '@/components/AppShell'
-import { DocumentClient } from './DocumentClient'
+import { documentHref } from '@/lib/routes'
 
-export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
+/**
+ * The old flat document URL.
+ *
+ * Documents live under their workspace now, but this path is in bookmarks, in links
+ * people have shared, and in `?next=` values already minted into sign-in URLs. It
+ * resolves the workspace and forwards.
+ *
+ * The role check runs before the redirect because the canonical URL contains the
+ * workspace id: redirecting first would hand that id to anyone holding a document id,
+ * including people with no access to either.
+ */
+export default async function LegacyDocumentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
   const user = await getCurrentUser()
-  // There is a sign-in page now, so send them to it with the destination attached
-  // rather than rendering a dead end. Outside any try/catch: redirect() throws.
+  // The legacy path, not the canonical one: nothing has been looked up yet, so there
+  // is no workspace id to put in the URL. After signing in the user lands back here
+  // and is forwarded from a request that can resolve it.
   if (!user) redirect(`/login?next=${encodeURIComponent(`/documents/${id}`)}`)
 
-  // Declared with an explicit type: `let role, type` would be implicitly `any`
-  // under this repo's strict compiler settings.
-  let access: { role: Role; workspaceId: string; type: 'doc' | 'board' }
+  let workspaceId: string
   try {
-    access = await requireDocumentRole(user.id, id, 'viewer')
+    ;({ workspaceId } = await requireDocumentRole(user.id, id, 'viewer'))
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) notFound()
     throw error
   }
-  const { role, type } = access
 
-  // Display data only, and only after the role check has passed.
-  const document = await prisma.document.findUnique({
-    where: { id },
-    select: {
-      title: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          members: {
-            select: { role: true, user: { select: { id: true, name: true, email: true } } },
-            orderBy: { user: { name: 'asc' } },
-          },
-        },
-      },
-    },
-  })
-  if (!document) notFound()
-
-  // Sibling documents for the nav's tab strip. Display data only, after the
-  // role check above.
-  const siblings = await prisma.document.findMany({
-    where: { workspaceId: document.workspace.id },
-    select: { id: true, title: true, type: true },
-    orderBy: { createdAt: 'asc' },
-  })
-
-  // The nav's Share button opens the sheet from here too, so it needs the members.
-  // Mapped to plain strings: AppShell is a client component, and passing
-  // document.workspace whole would also carry the Prisma members rows across.
-  const members: WorkspaceMemberView[] = document.workspace.members.map((member) => ({
-    id: member.user.id,
-    name: member.user.name,
-    email: member.user.email,
-    role: member.role,
-  }))
-
-  return (
-    <AppShell
-      user={user}
-      workspace={{ id: document.workspace.id, name: document.workspace.name }}
-      documents={siblings}
-      activeDocumentId={id}
-      members={members}
-      canManage={role === 'owner'}
-      role={role}
-    >
-      <DocumentClient
-        documentId={id}
-        title={document.title}
-        type={type}
-        readOnly={role === 'viewer'}
-        user={{ name: user.name, color: colorFor(user.id) }}
-      />
-    </AppShell>
-  )
+  redirect(documentHref(workspaceId, id))
 }

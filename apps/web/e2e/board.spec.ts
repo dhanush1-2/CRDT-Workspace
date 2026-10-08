@@ -3,6 +3,7 @@ import {
   addMember,
   cleanup,
   createDocument,
+  documentPath,
   seedWorkspace,
   sessionCookieFor,
   signIn,
@@ -19,7 +20,7 @@ async function openBoard(page: Page, label: string, columns: number) {
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'board')
   await signIn(page, owner.id)
-  await page.goto(`/documents/${document.id}`)
+  await page.goto(documentPath(document))
   await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
 
   for (let i = 1; i <= columns; i++) {
@@ -146,7 +147,7 @@ test('a remote peer on a card gets the ring and a named chip', async ({ browser 
   const pageB = await contextB.newPage()
   // ?nobc=1 forces both tabs to sync through the server rather than BroadcastChannel.
   for (const page of [pageA, pageB]) {
-    await page.goto(`/documents/${document.id}?nobc=1`)
+    await page.goto(`${documentPath(document)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
   }
 

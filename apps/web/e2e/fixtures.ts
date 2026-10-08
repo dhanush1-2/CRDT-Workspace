@@ -29,6 +29,14 @@ export async function createDocument(workspaceId: string, type: 'doc' | 'board')
   return prisma.document.create({ data: { workspaceId, type, title: `e2e ${type}` } })
 }
 
+/**
+ * The canonical URL for a seeded document. Takes the row rather than two ids so
+ * call sites cannot pair a document with the wrong workspace.
+ */
+export function documentPath(document: { id: string; workspaceId: string }): string {
+  return `/workspaces/${document.workspaceId}/documents/${document.id}`
+}
+
 export async function sessionCookieFor(userId: string) {
   return {
     name: 'crdt_session',
