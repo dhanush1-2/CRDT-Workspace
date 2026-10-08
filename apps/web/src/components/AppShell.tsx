@@ -92,6 +92,8 @@ export function AppShell({
   const searchButton = useRef<HTMLButtonElement>(null)
   const nav = useRef<HTMLElement>(null)
   const animatingWidth = useRef(false)
+  // Ends the running width animation where it stands, leaving the inline style alone.
+  const stopAnimation = useRef<(() => void) | null>(null)
 
   // Subscribed for the re-render, not for the values. The nav's width changes when
   // the green dot appears, when the status label switches between "Synced" and
@@ -100,22 +102,45 @@ export function AppShell({
   // store's equality gate means this only fires on real changes.
   const docState = useDocState()
 
-  // A document on screen that has not connected yet. Its status text and people are
+  // The document on screen has connected. Its people arrive a beat after that, so the bar
+  // is held a little longer (below); measured the instant the status flips, it is still
+  // the width of a document with nobody in it.
+  const connectedHere =
+    activeDocumentId !== undefined &&
+    docState.documentId === activeDocumentId &&
+    docState.status === 'connected'
+  const [graceOverFor, setGraceOverFor] = useState<string | null>(null)
+  useEffect(() => {
+    if (!connectedHere) {
+      setGraceOverFor(null)
+      return
+    }
+    const timer = window.setTimeout(() => setGraceOverFor(activeDocumentId ?? null), 300)
+    return () => window.clearTimeout(timer)
+  }, [connectedHere, activeDocumentId])
+
+  // A document on screen that has not finished arriving. Its status text and people are
   // placeholders that are about to be replaced, so the bar must not shrink to them.
   const settling =
     activeDocumentId !== undefined &&
-    (docState.documentId !== activeDocumentId || docState.status === 'connecting')
+    (docState.documentId !== activeDocumentId ||
+      docState.status === 'connecting' ||
+      (connectedHere && graceOverFor !== activeDocumentId))
   const holding = useRef(false)
-  const [holdExpired, setHoldExpired] = useState(false)
+  // Which document's hold has run out. Keyed by document rather than a boolean: moving on
+  // from one that never connected to the next must start a fresh hold, and a flag that is
+  // only reset in an effect would still read as expired during the first render there.
+  const [expiredFor, setExpiredFor] = useState<string | null>(null)
+  const holdExpired = expiredFor !== null && expiredFor === activeDocumentId
   useEffect(() => {
     if (!settling) {
-      setHoldExpired(false)
+      setExpiredFor(null)
       return
     }
     // Never hold forever: a document that cannot connect still gets a correct bar.
-    const timer = window.setTimeout(() => setHoldExpired(true), 1500)
+    const timer = window.setTimeout(() => setExpiredFor(activeDocumentId ?? null), 1500)
     return () => window.clearTimeout(timer)
-  }, [settling])
+  }, [settling, activeDocumentId])
 
   // Keep the remembered width equal to what is on screen. After a transition here ends,
   // CSS can keep growing the bar (interpolate-size, people arriving), and a start taken
@@ -143,12 +168,24 @@ export function AppShell({
     // reports the inline width rather than the natural one whenever the box is wider
     // than its contents, which is exactly the case while shrinking. Anything that
     // changed meanwhile is picked up when the transition ends.
-    if (animatingWidth.current) return
+    if (animatingWidth.current) {
+      // Except when the next document is still connecting. Letting the animation run out
+      // would clear the inline width and drop the bar to the connecting placeholders, then
+      // grow it back: the collapse the hold exists to prevent. Take over from where the bar
+      // is on screen instead; the code below holds it there or animates once from there.
+      if (!settling || holdExpired) return
+      const shown = bar.getBoundingClientRect().width
+      stopAnimation.current?.()
+      lastNavWidth = shown
+      holding.current = true
+    }
 
     // Measure the natural width: an inline width left by a hold would make scrollWidth
     // report the held value instead.
+    // Without a transition while doing so: with one, clearing the inline width starts a CSS
+    // transition from the held width, which is what `scrollWidth` would then report.
     if (holding.current) {
-      bar.style.transition = ''
+      bar.style.transition = 'none'
       bar.style.width = ''
     }
 
@@ -164,6 +201,7 @@ export function AppShell({
       return
     }
     holding.current = false
+    bar.style.transition = ''
     lastNavWidth = to
 
     // Nothing to animate from on a hard load, and nothing to animate at all when the
@@ -187,11 +225,17 @@ export function AppShell({
     })
 
     let settled = false
-    const done = () => {
-      if (settled) return
+    const stop = () => {
       settled = true
       cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+      bar.removeEventListener('transitionend', done)
       animatingWidth.current = false
+      stopAnimation.current = null
+    }
+    const done = () => {
+      if (settled) return
+      stop()
       bar.style.width = ''
       bar.style.transition = ''
       // The contents may have changed again while this ran. Skip a detached node:
@@ -204,7 +248,10 @@ export function AppShell({
     // A transitionend that never arrives -- interrupted, or a value the browser
     // decided not to animate -- would otherwise leave the bar pinned at an inline
     // width forever. `done` is idempotent, so whichever fires first wins.
-    setTimeout(done, 1000)
+    const timeout = window.setTimeout(done, 1000)
+    stopAnimation.current = () => {
+      if (!settled) stop()
+    }
     // Deliberately no cleanup and no dependency array: this runs after every render,
     // and returning a cleanup would tear the listener down before the transition it
     // belongs to had finished.
