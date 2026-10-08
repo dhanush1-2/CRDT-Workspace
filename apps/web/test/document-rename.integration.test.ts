@@ -13,6 +13,10 @@ let strangerId: string
 let documentId: string
 
 beforeAll(async () => {
+  // A crashed earlier run must not break this one. startsWith, not contains: the e2e
+  // suite's users are named e2e-rename-..., and must survive a Vitest run beside it.
+  await prisma.workspace.deleteMany({ where: { name: 'rename-ws' } })
+  await prisma.user.deleteMany({ where: { email: { startsWith: 'rename-' } } })
   const make = (email: string) =>
     prisma.user.create({ data: { email, name: email, passwordHash: 'x' }, select: { id: true } })
   ownerId = (await make('rename-owner@example.com')).id
@@ -32,7 +36,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.workspace.deleteMany({ where: { name: 'rename-ws' } })
-  await prisma.user.deleteMany({ where: { email: { contains: 'rename-' } } })
+  await prisma.user.deleteMany({ where: { email: { startsWith: 'rename-' } } })
   await prisma.$disconnect()
 })
 
