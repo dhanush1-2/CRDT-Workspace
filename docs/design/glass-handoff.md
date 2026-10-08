@@ -674,6 +674,23 @@ describes:
 | Document body | 17px (§12.7) | **18px** — the owner asked for reading text a size up; the 15px base went to 16px with it |
 | Document page margin | `16px auto 64px` (§12.7) | **`28px auto 64px`** — from the screenshot review, where the sheet was touching the nav |
 
+**Decisions of 2026-10-08 (nav polish and renaming).** Made by the owner after this
+file was generated, so they win over §5.3 and §10 where they differ. Plan:
+`2026-10-08-nav-polish-and-renaming.md`.
+
+1. The nav moves smoothly: it grows or shrinks once to fit its contents and never
+   collapses and reopens between pages.
+2. Everyone in the open document, you included, is one avatar group before History and
+   the status pill; the account button stays at the far right and must not look like a
+   second person.
+3. Documents and boards can be renamed from the workspace overview and from inside the
+   open document or board; the nav tab follows.
+4. Columns can be renamed inline and deleted; deleting one that still has cards asks
+   first and says how many cards go, and an empty column deletes straight away.
+5. A rename is saved to Postgres, the person renaming sees it everywhere at once, and
+   everyone else sees it on their next data load. Titles are not live-synced through the
+   CRDT.
+
 **Zoom and the document title (decided 2026-10-03, while closing the toolbar).** §12.4's
 prose says zoom is "applied as `zoom` on the editor container". Built to the letter, that
 leaves the document title outside the zoomed element, so at 70% a 32px title sits over
@@ -890,6 +907,34 @@ test would have to wait that long and would be racing the retry. The prompt sign
 `navigator.onLine`, which arrives with
 `2026-10-04-connection-states-and-telemetry.md`; the dot becomes promptly correct then.
 
+**Nav polish and renaming** (`2026-10-08-nav-polish-and-renaming.md`). No schema or
+sync-server change; one new API route.
+
+- **Column rename and delete.** `renameColumn` and `removeColumn` in
+  `packages/shared/src/board.ts`, both CRDT operations that are live for everyone.
+  `ColumnHead.tsx` has the inline title (it saves only what the user typed, so a
+  peer's rename survives a blur with no change) and the delete button. An empty column
+  deletes at once; otherwise an in-place confirm names the card count. Focus returns to
+  the delete button after Cancel or Escape, and after a delete moves to the next
+  column's delete button, else Add list. Test ids use the `col-` prefix so the
+  `column-` and `card-` prefix selectors in `e2e/board.spec.ts` keep counting correctly.
+- **Renaming documents and boards.** `PATCH /api/documents/[id]` (editor or owner;
+  title trimmed, 1 to 200 characters; viewer gets 403, non-member 404), called through
+  `lib/rename-document.ts`. `InlineTitle.tsx` saves only typed changes, and on failure
+  reverts and toasts "Could not rename. Try again." `DocumentTile.tsx` has the pencil on
+  the overview tile. Viewers see plain text and no controls.
+- **The people group.** `NavPresence` shows you first ("<name> (you)", `presence-self`),
+  then peers, on every document page from the route, before History and the status
+  pill. `SyncStatus` and `NavPresence` ignore store data that belongs to a different
+  document.
+- **Steady nav width.** While the document on screen is still connecting, plus a 300ms
+  grace for people to arrive after it connects, the bar does not shrink. It holds its
+  width, also when a width animation is already running (it stops that one where it
+  stands), then animates once when the document connects or after 1.5s at most,
+  restarted per document. A `ResizeObserver` keeps `lastNavWidth` equal to the on-screen
+  width; widths include the 1px border. Under reduced motion the hold still applies and
+  the bar changes size at most once, without animation.
+
 ### Shell routing and nav
 
 `2026-10-03-shell-routing-and-nav.md`. No schema, sync-server or API change.
@@ -933,9 +978,12 @@ test would have to wait that long and would be racing the retry. The prompt sign
 
 | Where | §5.3 says | Built | Why |
 |---|---|---|---|
-| Presence avatars | before the status pill | after it | Recorded, not fixed by this plan. They have followed the pill since `59c0ad0` ("feat(nav): presence avatars and the tab presence dot"), where `NavPresence` was introduced; moving them is its own change to the bar's layout and width animation. |
 | Condensed attribute (§5.5) | `data-compact` | `data-condensed` | Matches the state's name in `AppShell`. |
 | Condensed duration | `.4s` | `0.4s` literal | No token matches. |
+| Account button (§5.3 row 9) | 36px avatar, 2px white ring, filled | White button with your initial in your colour (`account-trigger`) | A filled avatar next to the people group read as a second person (Decision 2). |
+| Board title (§10) | No title slot; the board starts at its columns | The board's title sits above the columns and is editable; the scroller's top padding went 44px to 20px | Boards need a place to be renamed from inside (Decision 3). |
+| Document and board titles | Not specified | Not live-synced: others see a rename on their next data load | Decision 5. Titles live in Postgres, not the CRDT. |
+| Column rename and delete (§10) | Not specified | Inline title, delete with an in-place confirm that names the card count (`ColumnHead.tsx`) | Decision 4. |
 
 ### Paint splatter
 
@@ -1456,6 +1504,13 @@ wrapper, so its 11px type is 7.7px at 70%.
   own `backdrop-filter` samples the nav rather than the page behind it. They read as
   more opaque glass (`--glass-sheet` .82, `--glass-menu` .88). It is the same issue
   the toolbar's stylesheet documents.
+- **Renames reach other people on their next data load, not live.** A new document or
+  board title is saved to Postgres and the person renaming sees it at once, but others
+  see it only after a navigation that refetches, `router.refresh()` or a reload (Decision
+  5). Moving titles into the CRDT would make them live; that is a separate change.
+- **The account button's initial has low contrast for some colours.** It is your colour
+  on white, about 2.1 to 2.8:1 for amber, teal and sky, the same ratios the old filled
+  avatar had. Not fixed.
 
 ### Deliberate deviation from the design
 
