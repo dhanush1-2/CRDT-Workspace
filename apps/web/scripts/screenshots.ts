@@ -128,7 +128,7 @@ async function openAs(
   })
   // ?nobc=1 forces each window through the server rather than the cross-tab
   // BroadcastChannel, so the screenshots show real network sync.
-  await page.goto(`${WEB}${path}${path.startsWith('/documents/') ? '?nobc=1' : ''}`)
+  await page.goto(`${WEB}${path}${path.includes('/documents/') ? '?nobc=1' : ''}`)
   return page
 }
 
@@ -154,8 +154,8 @@ async function main() {
   await ws.screenshot({ path: `${OUT}/workspace.png` })
 
   // 3. The same board open as two different people, syncing over the server.
-  const windowA = await openAs(browser, owner.id, `/documents/${board.id}`, boardSize)
-  const windowB = await openAs(browser, editor.id, `/documents/${board.id}`, boardSize)
+  const windowA = await openAs(browser, owner.id, `/workspaces/${workspace.id}/documents/${board.id}`, boardSize)
+  const windowB = await openAs(browser, editor.id, `/workspaces/${workspace.id}/documents/${board.id}`, boardSize)
   for (const page of [windowA, windowB]) {
     await page.getByTestId('status').filter({ hasText: 'connected' }).waitFor()
   }
@@ -172,7 +172,7 @@ async function main() {
   await windowB.screenshot({ path: `${OUT}/board-window-b.png` })
 
   // 4. A viewer: same board, live updates, but no controls and a read-only badge.
-  const viewerPage = await openAs(browser, viewer.id, `/documents/${board.id}`, boardSize)
+  const viewerPage = await openAs(browser, viewer.id, `/workspaces/${workspace.id}/documents/${board.id}`, boardSize)
   await viewerPage.getByTestId('read-only').waitFor()
   await viewerPage.screenshot({ path: `${OUT}/viewer-read-only.png` })
 

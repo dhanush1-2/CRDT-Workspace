@@ -20,6 +20,18 @@ test('the old flat document URL forwards to the canonical one', async ({ page })
   await cleanup(label)
 })
 
+test('the old flat document URL keeps its query string, repeated keys included', async ({ page }) => {
+  const label = `${LABEL}-legacy-query`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  await page.goto(`/documents/${document.id}?nobc=1&x=a&x=b`)
+  await expect(page).toHaveURL(`${documentPath(document)}?nobc=1&x=a&x=b`)
+
+  await cleanup(label)
+})
+
 test('a document id under the wrong workspace is not found', async ({ page }) => {
   const mine = `${LABEL}-mine`
   const theirs = `${LABEL}-theirs`
