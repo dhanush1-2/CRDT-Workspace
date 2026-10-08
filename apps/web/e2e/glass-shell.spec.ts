@@ -1143,3 +1143,56 @@ test('the account button does not look like a person in the document', async ({ 
   expect(await fill(self)).not.toBe('rgb(255, 255, 255)')
   await cleanup(label)
 })
+
+test('moving between two busy documents does not collapse the nav', async ({ page, browser }) => {
+  const label = `${LABEL}-no-collapse`
+  const { owner, workspace } = await seedWorkspace(label)
+  const first = await createDocument(workspace.id, 'doc')
+  const second = await createDocument(workspace.id, 'doc')
+  const peer = await addMember(workspace.id, label, 'editor')
+
+  // One other person sits in both documents (two tabs), so both read "2 here" with two avatars.
+  const peerContext = await browser.newContext()
+  await peerContext.addCookies([await sessionCookieFor(peer.id)])
+  for (const document of [first, second]) {
+    const tab = await peerContext.newPage()
+    await tab.goto(`${documentPath(document)}?nobc=1`)
+    await expect(tab.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+  }
+
+  await signIn(page, owner.id)
+  await page.goto(`${documentPath(first)}?nobc=1`)
+  await expect(page.getByTestId('status')).toHaveText('2 here')
+  const bar = page.getByRole('navigation', { name: 'Primary' })
+  // Let the bar finish arriving on this document: the first load animates it a little as
+  // the people and the status settle, and a start measured mid-way is not a width to keep.
+  let last = -1
+  await expect
+    .poll(async () => {
+      const width = (await bar.boundingBox())!.width
+      const settled = Math.abs(width - last) < 0.05
+      last = width
+      return settled
+    }, { intervals: [300] })
+    .toBe(true)
+  const start = (await bar.boundingBox())!.width
+
+  const samples = page.evaluate(async () => {
+    const nav = document.querySelector('nav[aria-label="Primary"]')!
+    const out: number[] = []
+    const t0 = performance.now()
+    while (performance.now() - t0 < 2000) {
+      out.push(nav.getBoundingClientRect().width)
+      await new Promise((r) => requestAnimationFrame(r))
+    }
+    return out
+  })
+  await page.getByTestId(`tab-${second.id}`).click()
+  const widths = await samples
+  await expect(page.getByTestId('status')).toHaveText('2 here')
+
+  // Never narrower than where it started, by more than rounding.
+  expect(Math.min(...widths)).toBeGreaterThanOrEqual(start - 2)
+  await peerContext.close()
+  await cleanup(label)
+})

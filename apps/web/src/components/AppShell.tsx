@@ -38,6 +38,15 @@ export type NavDocument = { id: string; title: string; type: 'doc' | 'board' }
  */
 let lastNavWidth: number | null = null
 
+/**
+ * The bar's width including its border. `scrollWidth` leaves the border out, and the bar
+ * is border-box, so pinning an inline width taken from `scrollWidth` alone pins it a
+ * couple of pixels narrower than the bar really is.
+ */
+function naturalWidth(bar: HTMLElement) {
+  return bar.scrollWidth + (bar.offsetWidth - bar.clientWidth)
+}
+
 // A client component: every prop below crosses the server/client boundary, so each
 // must be serialisable. Plain strings, booleans and arrays of them: no Date, no
 // functions, no Prisma rows.
@@ -89,7 +98,39 @@ export function AppShell({
   // "3 here", and when presence avatars arrive -- none of which changes a prop of
   // this component, so without this the effect below would never see them. The
   // store's equality gate means this only fires on real changes.
-  useDocState()
+  const docState = useDocState()
+
+  // A document on screen that has not connected yet. Its status text and people are
+  // placeholders that are about to be replaced, so the bar must not shrink to them.
+  const settling =
+    activeDocumentId !== undefined &&
+    (docState.documentId !== activeDocumentId || docState.status === 'connecting')
+  const holding = useRef(false)
+  const [holdExpired, setHoldExpired] = useState(false)
+  useEffect(() => {
+    if (!settling) {
+      setHoldExpired(false)
+      return
+    }
+    // Never hold forever: a document that cannot connect still gets a correct bar.
+    const timer = window.setTimeout(() => setHoldExpired(true), 1500)
+    return () => window.clearTimeout(timer)
+  }, [settling])
+
+  // Keep the remembered width equal to what is on screen. After a transition here ends,
+  // CSS can keep growing the bar (interpolate-size, people arriving), and a start taken
+  // from the stale value would pull the bar back before the next move. Skipped while this
+  // component is driving the width itself, when the bar is deliberately not its natural size.
+  useEffect(() => {
+    const bar = nav.current
+    if (!bar) return
+    const observer = new ResizeObserver(() => {
+      if (animatingWidth.current || holding.current || !bar.isConnected) return
+      lastNavWidth = naturalWidth(bar)
+    })
+    observer.observe(bar)
+    return () => observer.disconnect()
+  }, [])
 
   // Animate the bar between widths. CSS does this on its own within a page; this is
   // for the two cases it cannot cover -- across a navigation, and in browsers without
@@ -104,8 +145,25 @@ export function AppShell({
     // changed meanwhile is picked up when the transition ends.
     if (animatingWidth.current) return
 
-    const to = bar.scrollWidth
+    // Measure the natural width: an inline width left by a hold would make scrollWidth
+    // report the held value instead.
+    if (holding.current) {
+      bar.style.transition = ''
+      bar.style.width = ''
+    }
+
+    const to = naturalWidth(bar)
     const from = lastNavWidth
+
+    if (settling && !holdExpired && from !== null && to < from - 1) {
+      // Hold: keep the current width until the document connects; the next render after
+      // that animates once, from here to the final width. lastNavWidth stays as it was.
+      holding.current = true
+      bar.style.transition = 'none'
+      bar.style.width = `${from}px`
+      return
+    }
+    holding.current = false
     lastNavWidth = to
 
     // Nothing to animate from on a hard load, and nothing to animate at all when the
@@ -139,7 +197,7 @@ export function AppShell({
       // The contents may have changed again while this ran. Skip a detached node:
       // its scrollWidth is 0, and remembering 0 would make the next bar grow from
       // nothing -- the very thing this exists to prevent.
-      if (bar.isConnected) lastNavWidth = bar.scrollWidth
+      if (bar.isConnected) lastNavWidth = naturalWidth(bar)
     }
 
     bar.addEventListener('transitionend', done, { once: true })
