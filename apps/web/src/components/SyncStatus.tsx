@@ -18,9 +18,10 @@ export function SyncStatus() {
   if (documentId === null) return null
 
   const { label, dot } = DISPLAY[status]
-  // `peers` excludes this tab's own client, so the count is people other than you.
-  // "1 here" with one peer follows the design's pattern and needs no plural handling.
-  const text = status === 'connected' && peers.length > 0 ? `${peers.length} here` : label
+  // `peers` excludes this tab's own client, so the count is peers plus you — what
+  // "3 here" means to the person reading it. Alone, a count of one says nothing, so
+  // that state keeps the connection label instead.
+  const text = status === 'connected' && peers.length > 0 ? `${peers.length + 1} here` : label
 
   return (
     <span className={styles.status} data-testid="status" data-status={status}>

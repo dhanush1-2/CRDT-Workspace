@@ -801,3 +801,17 @@ test('a document sits on the 780px glass sheet and a board does not', async ({ p
 
   await cleanup(label)
 })
+
+test('alone in a document the pill says Synced, not a count of one', async ({ page }) => {
+  const label = `${LABEL}-alone`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  await page.goto(documentPath(document))
+  // Counting yourself when there is nobody else would make this "1 here", which
+  // tells the reader nothing. The design's copy for that state is "Synced".
+  await expect(page.getByTestId('status')).toHaveText('Synced')
+
+  await cleanup(label)
+})

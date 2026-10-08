@@ -93,6 +93,8 @@ test('both users see each other in the presence bar', async ({ browser }) => {
   await openAs(contextB, editor.id, documentPath(document))
 
   await expect(avatar(pageA, 'Eddie')).toBeVisible()
+  // The count includes you. Two browsers are open, so it says two, not one.
+  await expect(pageA.getByTestId('status')).toHaveText('2 here')
 
   await contextA.close()
   await contextB.close()
@@ -216,7 +218,7 @@ test('below 1100px the avatars and the status label stay available to assistive 
   expect(avatars!.width).toBeLessThanOrEqual(1)
 
   // boundingBox is null for display:none, so a box proves the label is still rendered.
-  const labelBox = await pageA.getByTestId('status').getByText('1 here').boundingBox()
+  const labelBox = await pageA.getByTestId('status').getByText('2 here').boundingBox()
   expect(labelBox).not.toBeNull()
   expect(labelBox!.width).toBeLessThanOrEqual(1)
 
