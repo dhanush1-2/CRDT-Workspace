@@ -8,7 +8,11 @@
 
 **Tech Stack:** Yjs 13.6 (`Y.Map`, `Y.Array`, `doc.transact`), React 19, the existing `components/ui/Sheet.tsx` (backdrop, `g-sheet` entrance, focus trap), Vitest 5, Playwright.
 
-**Spec:** `docs/design/glass-handoff.md` (`**Board.**`, the card sheet section) and the design owner's spec of 2026-10-04, `## 5. Card sheet`, quoted inline below. `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.md` records that card notes need no backend and can ship independently of the history work.
+**Spec:** `docs/design/glass-handoff.md` §11 (Card sheet) and §10 (Board), and the design owner's spec of 2026-10-04, `## 5. Card sheet`, quoted inline below. `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.md` records that card notes need no backend and can ship independently of the history work.
+
+## Refreshed 2026-10-07
+
+Written at `d769738`. Checked against `main` at `f7a5cac`: `Board.tsx`, `packages/shared/src/board.ts` and `ui/Sheet.tsx` are unchanged since; `board.module.css` changed only in its column material (now `--glass-col`, `--blur-1`, `--dash`) and the board's centring, and `.cardSelected` is still there (line 118). Corrected: the spec pointer names the regenerated handoff's §11; the notes box takes §11's resting fill; the peer dot is §11's `#0ea5e9` unless the owner chooses the peer colour. Independent of the shell plan. Baseline at `f7a5cac`: Vitest 282, Playwright 157.
 
 ## Global Constraints
 
@@ -409,9 +413,9 @@ and make `Board.tsx`'s hover handlers no-ops while a sheet is open.
 
 - [ ] **Step 3: The styles**
 
-`card-sheet.module.css`, with the design's values and a comment on each literal the tokens do not cover: width 580, `--r-sheet`, the title at 26/600/1.22/−0.025em, the notes box transparent inside the glass until focus and then `#fff` with the violet ring (reuse the focus-ring shape from `ui.module.css` rather than inventing a second one), the activity rows with 24px avatars, the footer's red Delete (`--danger`, text only, no fill) and violet Done.
+`card-sheet.module.css`, with the design's values and a comment on each literal the tokens do not cover: width 580, `--r-sheet`, the title at 26/600/1.22/−0.025em, the notes box per handoff §11: `border-radius: 20px`, `background: rgba(255, 255, 255, 0.6)` with a `1px solid #fff` border, `padding: 16px 18px`, placeholder "Add notes"; on focus `background: #fff` and `box-shadow: 0 0 0 1px var(--accent), 0 0 0 5px var(--accent-ring)` (this plan first said transparent until focus; §11 was regenerated after it and gives the resting fill), the activity rows with 24px avatars, the footer's red Delete (`--danger`, text only, no fill) and violet Done.
 
-The peer line: `<name> is here too` with a pulsing blue dot — `g-pulse 1.8s` and the peer's own awareness colour, not a hard-coded blue, because the design assigns each person a colour and the card outline already uses it. Say in the report that you used the peer's colour and why it differs from the spec's word "blue".
+The peer line: `<name> is here too` with an 8px pulsing dot, `g-pulse 1.8s`. Handoff §11 gives the dot as the literal `#0ea5e9`. This plan originally chose the peer's own awareness colour instead (the design assigns each person a colour and the card outline already uses it); that was the plan author's choice, not the owner's, and §11 postdates it. **Use the peer's colour only if the owner confirms it; otherwise `#0ea5e9`**, and say in the report which one shipped.
 
 Use `.cardSelected` from `board.module.css` for the open card's outline. It is already written for this.
 

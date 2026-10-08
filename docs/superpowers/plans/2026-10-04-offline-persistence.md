@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.md` — Decision 3 (build local persistence, match Google Docs, the two conflict cases) and Decision 4 (always-on, no toggle).
 
+## Refreshed 2026-10-07
+
+Written at `d769738`. Checked against `main` at `f7a5cac`: `doc-session.ts`, `use-doc.ts`, `UserMenu.tsx`, `doc-session.integration.test.ts` and `collaboration.spec.ts` are unchanged since, so every step that edits them stands. `DocumentClient.tsx` was rewritten by the document toolbar (it now renders `DocumentEditor`, which owns the toolbar and the editor, and passes it the `doc` and `provider` from `useCollaborativeDoc`); Task 1's change to it is only a new `userId` prop passed through to `useCollaborativeDoc`, which still applies. Its path moves with the shell plan, which should run first. Baseline at `f7a5cac`: Vitest 282, Playwright 157.
+
+Two reminders the toolbar work taught: commit `apps/web/package.json` and `pnpm-lock.yaml` together when Task 1 adds `y-indexeddb` (the Render build runs `pnpm install --frozen-lockfile`), and Task 1 Step 4 contains a sketch the plan itself marks as wrong ("opens the database twice") — implement the fix it describes, never the sketch.
+
 ## Global Constraints
 
 - **Always-on. No toggle, no setting, no opt-in.** Decision 4. There is no settings surface to add and nobody should lose work because they did not know a switch existed. If storage ever becomes a problem the answer is eviction by age, not a toggle.

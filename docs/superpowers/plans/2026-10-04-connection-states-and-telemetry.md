@@ -8,7 +8,11 @@
 
 **Tech Stack:** y-websocket 3.1 (`provider.ws`, `provider.wsconnected`, `provider.synced`, `provider.connect/disconnect` are public), `lib0/encoding`, `useSyncExternalStore`, CSS Modules, Vitest 5, Playwright.
 
-**Spec:** `docs/design/glass-handoff.md` (`**Status popover.**`, the floating pills under the nav) and the design owner's interaction spec of 2026-10-04, whose `## Connection states` section is quoted inline below.
+**Spec:** `docs/design/glass-handoff.md` §5.6 (under-nav floating pills), §5.7 (popovers, the Status popover) and §5.3 row 7 (the status pill), and the design owner's interaction spec of 2026-10-04, whose `## Connection states` section is quoted inline below.
+
+## Refreshed 2026-10-07
+
+Written at `d769738`. Corrected since: the spec pointer now names the regenerated handoff's §5.6/§5.7; the offline/syncing pill is §5.6's light glass with a dark Reconnect button (this plan had made the whole pill dark); it renders inside `.navWrap`, which was made a centred column for it; the popover's blur is §5.7's 30 (`--blur-3`). `AppShell.tsx` and `app-shell.module.css` gained the nav-width animation (`lastNavWidth`) and the content-sized nav since; Tasks 5-7 add to `AppShell` and must leave both intact. Order: after `offline-persistence` (unchanged), `history-and-authorship-backend` and `shell-routing-and-nav`. Baseline at `f7a5cac`: Vitest 282, Playwright 157.
 
 ## Global Constraints
 
@@ -524,7 +528,7 @@ Read `share-sheet.spec.ts` for the real toast testid. The `${queued} changes` in
 
 - [ ] **Step 2: Run it to verify it fails, then build the band**
 
-`ConnectionBand` renders nothing when `documentId === null` or the connection is `synced`. Otherwise a centred floating pill below the nav, entering with `g-up` (which already carries `translate(-50%, 16px)` and `scale(0.96)`, the shape a centred fixed pill needs).
+`ConnectionBand` renders nothing when `documentId === null` or the connection is `synced`. Otherwise a centred floating pill 10px below the nav (§5.6). Render it **inside `.navWrap`, after the `<nav>`** — `app-shell.module.css` made `.navWrap` a centred column for exactly these pills — and position it `absolute; top: calc(100% + 10px); left: 50%` so it floats over the page rather than pushing the content down while it is shown (`.navWrap` is `position: sticky`, which makes it the containing block). It enters with `g-up`, which already carries `translate(-50%, 16px)` and `scale(0.96)`, the shape a `left: 50%` pill needs.
 
 Offline copy, branching on the count, with the count in its own element so the test can read it:
 
@@ -541,7 +545,9 @@ Offline copy, branching on the count, with the count in its own element so the t
         )}
 ```
 
-The dark Reconnect button calls `controls.reconnect()`. Dark glass: `rgba(28,29,27,.82)` with `blur(24px)` and white text, which is the design's dark variant and already in `sheet.module.css` for the toast — comment the duplication rather than reaching for a shared class, or extract one if a third use appears.
+**The pill is light glass, not dark** (handoff §5.6, regenerated after this plan was first written, so it wins): `background: rgba(255, 255, 255, 0.62)` with `backdrop-filter: blur(24px) saturate(180%)` and its `-webkit-` pair (both §5.6 literals, no token; comment them), `border-radius: var(--r-pill)`, `padding: 6px 6px 6px 16px`, an 8px status dot, text in `--text-2`. Only the **Reconnect** button is dark: a 30px pill in `rgba(28, 29, 27, 0.82)` with white text, calling `controls.reconnect()`. (The dark glass for the whole pill is §5.6's *version preview* pill, which `history-panel-and-preview` builds.)
+
+**The toolbar overlap.** On a document the toolbar sticks at `top: 80px` (64px once the shell plan's condensed nav lands), which is where this pill floats. The pill is above it in z-order (it is inside `.navWrap`, `z-index: 30`), so it covers the toolbar's centre while shown. That is acceptable for a transient state message; check it by eye at 1280px and say in the report whether any control under it is unreachable while offline.
 
 Syncing copy: `Back online. Syncing your changes…` with no button.
 
@@ -592,7 +598,7 @@ The em-dash case needs the route stubbed to fail — use `page.route` to return 
 
 - [ ] **Step 2: Build it**
 
-A disclosure anchored to the pill, same shape as the History button's panel from the shell plan: `position: absolute` inside a `position: relative` wrapper, `top: calc(100% + 10px); right: 0`, `transform-origin: top right`, `animation: g-pop 0.45s var(--ease)`, width 270, radius 22, `--glass-bg-strong` plus `--glass-blur`.
+A disclosure anchored to the pill, same shape as the History button's panel from the shell plan: `position: absolute` inside a `position: relative` wrapper, `top: calc(100% + 10px); right: 0`, `transform-origin: top right`, `animation: g-pop 0.45s var(--ease)`, width 270, `border-radius: var(--r-pop)` (22), `background: var(--glass-mid)` (.72) plus `backdrop-filter: var(--blur-3)` (blur 30, handoff §5.7) with its `-webkit-` pair.
 
 Titles, from the connection state: `synced` → "Everything is up to date"; `offline` → "Working offline"; `syncing` → "Catching up".
 

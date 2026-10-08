@@ -10,16 +10,27 @@
 
 **Spec:** `docs/design/glass-handoff.md`, plus the design owner's colour/material/geometry/motion spec and interaction spec of 2026-10-04, whose values are quoted inline in each task below.
 
+## Refreshed 2026-10-07 — read this first
+
+Written at `cc14f20` (2026-10-02). Since then, and corrected below:
+
+- **Task 1 is done.** The token migration of 2026-10-03 added `--blur-1: blur(20px) saturate(180%)` (handoff §2), which is exactly the light strength this task introduced as `--glass-blur-light`, and no stylesheet carries the literal any more. Skip it.
+- **Task 4 was already marked done** (the content-sized nav, `12f785c`).
+- **The "Already correct" list had two values superseded** by later owner decisions (handoff Precedence): the body base is 16px and the editor paragraph 18px. Corrected below; an implementer trusting the old list would have "restored" 15 and 17.
+- **`--accent-ring` is `oklch(0.42 0.11 285 / 0.12)`**, not `/ 0.1`. **`--glass-blur` is now `--blur-2`.**
+- **The document toolbar** (2026-10-03) added a ribbon of buttons, three list menus, swatch grids, a link popover with its own focused field, and the editor itself — none with a `:focus-visible` rule of its own. Task 2's new global halo reaches all of them; its collision sweep now names them, and the editor must be excluded.
+- **Order:** run after `2026-10-03-shell-routing-and-nav.md` (Task 3 edits the document page at its moved path). The visual-corrections plan has run.
+
 ## Global Constraints
 
-- **Execute after `2026-10-02-glass-visual-corrections.md` and `2026-10-03-shell-routing-and-nav.md`.** Task 4 here rewrites the nav's sizing, which the shell plan's Task 5 (scroll-condense) and Task 7 (760px dropdown) both change; Task 6 here touches `PaintSplatter.tsx`, which the corrections plan's Tasks 1-2 rewrite.
+- **Execute after `2026-10-03-shell-routing-and-nav.md`.** The shell plan's Task 5 (scroll-condense) and Task 7 (760px dropdown) change the nav this plan's presence work renders into, and its Task 2 moves `DocumentClient.tsx`, which Task 3 here edits. The visual-corrections plan this also waited for has run.
 - **No backend changes.** No Prisma schema, sync-server or API route edits. The one protocol-adjacent change is an added awareness field, which is CRDT state, not schema.
 - **Never widen a shared token to fix one surface.** Add a token when three or more surfaces share a literal; otherwise set the value where it belongs.
-- Every colour, radius, duration and easing from a token where one exists. Raw values only where the design gives that literal, with a comment saying so. Existing tokens: `--ease: cubic-bezier(0.32, 0.72, 0, 1)`, `--dur-fast: 0.3s`, `--dur: 0.55s`, `--dur-slow: 0.7s`, `--accent-ring: oklch(0.42 0.11 285 / 0.1)`, `--glass-blur: blur(28px) saturate(190%)`.
+- Every colour, radius, duration and easing from a token where one exists. Raw values only where the design gives that literal, with a comment saying so. Existing tokens: `--ease: cubic-bezier(0.32, 0.72, 0, 1)`, `--dur-fast: 0.3s`, `--dur: 0.55s`, `--dur-slow: 0.7s`, `--accent-ring: oklch(0.42 0.11 285 / 0.12)`, `--blur-1: blur(20px) saturate(180%)`, `--blur-2: blur(28px) saturate(190%)`, `--blur-3: blur(30px) saturate(190%)` (full list: handoff §2).
 - Pair every `backdrop-filter` with `-webkit-backdrop-filter`. Every animation and transition inside `@media (prefers-reduced-motion: no-preference)`.
 - `apps/web/test/css-tokens.test.ts` must keep passing — a `var(--x)` with no definition in `globals.css` fails silently in the browser and this is the only guard.
 - Every test proven to discriminate. **Commit before mutating** — `git checkout --` silently does nothing on an untracked file, which has bitten this project.
-- Full gate per task: `pnpm typecheck`, `pnpm --filter @crdt/web build`, `pnpm test`, `pnpm --filter @crdt/web exec playwright test`. **Record the baseline first.** At the time of writing, before the other two plans run: Vitest 252 across 34 files, Playwright 63 across 8 files, typecheck clean.
+- Full gate per task: `pnpm typecheck`, `pnpm --filter @crdt/web build`, `pnpm test`, `pnpm --filter @crdt/web exec playwright test`. **Record the baseline first.** At `f7a5cac` (2026-10-03): Vitest 282 across 40 files, Playwright 157, typecheck clean, 14 routes. The shell plan moves it.
 - Postgres on 5433 is shared across checkouts: never start, stop or restart it. Never touch `.env`, `docker-compose.yml` or `docker-compose.override.yml`. Never run any `fly` command. Never use bare `git stash` / `git stash pop`.
 
 ## Already correct — do not "fix" these
@@ -27,7 +38,7 @@
 Checked against the code while writing this plan. Changing them would be a regression:
 
 - All eight keyframes match the spec exactly: `g-in` (14px rise, 6px blur), `g-pop` (−6px, 96%, 4px blur), `g-sheet` (24px, 97%), `g-side` (28px from the right), `g-up` (16px, 96%), `g-pulse` (1.8s to 40% opacity and 80% scale), `g-paint` (50px drift, 12°, 1.08/0.95 scale).
-- Typography: `h1` 32/600/−0.025em, `h2` 21/600/−0.02em, `h3` 18/600, body 15/1.47/−0.01em, editor `h1` 32, `h2` 21, `p` 17/1.65. The `.initial` square is 44px at radius 14.
+- Typography: `h1` 32/600/−0.025em, `h2` 21/600/−0.02em, `h3` 18/600, body **16**/1.47/−0.01em, editor `h1` 32, `h2` 21, `h3` 18, `p` **18**/1.65. The `.initial` square is 44px at radius 14. (Body 16 and editor `p` 18 are later owner decisions that supersede the spec's 15 and 17; see the handoff's Precedence section.)
 - Backdrops: sheets `rgba(30,40,35,.16)` + `blur(8px)`; palette `rgba(30,40,35,.1)` with no blur; dark glass `rgba(28,29,27,.82)` + `blur(24px)`.
 - Hover lifts: tiles −2px, cards −3px + 1.01, presence avatars −3px + 1.06, logo −8° + 1.05. Board card entrance `g-in 0.5s`.
 - Splat landing: grows from 35% with an overshoot over 0.65s (`easeOutBack`, `LANDING_MS = 650`).
@@ -36,84 +47,9 @@ Checked against the code while writing this plan. Changing them would be a regre
 
 ---
 
-### Task 1: A token for the light glass strength
+### Task 1: A token for the light glass strength — DONE, by the token migration
 
-The spec names three glass strengths, each with its own blur. Two have tokens. The light one is a literal `blur(20px) saturate(180%)` repeated across stylesheets, so there is nothing to change in one place and nothing for the token test to guard.
-
-**Files:**
-- Modify: `apps/web/src/app/globals.css`
-- Modify: every stylesheet carrying the literal (find them in Step 1)
-- Test: `apps/web/test/css-tokens.test.ts`
-
-**Interfaces:**
-- Consumes: nothing.
-- Produces: `--glass-blur-light: blur(20px) saturate(180%)` in `globals.css`.
-
-- [ ] **Step 1: Find every copy**
-
-```bash
-grep -rn "blur(20px) saturate(180%)\|blur(16px) saturate(180%)" apps/web/src --include="*.css"
-```
-
-Write the list into the task report. At the time of writing there are three at `blur(20px) saturate(180%)` and one at `blur(16px) saturate(180%)` (the workspace meta pill). **Only the 20px ones become the token.** The 16px pill is a different value the design gives separately; leave it as a literal with its existing comment.
-
-- [ ] **Step 2: Write the failing test**
-
-Add to `apps/web/test/css-tokens.test.ts`:
-
-```ts
-it('the light glass blur is a token, not a repeated literal', () => {
-  const files = cssFiles(SRC)
-  const offenders: string[] = []
-  for (const file of files) {
-    if (file.endsWith('globals.css')) continue
-    const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-    // The light strength is shared by the tiles, the columns and the People card.
-    // A literal in a third place is a value that can no longer be changed once.
-    if (css.includes('blur(20px) saturate(180%)')) offenders.push(relative(SRC, file))
-  }
-  expect(offenders).toEqual([])
-})
-```
-
-- [ ] **Step 3: Run it to verify it fails**
-
-Run: `pnpm --filter @crdt/web exec vitest run test/css-tokens.test.ts`
-Expected: FAIL, listing the three stylesheets.
-
-- [ ] **Step 4: Add the token and use it**
-
-In `globals.css`, beside `--glass-blur`:
-
-```css
-  /*
-    The design's three glass strengths differ in blur as well as fill:
-    light .42-.55 at blur(20px) saturate(180%), medium .62-.72 and heavy .78-.82
-    at blur(28px) saturate(190%). --glass-blur is the medium/heavy value; this is
-    the light one, shared by the tiles, the board columns and the People card.
-  */
-  --glass-blur-light: blur(20px) saturate(180%);
-```
-
-Replace each of the three literals with `var(--glass-blur-light)`, keeping the `-webkit-` pair.
-
-- [ ] **Step 5: Run the test to verify it passes**
-
-Run: `pnpm --filter @crdt/web exec vitest run test/css-tokens.test.ts`
-Expected: PASS. The existing dangling-var test also covers the new name, so a typo in any of the three call sites fails there.
-
-- [ ] **Step 6: Prove it discriminates**
-
-Commit first. Reintroduce the literal in one stylesheet and re-run: the new test fails naming that file. Then misspell one `var(--glass-blur-light)` as `var(--glass-blur-lite)` and re-run: the dangling-var test fails. Restore both.
-
-- [ ] **Step 7: Run the full gate and commit**
-
-Run: `pnpm typecheck && pnpm --filter @crdt/web build && pnpm test && pnpm --filter @crdt/web exec playwright test`
-
-```bash
-git add apps/web
-git commit -m "refactor(css): token for the light glass strength's blur"
-```
+The token migration of 2026-10-03 added `--blur-1: blur(20px) saturate(180%)` from handoff §2, which is the light strength this task was going to add as `--glass-blur-light`. `grep -rn "blur(20px) saturate(180%)" apps/web/src` finds only that definition. Nothing to do; do not add a second token for the same value.
 
 ---
 
@@ -230,7 +166,13 @@ and add the token beside `--accent-ring`:
   --accent-ring-wide: oklch(0.42 0.11 285 / 0.15);
 ```
 
-**Watch for two collisions.** Some surfaces already set their own `box-shadow`, and this rule would replace it on focus. Grep for `:focus-visible` across the stylesheets before committing: `nav-tabs.module.css` sets `outline-offset: -2px` on `.tab` (keep it — the strip clips its overflow, so an outside ring is cut off; on that element the halo will clip too, which is why the offset is negative and why it is left alone). Any element whose resting `box-shadow` carries meaning — the glass surfaces' shadows — needs its own `:focus-visible` rule that keeps both, written as `box-shadow: <resting>, 0 0 0 5px var(--accent-ring-wide)`. Find them, list them in the report, and fix each.
+**Watch for collisions.** Some surfaces already set their own `box-shadow`, and this rule would replace it on focus. Grep for `:focus-visible` across the stylesheets before committing: `nav-tabs.module.css` sets `outline-offset: -2px` on `.tab` (keep it — the strip clips its overflow, so an outside ring is cut off; on that element the halo will clip too, which is why the offset is negative and why it is left alone). Any element whose resting `box-shadow` carries meaning — the glass surfaces' shadows — needs its own `:focus-visible` rule that keeps both, written as `box-shadow: <resting>, 0 0 0 5px var(--accent-ring-wide)`. Find them, list them in the report, and fix each.
+
+**The document editor and its toolbar (added after this plan was written):**
+
+- **Exclude the editor.** `.editor .ProseMirror` sets `outline: none` (`globals.css`, ~line 300) because a ring around the whole page is not a focus indicator for text; the caret is. The new rule's `box-shadow` would put a 5px halo around the entire document whenever it takes keyboard focus. Add, beside that rule: `.editor .ProseMirror:focus-visible { box-shadow: none; }`, and a test in `editor-toolbar.spec.ts` that tabs into the editor and asserts its computed `box-shadow` is `none`.
+- **Sweep `editor-toolbar.module.css`.** The tool buttons, the Style/Font/Size field triggers, the swatches, the menu rows, the link popover's Add/Remove buttons and its field (§12.6: "focus is accent + ring", which the field already draws itself) all take the global ring. Any that carries a resting `box-shadow` — the field triggers, the menu panel's rows if they have one — needs the two-shadow form above. The swatch grid is a dense 6-column grid; check that a 5px halo on one swatch does not cover its neighbours, and if it does, give swatches `box-shadow: 0 0 0 2px var(--accent-ring-wide)` instead and say so in the report.
+- **The link bubble** (`LinkBubble.tsx`, if `2026-10-07-document-gaps.md` has run) has an accent Open button with no shadow; the global rule is fine there.
 
 - [ ] **Step 4: Add text selection**
 

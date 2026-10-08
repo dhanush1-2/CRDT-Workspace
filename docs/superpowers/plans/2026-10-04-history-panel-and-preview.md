@@ -10,6 +10,10 @@
 
 **Spec:** `docs/design/glass-handoff.md` (`**History.**`, the version-preview bar) and the design owner's spec of 2026-10-04, `## 7. History panel` and `## History` under the interaction spec, quoted inline below.
 
+## Refreshed 2026-10-07
+
+Written at `dd4e0e0`. Corrected since: the panel's material is now handoff §13's (`.66` white, blur 30 = `--blur-3`, radius 28) rather than the pre-migration tokens; Step 4's open question is settled by the shell plan's `--nav-bottom` variable. Order: after `2026-10-03-shell-routing-and-nav.md` (its Task 6 builds the History button this replaces the contents of, and its Task 2 moves the document page) and `2026-10-03-history-and-authorship-backend.md`. Baseline at `f7a5cac`: Vitest 282, Playwright 157.
+
 ## Global Constraints
 
 - **Run after `2026-10-03-history-and-authorship-backend.md`.** This plan consumes `GET /api/documents/[id]/history`, `GET /api/documents/[id]/history/[version]`, `restoreBoard`, `restoreEditor` and `editorExtensions` / `getEditorSchema`, all of which that plan produces. Nothing here works without it.
@@ -242,11 +246,11 @@ Case 3 needs a version with `userId` null — insert the update row directly wit
 
 The panel fetches on mount, holds `versions`, `loading` and `error`, and renders one row per version. Each row needs the previous version's state to describe itself, which means fetching every version's bytes — far too much for a list. **Fetch descriptions lazily:** render the row with author and time immediately and the description as "…" until its two states have been fetched, fetching only the rows that are on screen. Simpler alternative, and the one to take first: fetch states for the **newest ten** rows on mount and show `${updateCount} changes` for the rest. Measure both ways and report the byte cost; take the simple one unless it is visibly slow.
 
-Styles: `position: fixed; top: 84px; right: 16px; bottom: 16px; width: 330px`, `--r-panel`, `--glass-bg-strong` plus `--glass-blur`, `animation: g-side 0.6s var(--ease)`, `z-index` below the nav's 30 and above the content's 1 — the design's layer order puts it there. Rows at `--r-card` with 32px avatars; the selected row highlighted, transitioning over 0.35s per the interaction spec.
+Styles (handoff §13): `position: fixed; top: calc(var(--nav-bottom, 68px) + 16px); right: 16px; bottom: 16px; width: 330px; z-index: 25`, `border-radius: var(--r-panel)` (28px), `background: rgba(255, 255, 255, 0.66)` (a §13 literal with no token; comment it as such, and pair it with the existing no-backdrop-filter fallback pattern at a higher white), `backdrop-filter: var(--blur-3)` with its `-webkit-` pair (blur 30), `box-shadow: var(--glass-hl)`, `animation: g-side 0.6s var(--ease)`, `z-index` below the nav's 30 and above the content's 1 — the design's layer order puts it there. Rows at `--r-card` with 32px avatars; the selected row highlighted, transitioning over 0.35s per the interaction spec.
 
-- [ ] **Step 4: Check the condensed nav**
+- [ ] **Step 4: Follow the condensed nav**
 
-With the shell plan's scroll-condense, the nav shrinks to 46px and its top gap to 6px, so `top: 84px` leaves a bigger gap than intended once scrolled. Look at it, decide, and say what you did: either leave 84px (the panel is fixed and the nav floats over the page, so a slightly larger gap is harmless) or derive the offset from the condensed state. **Leave it unless it looks wrong** — a panel that resizes as you scroll is worse than one with an extra 10px of clearance.
+The shell plan (Task 5) sets `--nav-bottom` on the app shell: 68px, and 52px once the nav condenses on scroll. The panel's `top` above reads it, so it sits 16px under the nav in both states (84px and 68px), matching §13's 84px at rest. Add `top 0.4s var(--ease)` to the panel's transitions inside its reduced-motion block so it moves with the nav. If the shell plan has not run, the fallback `68px` gives today's 84px.
 
 - [ ] **Step 5: Prove it discriminates**
 

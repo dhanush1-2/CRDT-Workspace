@@ -8,20 +8,31 @@
 
 **Tech Stack:** Next.js 16 App Router (forced `--webpack`), React 19, Prisma 7 with `@prisma/adapter-pg`, CSS Modules, Vitest 5, Playwright.
 
-**Spec:** `docs/design/glass-handoff.md` — specifically `## Layout` (nav contents and the sliding indicator), the `### Deferred` and `### Known limitations` subsections of `## Implementation status`, and the owner's screenshot review recorded in the Decisions section below.
+**Spec:** `docs/design/glass-handoff.md` — specifically `## 5. Nav` (5.3 contents, 5.4 the sliding indicator, 5.5 responsive and scroll), `## 13. History panel`, the `### Deferred, each needing its own plan` and `### Known limitations` subsections of `## Implementation status`, and the owner's screenshot review recorded in the Decisions section below.
+
+## Refreshed 2026-10-07 — read this first
+
+This plan was written on 2026-10-02 at `cc14f20`. Since then the following landed on `main`, and the tasks below have been corrected for them:
+
+- **`1a98f61` — the pill and the bar carry their motion across a navigation**, by module-level memory (`lastMetrics` in `NavTabs.tsx`, `lastNavWidth` in `AppShell.tsx`), not by a shared layout. Two e2e tests already prove it (`glass-shell.spec.ts`, "the pill slides to the new tab across a navigation…" and "the nav animates to its new width across a navigation"). Task 2 still does the restructure the owner chose, and **keeps both mechanisms**: the dashboard is outside the workspace layout, so a dashboard ↔ workspace navigation still rebuilds the nav. Task 3 shrinks to the one thing only the layout gives: proof the nav node survives.
+- **The document toolbar (`f7a5cac` and before)** rewrote `DocumentClient.tsx`. The document's visible heading now lives inside `DocumentClient` (passed to `DocumentEditor` as `heading`), and the page passes `title`. Task 2's page is updated to match. `editor-toolbar.spec.ts` (14 document `goto`s) did not exist when Step 11's list was written; that step is now grep-driven.
+- **Token migration (2026-10-03):** `--glass-bg-strong` → `--glass-mid`, `--glass-bg-sheet` → `--glass-sheet`, `--glass-blur` → `--blur-2`, `--glass-highlight` → `--glass-hl`. Every CSS block below uses the new names.
+- **The "Workspaces" label and the content-sized nav** landed in `12f785c`; Task 4 is cut to the presence count.
+- **The toolbar sticks at `top: 80px`** because the nav does not condense (handoff deviation table, "Sticky offset (§12.1)"). Task 5 makes it follow the condensed nav.
+- **Order against the other plans:** run this before `history-panel-and-preview`, `connection-states-and-telemetry`, `offline-persistence` and `material-and-motion-fidelity`, all of which name the moved document page. `2026-10-07-document-gaps.md` is independent; its specs open documents at `/documents/<id>`, which the Task 2 redirect keeps working.
 
 ## Global Constraints
 
-- **Execute this plan AFTER `docs/superpowers/plans/2026-10-02-glass-visual-corrections.md`.** Task 2 here moves `apps/web/src/app/documents/[id]/page.tsx` and `document.module.css`; that plan's Task 4 edits both. Moving a file before that plan has changed it silently discards its change.
+- **The visual-corrections plan this used to wait for has run** (`2026-10-02-glass-visual-corrections.md`, merged). Nothing to wait for.
 - **No Prisma schema changes, no sync-server changes, no new API routes.** Version history, authorship, the status popover, the queued-edit count and the latency ping all need backend work that belongs to `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.md` and its own plan. The History button in Task 6 is a placeholder panel on purpose.
 - **A layout does not gate its pages.** Next renders a layout and its page together, and a client-side navigation can fetch a page's RSC payload without its layout. Every page keeps its own auth check. The layout's check exists so the nav is never rendered for someone who cannot see the workspace.
-- Every colour, radius, duration and easing from a token in `apps/web/src/app/globals.css` where one exists. Raw values only where the design gives that literal, with a comment saying so. Existing tokens: `--dur-fast: 0.3s`, `--dur: 0.55s`, `--dur-slow: 0.7s`, `--ease: cubic-bezier(0.32, 0.72, 0, 1)`, `--glass-bg-strong: rgba(255, 255, 255, 0.72)`.
-- **Never widen a shared token to fix one surface.** `--glass-bg-strong` is also the sheets' and popovers' background. The condensed nav sets its own background.
+- Every colour, radius, duration and easing from a token in `apps/web/src/app/globals.css` where one exists. Raw values only where the design gives that literal, with a comment saying so. Existing tokens: `--dur-fast: 0.3s`, `--dur: 0.55s`, `--dur-slow: 0.7s`, `--ease: cubic-bezier(0.32, 0.72, 0, 1)`, `--glass-mid: rgba(255, 255, 255, 0.72)`, `--glass-sheet`, `--glass-menu`, `--blur-1/2/3`, `--glass-hl`, `--r-panel: 28px` (full list: handoff §2).
+- **Never widen a shared token to fix one surface.** `--glass-mid` is also the sheets' and popovers' background. The condensed nav sets its own background.
 - Pair every `backdrop-filter` with `-webkit-backdrop-filter`. Every animation and transition inside `@media (prefers-reduced-motion: no-preference)`.
 - `apps/web/test/css-tokens.test.ts` must keep passing. It walks `src` for `.css` files, so moved files are still covered.
 - Every test proven to discriminate: run it against the unfixed code and watch it fail, or mutate the fix and watch it fail. **Commit before mutating** — `git checkout --` silently does nothing on an untracked file, which has bitten this project.
 - Full gate per task: `pnpm typecheck`, `pnpm --filter @crdt/web build` (there is no root build script), `pnpm test`, `pnpm --filter @crdt/web exec playwright test`. Revert `apps/web/next-env.d.ts` if the build rewrites it.
-- **Record the baseline before Task 1** and compare against that, not against a number in this document. Before the visual-corrections plan it was Vitest 252, Playwright 63; that plan adds tests, so the floor will have moved.
+- **Record the baseline before Task 1** and compare against that, not against a number in this document. At `f7a5cac` (2026-10-03) it was Vitest 282, Playwright 157, 14 routes; any plan merged since moves it.
 - Postgres on port 5433 is shared across checkouts: never start, stop or restart it. The native Postgres on 5432 is not ours. Never touch `.env`, `docker-compose.yml` or `docker-compose.override.yml`. Never run any `fly` command. Never use bare `git stash` / `git stash pop` — the stash stack is shared with other worktrees.
 
 ## Decisions already made by the design owner — do not re-litigate
@@ -37,9 +48,11 @@
 
 | Where | What | Resolution |
 |---|---|---|
-| `app/documents/[id]/page.tsx` | Visual-corrections Task 4 promotes the sr-only `<h1>` to a visible heading with `data-testid="document-heading"`; Task 2 here moves the file | Corrections plan first. Task 2 carries the heading markup across verbatim, testid included. |
-| `app/documents/[id]/document.module.css` | Corrections Task 4 sets `margin: 28px auto 64px`; Task 2 moves the file | Same ordering. Move with `git mv` so the diff shows a rename, not a delete plus an add. |
-| `globals.css:237` | A comment names the path `documents/[id]/document.module.css` | Task 2 updates the comment. A stale path in a comment is how the next reader is sent to a file that no longer exists. |
+| `app/documents/[id]/page.tsx` | The visible heading (`data-testid="document-heading"`) now lives inside `DocumentClient`; the page passes `title` | Task 2's new page passes `title` exactly as today's does. Nothing to carry across. |
+| `app/documents/[id]/document.module.css` | Carries `.page` (sheet, `margin: 28px auto 64px`, `data-width`) and `.heading`; `DocumentClient` imports it | Move with `git mv` so the diff shows a rename, not a delete plus an add. |
+| `globals.css:289` | A comment names the path `documents/[id]/document.module.css` | Task 2 updates the comment. A stale path in a comment is how the next reader is sent to a file that no longer exists. |
+| `NavTabs.tsx` `lastMetrics`, `AppShell.tsx` `lastNavWidth` (`1a98f61`) | Their comments say the shared layout "removes the need for this entirely" | Not true for dashboard ↔ workspace, which still remounts. Task 2 keeps both and corrects the comments. |
+| Task 5 `.nav` transition vs the existing `.nav { transition: width … }` | Two rules of equal specificity; the later one wins and drops the width animation | Task 5 writes one combined `transition` list. |
 | Splatter nav exclusion (corrections Task 2, 90px) vs the condensed nav (Task 5 here, 52px total) | The exclusion zone was sized for the unshrunk nav | No change needed: 90px already covers the condensed 46 + 6 = 52px, and the splatter is painted once and does not react to scroll. Task 5 asserts the zone is not reduced. |
 | Task 2 removes `activeDocumentId` from `AppShell`; Task 6 adds a `usePathname` read to `AppShell` | Both touch the same component | Task 2 first. Task 6 reuses the helper Task 1 creates. |
 | Task 7 renders a second set of document links | Duplicate `data-testid` would break Playwright strict mode across the whole existing suite | The dropdown uses its own testids (`nav-menu-item-*`), never `tab-*`. Task 7 asserts `tab-overview` still resolves to exactly one element. |
@@ -461,6 +474,7 @@ Then create `apps/web/src/app/workspaces/[id]/documents/[docId]/page.tsx`:
 ```tsx
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@crdt/db'
+import type { Role } from '@crdt/shared/types'
 import { HttpError, requireWorkspaceRole } from '@/lib/auth-guard'
 import { colorFor } from '@/lib/color'
 import { getCurrentUser } from '@/lib/current-user'
@@ -479,8 +493,10 @@ export default async function DocumentPage({
   if (!user) redirect(`/login?next=${encodeURIComponent(documentHref(workspaceId, docId))}`)
 
   // The layout above is not a gate (see its comment); this is the access check.
+  // Declared with its type: `let role` alone is implicitly `any` under strict.
+  let role: Role
   try {
-    await requireWorkspaceRole(user.id, workspaceId, 'viewer')
+    role = await requireWorkspaceRole(user.id, workspaceId, 'viewer')
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) notFound()
     throw error
@@ -496,26 +512,21 @@ export default async function DocumentPage({
   })
   if (!document) notFound()
 
+  // The visible heading is rendered by DocumentClient from `title` (it sits inside the
+  // zoomed wrapper with the editor; see DocumentEditor), exactly as on the old page.
   return (
-    <>
-      {/* HEADING: carry the markup from the visual-corrections plan's Task 4 across
-          verbatim, including data-testid="document-heading" and its class. Do not
-          reinvent it and do not leave the old sr-only version behind. */}
-      <DocumentClient
-        documentId={docId}
-        type={document.type}
-        readOnly={role === 'viewer'}
-        user={{ name: user.name, color: colorFor(user.id) }}
-      />
-    </>
+    <DocumentClient
+      documentId={docId}
+      title={document.title}
+      type={document.type}
+      readOnly={role === 'viewer'}
+      user={{ name: user.name, color: colorFor(user.id) }}
+    />
   )
 }
 ```
 
-Two things to finish in that file, because the sketch above is deliberately incomplete:
-
-1. `requireWorkspaceRole` returns the role; capture it (`const role = await requireWorkspaceRole(...)`, declared as `let role: Role` above the try so it is in scope after it) and use it for `readOnly`. As written, `role` is undefined — fix it rather than copying it.
-2. Replace the `HEADING:` comment with the real heading element from the corrections plan.
+`requireWorkspaceRole` returns `Promise<Role>` (`apps/web/src/lib/auth-guard.ts:51`, checked 2026-10-07).
 
 - [ ] **Step 7: Turn the old route into a redirect**
 
@@ -593,9 +604,11 @@ export function NavTabs({
   // [activeDocumentId, documents] and [documentId, othersHere] as their deps.
 ```
 
-and the document tab's `href` becomes `documentHref(workspaceId, document.id)`.
+and the document tab's `href` (today `` `/documents/${document.id}` ``, `NavTabs.tsx:191`) becomes `documentHref(workspaceId, document.id)`.
 
-`apps/web/src/components/AppShell.tsx`: delete the `activeDocumentId` prop from the type and the destructuring, and drop it from the `<NavTabs>` call.
+**Keep `lastMetrics`** (module level, `NavTabs.tsx:30`). Within a workspace the nav now survives navigation and the memory is redundant, but the dashboard renders its own `AppShell` outside this layout, so a dashboard ↔ workspace navigation still builds a new strip and still needs it. Replace the last sentence of its comment ("The shared-layout restructure removes the need for this entirely, because the nav stops being rebuilt.") with: "Within a workspace the nav now lives in the workspace layout and is not rebuilt, so this only matters for a navigation to or from the dashboard, which is outside that layout."
+
+`apps/web/src/components/AppShell.tsx`: delete the `activeDocumentId` prop from the type and the destructuring, and drop it from the `<NavTabs>` call. **Keep `lastNavWidth`** and the width effect for the same reason. The effect runs after every render with no dependency array, so on a navigation that keeps the nav mounted it animates from the last width to the new one exactly as it does on a remount; nothing in it needs changing. In its comment block, change "the bar is a brand-new node on every navigation" to "the bar is a brand-new node on a navigation to or from the dashboard".
 
 `apps/web/src/components/CommandPalette.tsx`: the documents loop becomes
 
@@ -607,21 +620,30 @@ The fallback is not dead code to delete: `documents` and `workspace` are indepen
 
 - [ ] **Step 10: Fix the stale comment**
 
-`apps/web/src/app/globals.css` line ~237 names `documents/[id]/document.module.css`. Update it to `workspaces/[id]/documents/[docId]/document.module.css`.
+`apps/web/src/app/globals.css` line ~289 names `documents/[id]/document.module.css`. Update it to `workspaces/[id]/documents/[docId]/document.module.css`.
 
 - [ ] **Step 11: Migrate the e2e suite**
 
-Import `documentPath` and replace `page.goto(\`/documents/${x.id}\`)` with `page.goto(documentPath(x))` at:
+Find every flat document URL the specs open (the line numbers moved with the toolbar work, so search rather than trusting a list):
 
-- `glass-shell.spec.ts` lines 245, 269, 282, 298, 330, 419, 457, 473 (269 and 282 are inside `for (const path of [...])` arrays — replace the second element)
-- `board.spec.ts` line 22, and line 149 which keeps its query string: `page.goto(\`${documentPath(document)}?nobc=1\`)`
-- `collaboration.spec.ts`: change `openAs(context, userId, documentId)` to take a path as its third argument and goto `` `${path}?nobc=1` ``; update all six call sites to pass `documentPath(document)`
+```bash
+grep -nE "goto\(\`/documents/|/documents/\\$\{" apps/web/e2e/*.ts
+```
 
-Three assertions change rather than move:
+At 2026-10-07 that is `editor-toolbar.spec.ts` (14), `glass-shell.spec.ts` (13), `auth-flow.spec.ts` (5), `board.spec.ts` (2), `collaboration.spec.ts` (1, inside `openAs`), `command-palette.spec.ts` (1). Import `documentPath` and replace each `` page.goto(`/documents/${x.id}`) `` with `page.goto(documentPath(x))`, keeping any query string (`` page.goto(`${documentPath(x)}?nobc=1`) ``). In `collaboration.spec.ts` change `openAs(context, userId, documentId)` to take a path as its third argument and update every call site. In `editor-toolbar.spec.ts` the shared `openDocument` helper covers most cases; the multi-context tests build their own URLs. `createDocument` returns the Prisma row, which carries `workspaceId`, so `documentPath(document)` works wherever a test already has the document.
 
-- `command-palette.spec.ts` line 100: tighten `toHaveURL(new RegExp(\`/documents/${target.id}$\`))` to `toHaveURL(documentPath(target))`. The old regex matches the canonical URL by accident, which is exactly why it must be made exact.
-- `auth-flow.spec.ts` line 163 ('a document in a workspace you are not a member of'): leave it on the legacy path — it proves the redirect route also 404s rather than leaking a workspace id. Add one line of comment saying so. `routing.spec.ts` covers the canonical path's 404.
-- `auth-flow.spec.ts` lines 226-236 ('an unauthenticated visit to a document'): leave the legacy path and the legacy `next=` assertions exactly as they are — that is the behaviour the redirect route preserves and it is worth keeping covered. The final `page.goto` after `signIn` now lands on the canonical URL; add `await expect(page).toHaveURL(documentPath(document))` before the `[aria-current="page"]` assertion.
+The redirect would keep these tests passing unchanged, but each would then exercise the redirect rather than the page, and a regression in the canonical route would hide behind it.
+
+Leave alone, on purpose:
+
+- `auth-flow.spec.ts`, 'a document in a workspace you are not a member of': stays on the legacy path. It proves the redirect route also 404s rather than leaking a workspace id. Add one line of comment saying so. `routing.spec.ts` covers the canonical path's 404.
+- `auth-flow.spec.ts`, 'an unauthenticated visit to a document' (the `toHaveURL(`/login?next=…/documents/…`)` assertion, ~line 227): leave the legacy path and the legacy `next=` assertion exactly as they are; that is the behaviour the redirect route preserves. The final `page.goto` after `signIn` now lands on the canonical URL; add `await expect(page).toHaveURL(documentPath(document))` before the `[aria-current="page"]` assertion.
+
+One assertion changes rather than moves:
+
+- `command-palette.spec.ts` ~line 100: tighten `toHaveURL(new RegExp(\`/documents/${target.id}$\`))` to `toHaveURL(documentPath(target))`. The old regex matches the canonical URL by accident, which is exactly why it must be made exact.
+
+Afterwards, the same grep should show only the deliberate legacy uses above.
 
 - [ ] **Step 12: Run the routing tests**
 
@@ -637,7 +659,7 @@ Commit first. Then delete `workspaceId` from the `findFirst` where clause and re
 - [ ] **Step 14: Run the full gate**
 
 Run: `pnpm typecheck && pnpm --filter @crdt/web build && pnpm test && pnpm --filter @crdt/web exec playwright test`
-Expected: all green. The route count in the build output goes from 13 to 14 (the legacy redirect stays, the canonical document route is new).
+Expected: all green. The route count in the build output goes from 14 to 15 (the legacy redirect stays, the canonical document route is new).
 
 - [ ] **Step 15: Commit**
 
@@ -655,139 +677,61 @@ The old /documents/[id] URL stays as a redirect: it is in bookmarks and in
 
 ---
 
-### Task 3: Prove the indicator slides
+### Task 3: Prove the nav node survives a navigation
 
-Task 2 is the reason the slide can work; this task is the evidence that it does. It is separate so that a failure here is a clean, isolated finding rather than an unpicking of the restructure.
+**Refreshed 2026-10-07.** The slide itself is already proven: `1a98f61` added "the pill slides to the new tab across a navigation instead of appearing there" and "the nav animates to its new width across a navigation" to `glass-shell.spec.ts`, and Task 2's gate keeps them green. Those pass with or without the layout, because module-level memory carries the motion across a remount. What only the layout gives, and nothing yet proves, is that the nav is **not rebuilt**: no remount, no re-run of the entrance animation, no lost focus, no lost scroll position in the tab strip. That is this task.
 
 **Files:**
-- Test: `apps/web/e2e/glass-shell.spec.ts` (two tests added beside the existing 'the indicator tracks the active tab')
+- Test: `apps/web/e2e/glass-shell.spec.ts`
 
 **Interfaces:**
 - Consumes: `documentPath` from `e2e/fixtures.ts`.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the test**
 
 Add to `apps/web/e2e/glass-shell.spec.ts`:
 
 ```ts
-/**
- * Samples the indicator's left edge on every frame while `act` runs.
- *
- * The sampling loop is started before the navigation and awaited after it, so it
- * observes the transition as it happens. It also proves the nav survived: a full
- * page load would destroy the running promise, and a remounted nav would give
- * readings from a different node.
- */
-async function sampleIndicator(page: Page, act: () => Promise<void>): Promise<number[]> {
-  await page.evaluate(() => {
-    const el = document.querySelector('[class*="indicator"]')
-    if (!el) throw new Error('no indicator to sample')
-    ;(el as unknown as { __sampled: boolean }).__sampled = true
-  })
-
-  const sampling = page.evaluate(async () => {
-    const out: number[] = []
-    const start = performance.now()
-    while (performance.now() - start < 1500) {
-      const el = document.querySelector('[class*="indicator"]') as HTMLElement | null
-      // A marker set on the node before the navigation. If this element is a new
-      // one, the nav remounted and the pill cannot have travelled.
-      if (!el || !(el as unknown as { __sampled?: boolean }).__sampled) {
-        out.push(Number.NaN)
-        break
-      }
-      out.push(el.getBoundingClientRect().x)
-      await new Promise((resolve) => requestAnimationFrame(resolve))
-    }
-    return out
-  })
-
-  await act()
-  return sampling
-}
-
-test('the indicator travels between tabs instead of jumping', async ({ page }) => {
-  const label = `${LABEL}-travel`
+test('moving between the overview and documents keeps the same nav element', async ({ page }) => {
+  const label = `${LABEL}-same-nav`
   const { owner, workspace } = await seedWorkspace(label)
   const first = await createDocument(workspace.id, 'board')
   const second = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
 
-  await page.goto(documentPath(first))
-  await expect.poll(() => indicatorGap(page, `tab-${first.id}`)).toBeLessThanOrEqual(1)
-
-  const from = (await page.getByTestId(`tab-${first.id}`).boundingBox())!.x
-  const samples = await sampleIndicator(page, async () => {
-    await page.getByTestId(`tab-${second.id}`).click()
-    await expect(page.getByTestId(`tab-${second.id}`)).toHaveAttribute('data-active', 'true')
-  })
-  const to = (await page.getByTestId(`tab-${second.id}`).boundingBox())!.x
-
-  // The nav node outlived the navigation.
-  expect(samples.some(Number.isNaN)).toBe(false)
-  expect(to).not.toBeCloseTo(from, 0)
-
-  // At least one frame caught the pill between the two tabs. A remount gives only
-  // the old x and then the new one, with nothing in between.
-  const low = Math.min(from, to) + 2
-  const high = Math.max(from, to) - 2
-  const between = samples.filter((x) => x > low && x < high)
-  expect(between.length).toBeGreaterThan(2)
-
-  await cleanup(label)
-})
-
-test('the indicator travels from the overview tab to a document', async ({ page }) => {
-  const label = `${LABEL}-travel-overview`
-  const { owner, workspace } = await seedWorkspace(label)
-  const document = await createDocument(workspace.id, 'doc')
-  await signIn(page, owner.id)
-
-  // The harder direction: overview and document are different pages, not two
-  // instances of the same one. Only a layout above both keeps the nav alive.
   await page.goto(`/workspaces/${workspace.id}`)
-  await expect.poll(() => indicatorGap(page, 'tab-overview')).toBeLessThanOrEqual(1)
+  const nav = page.getByRole('navigation', { name: 'Primary' })
+  await expect(nav).toBeVisible()
+  // A marker on the DOM node itself. A rebuilt nav is a new node without it.
+  await nav.evaluate((el) => el.setAttribute('data-e2e-marker', 'kept'))
 
-  const from = (await page.getByTestId('tab-overview').boundingBox())!.x
-  const samples = await sampleIndicator(page, async () => {
-    await page.getByTestId(`tab-${document.id}`).click()
-    await expect(page.getByTestId(`tab-${document.id}`)).toHaveAttribute('data-active', 'true')
-  })
-  const to = (await page.getByTestId(`tab-${document.id}`).boundingBox())!.x
-
-  expect(samples.some(Number.isNaN)).toBe(false)
-  const low = Math.min(from, to) + 2
-  const high = Math.max(from, to) - 2
-  expect(samples.filter((x) => x > low && x < high).length).toBeGreaterThan(2)
+  // Overview -> document -> another document -> overview: the two hard directions
+  // (different pages) and the easy one (two instances of the same page).
+  for (const tab of [`tab-${first.id}`, `tab-${second.id}`, 'tab-overview']) {
+    await page.getByTestId(tab).click()
+    await expect(page.getByTestId(tab)).toHaveAttribute('data-active', 'true')
+    await expect(nav).toHaveAttribute('data-e2e-marker', 'kept')
+  }
 
   await cleanup(label)
 })
 ```
 
-`Page` may already be imported in this file; add it to the existing `@playwright/test` import if not.
+- [ ] **Step 2: Run it, expect PASS**
 
-- [ ] **Step 2: Run them**
+Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "same nav element|pill slides|animates to its new width"`
+Expected: PASS, 3 tests (the new one and the two from `1a98f61`).
 
-Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "travel"`
-Expected: PASS, 2 tests.
+- [ ] **Step 3: Prove it discriminates**
 
-- [ ] **Step 3: Prove they discriminate**
+Commit first. Then temporarily wrap the layout's `<AppShell>` in `<div key={Math.random()}>` in `app/workspaces/[id]/layout.tsx`, which forces a remount on every render, and re-run. Expected: the new test fails on the marker after the first click, while the two motion tests still pass, which is the point: they cannot tell a kept nav from a rebuilt one. Restore.
 
-Commit first. Then temporarily remove `styles.indicatorAnimated` from the indicator's className in `NavTabs.tsx` so the pill has no transition, and re-run. Expected: both tests fail on `between.length` — the pill arrives in one frame. Restore.
-
-Then, separately, temporarily change the document tab's `href` to a plain `<a>` so the click triggers a full page load, and re-run. Expected: failure on the NaN assertion, because the sampling promise does not survive the load. Restore. Note both results in the report: together they show the test distinguishes *travelled* from *teleported* and from *reloaded*.
-
-- [ ] **Step 4: Run the full gate**
-
-Run: `pnpm typecheck && pnpm test && pnpm --filter @crdt/web exec playwright test`
-Expected: all green.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add apps/web/e2e/glass-shell.spec.ts
-git commit -m "test(nav): the indicator travels across a navigation, and the nav node survives it"
+git commit -m "test(nav): the nav element survives navigation inside a workspace"
 ```
 
 ---
@@ -795,17 +739,12 @@ git commit -m "test(nav): the indicator travels across a navigation, and the nav
 ### Task 4: The presence count (the dashboard's tab slot is already done)
 
 **The "Workspaces" label landed on 2026-10-04 in `12f785c`**, with the content-sized
-nav, because that geometry turned the unlabelled slot into a visible hole. Skip the
-label half of this task and its test — `nav-context` already exists and is covered.
-What remains is the presence count including yourself.
-
-
-Two small nav corrections from the owner's review, batched because each is a handful of lines in the nav and neither needs the other.
+nav, because that geometry turned the unlabelled slot into a visible hole. `nav-context`
+exists and is covered; the label half of this task has been removed. What remains is
+the presence count including yourself (handoff §5.3 row 7: "`{n} here` (**you included**)").
 
 **Files:**
-- Modify: `apps/web/src/components/SyncStatus.tsx`
-- Modify: `apps/web/src/components/AppShell.tsx`
-- Modify: `apps/web/src/components/app-shell.module.css`
+- Modify: `apps/web/src/components/SyncStatus.tsx:23`
 - Modify: `apps/web/e2e/collaboration.spec.ts` (line ~212, `'1 here'` → `'2 here'`)
 - Test: `apps/web/e2e/glass-shell.spec.ts`
 
@@ -838,28 +777,14 @@ test('alone in a document the pill says Synced, not a count of one', async ({ pa
 
   await cleanup(label)
 })
-
-test('the dashboard nav labels the space where tabs would be', async ({ page }) => {
-  const label = `${LABEL}-dashlabel`
-  const { owner } = await seedWorkspace(label)
-  await signIn(page, owner.id)
-
-  await page.goto('/')
-  // Without this the dashboard nav has a 120px-minimum hole between the logo and
-  // the search field.
-  await expect(page.getByTestId('nav-context')).toHaveText('Workspaces')
-  await expect(page.getByTestId('tab-overview')).toHaveCount(0)
-
-  await cleanup(label)
-})
 ```
 
 Also update the existing 'below 1100px the avatars and the status label stay available' test in `collaboration.spec.ts`: its `getByText('1 here')` becomes `getByText('2 here')`.
 
 - [ ] **Step 2: Run them to verify they fail**
 
-Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "alone in a document|dashboard nav labels" e2e/collaboration.spec.ts`
-Expected: FAIL — the count reads '1 here', and there is no `nav-context` element.
+Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "alone in a document" e2e/collaboration.spec.ts`
+Expected: the collaboration assertions FAIL (the count reads '1 here'); 'alone in a document' already passes, and is there to pin the solo state against the change in Step 3.
 
 - [ ] **Step 3: Count yourself**
 
@@ -872,72 +797,39 @@ In `apps/web/src/components/SyncStatus.tsx`, replace the `text` line:
   const text = status === 'connected' && peers.length > 0 ? `${peers.length + 1} here` : label
 ```
 
-- [ ] **Step 4: Label the dashboard's tab slot**
-
-In `apps/web/src/components/AppShell.tsx`, replace the empty `<div className={styles.tabsSlot} />` fallback with:
-
-```tsx
-            ) : (
-              /* No workspace in context, so there are no tabs. The slot is 120px at
-                 minimum and would otherwise be an unexplained hole in the nav. */
-              <div className={styles.tabsSlot}>
-                <span className={styles.navContext} data-testid="nav-context">
-                  Workspaces
-                </span>
-              </div>
-            )}
-```
-
-In `apps/web/src/components/app-shell.module.css`, replace the `.tabsSlot` comment (which still says "Task 5 fills this") and add the label rule:
-
-```css
-/* Where the tab strip goes when there is a workspace; a label when there is not. */
-.tabsSlot {
-  flex: 1 1 auto;
-  min-width: 120px;
-  display: flex;
-  align-items: center;
-}
-
-/* Matches an inactive tab: same 14px, same 500 weight, same muted colour, same
-   0 14px inset. It is a label, not a link, so it gets no pill and no hover. */
-.navContext {
-  padding: 0 14px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-```
-
-- [ ] **Step 5: Run the tests to verify they pass**
+- [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts e2e/collaboration.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Prove the count test discriminates**
+- [ ] **Step 5: Prove the count test discriminates**
 
 Commit first. Change `peers.length + 1` back to `peers.length` and re-run `collaboration.spec.ts`. Expected: the '2 here' assertion fails with '1 here'. Then change the solo branch to `${peers.length + 1} here` unconditionally and re-run. Expected: 'alone in a document' fails with '1 here'. Restore both.
 
-- [ ] **Step 7: Run the full gate**
+- [ ] **Step 6: Run the full gate**
 
 Run: `pnpm typecheck && pnpm --filter @crdt/web build && pnpm test && pnpm --filter @crdt/web exec playwright test`
 Expected: all green.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web
-git commit -m "fix(nav): count yourself among the people here, label the dashboard tab slot"
+git add apps/web/src/components/SyncStatus.tsx apps/web/e2e/collaboration.spec.ts apps/web/e2e/glass-shell.spec.ts
+git commit -m "fix(nav): count yourself among the people here"
 ```
 
 ---
 
 ### Task 5: The nav condenses on scroll
 
+Handoff §5.5: "Scroll > 24px: add `data-compact`. Height 56 → 46, wrapper top padding 12 → 6, fill .72 → .85, animated over .4s with `--ease`." This plan's attribute is `data-condensed` (the tests below use it); either name satisfies the spec, which describes behaviour.
+
 **Files:**
 - Modify: `apps/web/src/components/AppShell.tsx`
 - Modify: `apps/web/src/components/app-shell.module.css`
-- Test: `apps/web/e2e/glass-shell.spec.ts`
+- Modify: `apps/web/src/components/editor-toolbar.module.css` (the toolbar follows the nav)
+- Modify: `docs/design/glass-handoff.md` (the "Sticky offset (§12.1)" deviation row)
+- Test: `apps/web/e2e/glass-shell.spec.ts`, `apps/web/e2e/editor-toolbar.spec.ts`
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
@@ -1045,17 +937,22 @@ In `apps/web/src/components/AppShell.tsx`, beside the existing `useEffect` for t
   }, [])
 ```
 
-Then apply it to the wrapper and the bar:
+Then apply it to the shell, the wrapper and the bar. Today they read `<div className={styles.navWrap}>` and `<nav ref={nav} className={styles.nav} aria-label="Primary">` (`AppShell.tsx:162-163`); keep the `ref`, which the width animation needs:
 
 ```tsx
+      <div className={styles.shell} data-nav-condensed={condensed}>
+        …
         <div className={`${styles.navWrap} ${condensed ? styles.navWrapCondensed : ''}`}>
           <nav
+            ref={nav}
             className={`${styles.nav} ${condensed ? styles.navCondensed : ''}`}
             aria-label="Primary"
             data-testid="nav-bar"
             data-condensed={condensed}
           >
 ```
+
+`data-nav-condensed` goes on the outermost `.shell` element, the one that wraps both the nav and `children`, so that the document toolbar (inside `children`) can read it through a CSS variable in Step 4. If the outermost element is not `.shell`, put it on whichever element wraps both.
 
 - [ ] **Step 4: Add the CSS**
 
@@ -1066,7 +963,7 @@ In `apps/web/src/components/app-shell.module.css`, after the `.nav` rule:
   The condensed state. 56 → 46, the wrapper's gap 12 → 6, the glass .72 → .85, over
   0.4s. All four are design literals: there is no 0.4s token (--dur-fast is 0.3s,
   --dur is 0.55s), and the .85 background is set here rather than on
-  --glass-bg-strong, which the sheets and popovers also use.
+  --glass-mid, which the sheets and popovers also use.
 */
 .navCondensed {
   height: 46px;
@@ -1081,20 +978,48 @@ In `apps/web/src/components/app-shell.module.css`, after the `.nav` rule:
   .navWrap {
     transition: padding-top 0.4s var(--ease);
   }
-  .nav {
+}
+```
+
+**Do not add a second `transition` to `.nav`.** It already has `transition: width var(--dur) var(--ease)` inside the existing reduced-motion block (the in-page width animation, handoff §5.2), and a later rule of the same specificity would replace it, silently dropping the width animation. Edit that existing declaration to the combined list instead:
+
+```css
     transition:
+      width var(--dur) var(--ease),
       height 0.4s var(--ease),
       background 0.4s var(--ease);
-  }
+```
+
+`AppShell`'s cross-navigation width animation sets `transition` inline for the length of one width change and then clears it, which hands control back to this list; a height change that lands during that half-second simply does not animate, which is acceptable.
+
+Expose the nav's bottom edge to the page, on the shell, so the toolbar can follow it (12px wrapper gap + 56px bar = 68; condensed 6 + 46 = 52):
+
+```css
+/* The nav's bottom edge, for anything sticky under it (the document toolbar). */
+.shell {
+  --nav-bottom: 68px;
+}
+
+.shell[data-nav-condensed='true'] {
+  --nav-bottom: 52px;
 }
 ```
 
 The 36px-high children still fit at 46px (5px of clearance each side), so nothing inside the bar needs a condensed variant.
 
+**The toolbar follows.** `editor-toolbar.module.css` sticks the toolbar at `top: 80px`, which the handoff's deviation table explains as "the nav in this repo does not condense on scroll, so there is no smaller offset to follow". §12.1 asks for "12px under the nav". Change the toolbar's `top: 80px` to:
+
+```css
+  /* 12px under the nav (handoff 12.1), following it when it condenses on scroll. */
+  top: calc(var(--nav-bottom, 68px) + 12px);
+```
+
+and add `top 0.4s var(--ease)` to the toolbar's transitions inside its reduced-motion block (or add a reduced-motion block with `transition: top 0.4s var(--ease)` if it has none; read the file first and extend any existing `transition` list rather than adding a second declaration). `editor-toolbar.spec.ts`'s 'the toolbar stays 80px from the top while the page scrolls' now expects 64 (52 + 12) once scrolled; update that assertion to `toBeCloseTo(64, 0)` behind an `expect.poll`, because `top` animates over 0.4s.
+
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "condense"`
-Expected: PASS, 2 tests.
+Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "condense|width|pill slides" e2e/editor-toolbar.spec.ts -g "80px|toolbar stays"`
+Expected: PASS, including both nav-motion tests from `1a98f61` (the guard on the combined `transition`) and the updated toolbar offset test.
 
 - [ ] **Step 6: Prove the tests discriminate**
 
@@ -1102,11 +1027,21 @@ Commit first. Then:
 1. Delete the `read()` call before `addEventListener` and re-run. Expected: 'a page loaded already scrolled' fails.
 2. Replace the dead band with a single `window.scrollY > 24` and re-run. Expected: the dead-band assertion at scrollY 18 fails.
 
-Restore both.
+3. Replace the combined `.nav` transition with the height/background-only list the first draft of this plan had, and re-run "the nav animates to its new width across a navigation". Expected: it still passes, because that test drives the inline transition. So also check in-page: on a document, open a second browser so "2 here" appears and measure the bar's width over 300ms with `page.evaluate` and `requestAnimationFrame`; with the width transition gone it jumps in one frame. Record the measurement in the report. This is the regression the combined list prevents, and no existing test pins it, so add that check to `glass-shell.spec.ts` as its own test if it discriminates.
+
+Restore all three.
 
 - [ ] **Step 7: Check the splatter exclusion zone still covers the bar**
 
 The visual-corrections plan keeps the splatter out of the top 90px. Condensed, the bar occupies 6 + 46 = 52px, so it is still inside that zone, and the splatter is painted once and does not react to scroll. Confirm by reading the exclusion constant in `apps/web/src/components/PaintSplatter.tsx` and checking it is unchanged at 90. Do not reduce it to match the condensed height: the bar is 68px tall before you scroll.
+
+- [ ] **Step 7b: Record the toolbar offset in the handoff**
+
+In `docs/design/glass-handoff.md`, replace the deviation-table row that begins `| Sticky offset (§12.1) |` with:
+
+```markdown
+| Sticky offset (§12.1) | "12px under the nav" | `top: calc(var(--nav-bottom) + 12px)`: 80px, and 64px once the nav condenses | `--nav-bottom` is set on the shell from the nav's state (68px, condensed 52px); the toolbar's `top` animates with the nav over .4s. |
+```
 
 - [ ] **Step 8: Run the full gate**
 
@@ -1116,8 +1051,8 @@ Expected: all green.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/web
-git commit -m "feat(nav): condense the bar once the page scrolls"
+git add apps/web docs/design/glass-handoff.md
+git commit -m "feat(nav): condense the bar once the page scrolls, and the toolbar follows it"
 ```
 
 ---
@@ -1296,11 +1231,14 @@ import { HistoryButton } from './HistoryButton'
   const onDocument = activeDocumentIdFrom(usePathname()) !== undefined
 ```
 
-and render it between `<NavPresence />` and the Share button:
+and render it directly **before** `<SyncStatus />` (`AppShell.tsx`, today `<SyncStatus />` then `<NavPresence />` then the Share button):
 
 ```tsx
             {onDocument && <HistoryButton />}
+            <SyncStatus />
 ```
+
+Handoff §5.3 orders the right side as presence avatars (5), History (6), status pill (7), Share (8). The avatars currently sit *after* the status pill, which is an existing deviation this task does not fix; record it in Task 8 as a deviation, and leave the reorder to `material-and-motion-fidelity` (presence detail) or the owner.
 
 - [ ] **Step 5: Add the CSS**
 
@@ -1349,12 +1287,12 @@ In `apps/web/src/components/app-shell.module.css`:
   width: 300px;
   padding: 18px 20px 20px;
   border-radius: var(--r-panel);
-  background: var(--glass-bg-sheet);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-sheet);
+  backdrop-filter: var(--blur-2);
+  -webkit-backdrop-filter: var(--blur-2);
   border: 1px solid var(--glass-border);
   box-shadow:
-    var(--glass-highlight),
+    var(--glass-hl),
     0 18px 40px rgba(30, 30, 50, 0.16);
 }
 
@@ -1645,7 +1583,7 @@ export function NavMenu({
   )
 ```
 
-The strip keeps `flex: 1 1 auto`, so a fragment containing two flex items of the nav is fine: only one of them is ever displayed.
+The strip keeps `flex: 0 1 auto` (`nav-tabs.module.css`; a growing strip makes the content-sized nav grow to the window and lose its centring, see that file's comment), so a fragment containing two flex items of the nav is fine: only one of them is ever displayed, and the menu is sized the same way.
 
 - [ ] **Step 5: Add the CSS**
 
@@ -1656,7 +1594,8 @@ In `apps/web/src/components/nav-tabs.module.css`:
 .menu {
   position: relative;
   display: none;
-  flex: 1 1 auto;
+  /* 0 1 auto like the strip: a growing child stretches the content-sized nav. */
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -1717,12 +1656,12 @@ In `apps/web/src/components/nav-tabs.module.css`:
   padding: 6px;
   list-style: none;
   border-radius: var(--r-card);
-  background: var(--glass-bg-sheet);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-sheet);
+  backdrop-filter: var(--blur-2);
+  -webkit-backdrop-filter: var(--blur-2);
   border: 1px solid var(--glass-border);
   box-shadow:
-    var(--glass-highlight),
+    var(--glass-hl),
     0 18px 40px rgba(30, 30, 50, 0.16);
 }
 
@@ -1763,7 +1702,20 @@ In `apps/web/src/components/nav-tabs.module.css`:
 Run: `pnpm --filter @crdt/web exec playwright test e2e/glass-shell.spec.ts -g "760|dropdown"`
 Expected: PASS, 2 tests.
 
-If the overflow test fails at 760px, the culprit is almost certainly the workspace name at its 240px cap. Add a `@media (max-width: 760px) { .workspaceName { max-width: 140px } }` rule to `app-shell.module.css` with a comment, re-measure, and report the measured overflow before and after. Do not relax the assertion.
+Handoff §5.5 says the workspace name hides below 760px; this plan's first draft only capped it if the overflow test failed. Hide it, and the divider beside it, in `app-shell.module.css`:
+
+```css
+/* Below 760px the tabs become one dropdown and the workspace name hides (handoff 5.5).
+   The logo still links to the dashboard; the dropdown's Overview entry replaces the name. */
+@media (max-width: 760px) {
+  .workspaceName,
+  .divider {
+    display: none;
+  }
+}
+```
+
+and add to the 'below 760px the tab strip becomes a dropdown' test: `await expect(page.getByTestId('workspace-link')).toBeHidden()`. If the overflow test still fails at 760px, report the measured overflow and its culprit; do not relax the assertion.
 
 - [ ] **Step 7: Prove the tests discriminate**
 
@@ -1814,10 +1766,11 @@ Write down, for the report:
 
 - [ ] **Step 2: Update `## Implementation status`**
 
-- **Delete** the "The tab indicator does not animate across navigations" limitation. Replace it with one line in the built list: the nav lives in `app/workspaces/[id]/layout.tsx`, documents are at `/workspaces/[id]/documents/[docId]`, the old flat URL redirects, and the indicator travels (naming the test that proves it).
+- **Delete** the "The tab indicator does not animate across navigations" limitation (~line 1386). It was already stale before this plan: `1a98f61` made the pill and the bar animate across navigations with module-level memory. Replace it with one line in the built list: the nav lives in `app/workspaces/[id]/layout.tsx` and is not rebuilt inside a workspace (Task 3's test), documents are at `/workspaces/[id]/documents/[docId]`, the old flat URL redirects, and `lastMetrics` / `lastNavWidth` remain for navigations to and from the dashboard. Resolve the "still an open question" about the glide near line 1221 the same way.
+- **Record** that the presence avatars sit after the status pill, where §5.3 puts them before it (deviation table), and that History is placed per §5.3.
 - **Add** a line stating that a layout is not an access gate in this codebase and every page under it checks for itself — with the reason, because this is the kind of thing a later reader deletes as duplication.
 - **Update** the "No phone layout" limitation with what Task 7 measured at 375px. If the dropdown fixed part of it, say which part; if the avatar is still off screen, keep the limitation and say so.
-- **Record** the condensed nav's values (56→46, 12→6, .72→.85, 0.4s, 24px with a 12px dead band) in the Layout section, and note that 0.4s is a literal because no token matches.
+- **Record** the condensed nav's values (56→46, 12→6, .72→.85, 0.4s, 24px with a 12px dead band) under §5.5's build notes (the Implementation status section, not §5.5 itself, which is regenerated from the design tool), and note that 0.4s is a literal because no token matches, and that the attribute is `data-condensed` where §5.5 says `data-compact`.
 - **Record** the 760px breakpoint beside the existing 1100px rules, and that the dropdown is a disclosure of links rather than a menu, deliberately.
 - **Record** the presence count copy: peers plus you when anyone else is present, the connection label when alone.
 - **Move** "History button" out of `### Deferred` into a new, honest entry: the button and an explanatory panel are built; the panel's contents wait on the history backend. The history panel and version preview bar stay deferred.
