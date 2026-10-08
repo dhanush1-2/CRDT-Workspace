@@ -28,6 +28,36 @@ async function openDocument(page: Page, label: string) {
 
 const prose = (page: Page) => page.locator('.editor .ProseMirror')
 
+/**
+ * Waits until nothing in the toolbar is mid-flight: the ribbon's own entrance and its
+ * `top` transition (it follows the nav as the nav condenses, and clicking into the
+ * editor scrolls the page enough to condense it), a menu's pop-in, a hover fade.
+ * `toBeVisible()` is true from the first frame of an animation, so a box read straight
+ * after it can land anywhere along the motion. Call this before reading geometry.
+ *
+ * Checked over two consecutive frames, because a transition does not exist until the
+ * style recalculation that follows the change that starts it. Infinite animations are
+ * skipped; they would never finish.
+ */
+async function settled(page: Page) {
+  await page.getByTestId('tb-root').evaluate(async (root) => {
+    const running = () =>
+      root
+        .getAnimations({ subtree: true })
+        .filter((a) => Number.isFinite(a.effect?.getComputedTiming().endTime ?? Infinity))
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    for (let quiet = 0; quiet < 2; ) {
+      const pending = running()
+      if (pending.length === 0) quiet++
+      else {
+        quiet = 0
+        await Promise.allSettled(pending.map((a) => a.finished))
+      }
+      await frame()
+    }
+  })
+}
+
 test('the toolbar sits above the document sheet, not inside it', async ({ page }) => {
   await openDocument(page, `${LABEL}-above`)
 
@@ -565,6 +595,7 @@ const STYLES = ['title', 'heading', 'subheading', 'normal', 'quote', 'code'] as 
 async function openMenu(page: Page, id: 'style' | 'color' | 'highlight') {
   await tb(page, id).click()
   await expect(tb(page, `${id}-menu`)).toBeVisible()
+  await settled(page)
 }
 
 /** The one thing a toolbar press must not change: where focus and the selection are. */
@@ -1183,6 +1214,7 @@ test('a menu blurs the page behind it: no ancestor of its panel is a backdrop ro
 async function openInsert(page: Page) {
   await page.getByTestId('tb-tab-insert').click()
   await expect(page.getByTestId('tb-row-insert')).toBeVisible()
+  await settled(page)
 }
 
 /** Opens the Link popover with the mouse, the way a person does: focus moves to its field. */
@@ -1190,6 +1222,7 @@ async function openLink(page: Page) {
   await tb(page, 'insert-link').click()
   await expect(tb(page, 'insert-link-menu')).toBeVisible()
   await expect(tb(page, 'insert-link-input')).toBeFocused()
+  await settled(page)
 }
 
 /** What the editor believes is selected, whether or not it has focus. */
@@ -1863,6 +1896,7 @@ test('a viewer gets no Insert tab, so none of the Insert tools', async ({ page }
 async function openView(page: Page) {
   await tb(page, 'tab-view').click()
   await expect(tb(page, 'row-view')).toBeVisible()
+  await settled(page)
 }
 
 const zoomValue = (page: Page) => tb(page, 'view-zoom-value')
