@@ -5,9 +5,9 @@ import { useCollaborativeDoc } from '@/hooks/use-doc'
 import { useAnnouncePresence, usePresence } from '@/hooks/use-presence'
 import { Board } from '@/components/Board'
 import { DocumentEditor } from '@/components/DocumentEditor'
+import { InlineTitle } from '@/components/InlineTitle'
 import { clearDocState, publishDocState } from '@/lib/doc-state'
 import styles from './document.module.css'
-import ui from '@/components/ui/ui.module.css'
 
 export function DocumentClient({
   documentId,
@@ -47,17 +47,24 @@ export function DocumentClient({
   useEffect(() => () => clearDocState(documentId), [documentId])
 
   /*
-    The page's only heading, and the only one there has ever been -- it used to be
-    screen-reader-only in page.tsx. Visible on a document, where the design shows a
-    title; still clipped on a board, where the design has no title slot but the
-    page still needs an accessible name.
+    The page's only heading. Editors get the title as an input that reads as the heading
+    (InlineTitle); viewers get the plain h1. A board now shows its title too: the owner
+    asked to rename a board from inside it, which needs it on screen.
   */
-  const heading = (
-    <h1
-      className={type === 'doc' ? styles.heading : ui.labelHidden}
-      data-testid="document-heading"
-    >
+  const headingClass = type === 'doc' ? styles.heading : styles.boardHeading
+  const heading = readOnly ? (
+    <h1 className={headingClass} data-testid="document-heading">
       {title}
+    </h1>
+  ) : (
+    <h1 className={headingClass} data-testid="document-heading">
+      <InlineTitle
+        documentId={documentId}
+        title={title}
+        label={type === 'doc' ? 'Document title' : 'Board title'}
+        className={styles.titleInput}
+        testId="document-title"
+      />
     </h1>
   )
 

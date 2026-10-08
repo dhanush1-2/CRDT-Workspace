@@ -178,3 +178,69 @@
 .manageLink:hover {
   text-decoration: underline;
 }
+
+/* The tile and its rename button. The button sits over the tile's top-right corner and
+   shows on hover or keyboard focus; the tile underneath stays one link. */
+.docTileWrap {
+  position: relative;
+  display: flex;
+}
+
+/* The wrapper is the grid item now; the tile fills it, so tiles in a row stay one height. */
+.docTileWrap > .docTile {
+  flex: 1;
+  min-width: 0;
+}
+
+.docRename {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-pill);
+  /* Raw white: a solid chip over a glass tile, not a glass surface, so no glass token. */
+  background: #fff;
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.docTileWrap:hover .docRename,
+.docRename:focus-visible {
+  opacity: 1;
+}
+
+/* No hover on touch screens: keep it visible there. */
+@media (hover: none) {
+  .docRename {
+    opacity: 1;
+  }
+}
+
+.docTitleInput {
+  width: 100%;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 0;
+  border-radius: var(--r-item);
+  /* Raw white: the field must read as a solid input over the translucent tile. */
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-ring);
+}
+
+.docTitleInput:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .docRename {
+    transition: opacity var(--dur-fast) var(--ease);
+  }
+}

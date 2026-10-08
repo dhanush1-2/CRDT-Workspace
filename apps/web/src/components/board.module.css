@@ -2,8 +2,10 @@
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  /* 44px below the nav, raised from 28 on 2026-10-04 to match the centred bar. */
-  padding: 44px 16px 16px;
+  /* The board's title now sits between the nav and the columns (24px under the nav),
+     so the columns' own top padding drops from 44px to 20px: measured 20px from the
+     title's bottom to the first column's top at 1280px. */
+  padding: 20px 16px 16px;
   overflow-x: auto;
   /*
     Centred when the columns fit, full width and scrolling when they do not.

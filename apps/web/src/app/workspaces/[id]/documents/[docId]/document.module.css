@@ -44,3 +44,33 @@
     background: rgba(255, 255, 255, 0.92);
   }
 }
+
+/* A board's title: smaller than a document's, above the columns, aligned with the
+   board's 1000px measure (the toolbar's). */
+.boardHeading {
+  max-width: 1000px;
+  margin: 24px auto 0;
+  padding: 0 18px;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* The title input inherits the heading's type exactly, so editing does not move text. */
+.titleInput {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: var(--r-item);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+.titleInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-ring);
+}

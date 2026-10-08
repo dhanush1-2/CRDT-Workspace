@@ -118,7 +118,8 @@ test('a document shows its title and sits below the nav', async ({ page }) => {
 
   const heading = page.getByTestId('document-heading')
   await expect(heading).toBeVisible()
-  await expect(heading).toHaveText(document.title)
+  // The owner is an editor, so the heading holds the rename field; its value is the title.
+  await expect(page.getByTestId('document-title')).toHaveValue(document.title)
   await expect(heading).toHaveCSS('font-size', '32px')
   await expect(heading).toHaveCSS('font-weight', '600')
 
@@ -134,27 +135,26 @@ test('a document shows its title and sits below the nav', async ({ page }) => {
   await cleanup(label)
 })
 
-test('a board keeps the title for screen readers without showing it', async ({ page }) => {
+test('a board shows its title above the columns', async ({ page }) => {
   const label = `${LABEL}-boardheading`
   const { owner, workspace } = await seedWorkspace(label)
   const board = await createDocument(workspace.id, 'board')
   await signIn(page, owner.id)
   await page.goto(documentPath(board))
 
-  // The design gives a board no title slot -- columns start below the nav. But the
-  // page still needs an accessible name, so the heading stays, clipped. This is the
-  // half that stops the visible heading being added by deleting the hidden one.
+  // The board used to hide its title (clipped to 1px) because the design had no slot
+  // for one. The owner asked to rename a board from inside it, which needs the title on
+  // screen, so it is now a real, visible heading with the rename field in it. Still the
+  // page's only heading, and still no document sheet around the board.
   const heading = page.getByTestId('document-heading')
   await expect(heading).toHaveCount(1)
-  await expect(heading).toHaveText(board.title)
-  // Clipped, not removed -- the same pattern as the nav's labels below 1100px.
-  // toBeVisible() is no use here: a 1px clipped element still has a box, so
-  // Playwright calls it visible. A box that exists proves it is not display:none;
-  // a box that narrow proves it is not on screen.
+  await expect(heading).toBeVisible()
+  await expect(page.getByTestId('document-title')).toHaveValue(board.title)
+  // A real box, not the 1px clip it used to be.
   const box = await heading.boundingBox()
   expect(box).not.toBeNull()
-  expect(box!.width).toBeLessThanOrEqual(1)
-  expect(box!.height).toBeLessThanOrEqual(1)
+  expect(box!.width).toBeGreaterThan(100)
+  expect(box!.height).toBeGreaterThan(10)
   await expect(page.getByTestId('document-page')).toHaveCount(0)
 
   await cleanup(label)
@@ -194,7 +194,7 @@ test('the dashboard nav labels the slot where tabs would be', async ({ page }) =
   await cleanup(label)
 })
 
-test('the board starts 44px below the nav and its columns are centred', async ({ page }) => {
+test('the board title sits below the nav, the columns follow it, and they are centred', async ({ page }) => {
   const label = `${LABEL}-boardcentre`
   const { owner, workspace } = await seedWorkspace(label)
   const board = await createDocument(workspace.id, 'board')
@@ -207,7 +207,16 @@ test('the board starts 44px below the nav and its columns are centred', async ({
   await expect(page.locator('[data-testid^="column-"]')).toHaveCount(1)
 
   const scroller = page.locator('[class*="scroller"]').first()
-  await expect(scroller).toHaveCSS('padding-top', '44px')
+  // Was 44px below the nav. The title now fills that space: it sits 24px under the nav
+  // and the columns start 20px under the title.
+  await expect(scroller).toHaveCSS('padding-top', '20px')
+  const nav = (await page.getByRole('navigation', { name: 'Primary' }).boundingBox())!
+  const title = (await page.getByTestId('document-heading').boundingBox())!
+  const firstColumn = (await page.locator('[data-testid^="column-"]').first().boundingBox())!
+  expect(title.y - (nav.y + nav.height)).toBeCloseTo(24, 0)
+  const gap = firstColumn.y - (title.y + title.height)
+  expect(gap).toBeGreaterThanOrEqual(20)
+  expect(gap).toBeLessThanOrEqual(28)
 
   // One column, so the row is far narrower than the window and must be centred.
   const box = (await scroller.boundingBox())!

@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/current-user'
 import { HttpError } from '@/lib/auth-guard'
@@ -6,6 +5,7 @@ import { lastActivityByDocument } from '@/lib/document-activity'
 import { formatCount, formatRelativeTime } from '@/lib/format'
 import { documentHref } from '@/lib/routes'
 import { loadWorkspaceContext } from '@/lib/workspace-context'
+import { DocumentTile } from '@/components/DocumentTile'
 import { CreateDocumentForm } from './CreateDocumentForm'
 import { MembersPanel } from './MembersPanel'
 import styles from './workspace.module.css'
@@ -52,22 +52,24 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
           <div className={styles.grid}>
             <div className={styles.docs} data-testid="document-list">
               {documents.map((document) => (
-                <Link
+                <DocumentTile
                   key={document.id}
                   href={documentHref(id, document.id)}
-                  className={`${ui.glass} ${ui.tile} ${styles.docTile}`}
-                  data-testid={`document-${document.id}`}
-                >
-                  <span className={`${ui.chip} ${ui.chipAccent}`} data-testid="document-kind">
-                    {document.type === 'board' ? 'Board' : 'Page'}
-                  </span>
-                  <span className={styles.docText}>
-                    <span className={styles.docTitle}>{document.title}</span>
-                    <span className={styles.docUpdated}>
-                      updated {formatRelativeTime(lastActivity.get(document.id) ?? document.createdAt, now)}
-                    </span>
-                  </span>
-                </Link>
+                  documentId={document.id}
+                  title={document.title}
+                  kind={document.type === 'board' ? 'Board' : 'Page'}
+                  updated={`updated ${formatRelativeTime(lastActivity.get(document.id) ?? document.createdAt, now)}`}
+                  canEdit={canCreate}
+                  classes={{
+                    wrap: styles.docTileWrap,
+                    tile: styles.docTile,
+                    text: styles.docText,
+                    title: styles.docTitle,
+                    updated: styles.docUpdated,
+                    rename: styles.docRename,
+                    field: styles.docTitleInput,
+                  }}
+                />
               ))}
             </div>
             {canCreate && <CreateDocumentForm workspaceId={id} />}
