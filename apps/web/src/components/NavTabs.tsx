@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { useDocState } from '@/lib/doc-state'
 import { activeDocumentIdFrom, documentHref } from '@/lib/routes'
 import type { NavDocument } from './AppShell'
+import { NavMenu } from './NavMenu'
 import styles from './nav-tabs.module.css'
 
 type Metrics = { x: number; w: number }
@@ -160,56 +161,59 @@ export function NavTabs({
   }, [])
 
   return (
-    <div
-      className={styles.strip}
-      ref={strip}
-      style={{
-        maskImage: overflowing ? 'linear-gradient(90deg,#000 82%,transparent)' : 'none',
-        WebkitMaskImage: overflowing ? 'linear-gradient(90deg,#000 82%,transparent)' : 'none',
-      }}
-    >
-      <span
-        className={`${styles.indicator} ${animated ? styles.indicatorAnimated : ''}`}
-        aria-hidden="true"
+    <>
+      <div
+        className={styles.strip}
+        ref={strip}
         style={{
-          transform: `translateX(${metrics?.x ?? 0}px)`,
-          width: metrics?.w ?? 0,
-          opacity: metrics ? 1 : 0,
+          maskImage: overflowing ? 'linear-gradient(90deg,#000 82%,transparent)' : 'none',
+          WebkitMaskImage: overflowing ? 'linear-gradient(90deg,#000 82%,transparent)' : 'none',
         }}
-      />
-
-      <Link
-        className={`${styles.tab} ${!activeDocumentId ? styles.tabActive : ''}`}
-        href={`/workspaces/${workspaceId}`}
-        aria-current={!activeDocumentId ? 'page' : undefined}
-        data-active={!activeDocumentId}
-        data-testid="tab-overview"
       >
-        Overview
-      </Link>
+        <span
+          className={`${styles.indicator} ${animated ? styles.indicatorAnimated : ''}`}
+          aria-hidden="true"
+          style={{
+            transform: `translateX(${metrics?.x ?? 0}px)`,
+            width: metrics?.w ?? 0,
+            opacity: metrics ? 1 : 0,
+          }}
+        />
 
-      {documents.map((document) => {
-        const isActive = document.id === activeDocumentId
-        return (
-          <Link
-            key={document.id}
-            className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
-            href={documentHref(workspaceId, document.id)}
-            aria-current={isActive ? 'page' : undefined}
-            data-active={isActive}
-            data-testid={`tab-${document.id}`}
-          >
-            {document.title}
-            {document.id === documentId && othersHere && (
-              <span
-                className={styles.presenceDot}
-                aria-hidden="true"
-                data-testid={`tab-dot-${document.id}`}
-              />
-            )}
-          </Link>
-        )
-      })}
-    </div>
+        <Link
+          className={`${styles.tab} ${!activeDocumentId ? styles.tabActive : ''}`}
+          href={`/workspaces/${workspaceId}`}
+          aria-current={!activeDocumentId ? 'page' : undefined}
+          data-active={!activeDocumentId}
+          data-testid="tab-overview"
+        >
+          Overview
+        </Link>
+
+        {documents.map((document) => {
+          const isActive = document.id === activeDocumentId
+          return (
+            <Link
+              key={document.id}
+              className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
+              href={documentHref(workspaceId, document.id)}
+              aria-current={isActive ? 'page' : undefined}
+              data-active={isActive}
+              data-testid={`tab-${document.id}`}
+            >
+              {document.title}
+              {document.id === documentId && othersHere && (
+                <span
+                  className={styles.presenceDot}
+                  aria-hidden="true"
+                  data-testid={`tab-dot-${document.id}`}
+                />
+              )}
+            </Link>
+          )
+        })}
+      </div>
+      <NavMenu workspaceId={workspaceId} documents={documents} />
+    </>
   )
 }

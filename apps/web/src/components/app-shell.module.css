@@ -392,3 +392,12 @@
   line-height: 1.5;
   color: var(--text-muted);
 }
+
+/* Below 760px the tabs become one dropdown and the workspace name hides (handoff 5.5).
+   The logo still links to the dashboard; the dropdown's Overview entry replaces the name. */
+@media (max-width: 760px) {
+  .workspaceName,
+  .divider {
+    display: none;
+  }
+}

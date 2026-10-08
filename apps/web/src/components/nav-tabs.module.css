@@ -139,3 +139,109 @@
   border-radius: 50%;
   background: var(--ok);
 }
+
+/* One of these two is displayed at a time; see NavMenu. */
+.menu {
+  position: relative;
+  display: none;
+  /* 0 1 auto like the strip: a growing child stretches the content-sized nav. */
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .strip {
+    display: none;
+  }
+  .menu {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.menuTrigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-pill);
+  background: var(--field-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* The one thing that must shrink: a long document title would otherwise push the
+   caret, and then the rest of the nav, off the edge. */
+.menuLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menuCaret {
+  flex: none;
+  margin-left: auto;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--icon-faint);
+}
+
+.menuList {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 1;
+  min-width: 220px;
+  max-width: 280px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: var(--r-menu);
+  background: var(--glass-menu);
+  backdrop-filter: var(--blur-2);
+  -webkit-backdrop-filter: var(--blur-2);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    var(--glass-hl),
+    0 18px 40px rgba(30, 30, 50, 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menuList {
+    transform-origin: top left;
+    animation: g-pop 0.45s var(--ease);
+  }
+}
+
+.menuItem {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menuItem:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* The same active colour the strip's active tab uses. */
+.menuItemActive,
+.menuItemActive:hover {
+  font-weight: 600;
+  color: oklch(0.36 0.11 285);
+}

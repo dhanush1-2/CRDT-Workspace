@@ -985,3 +985,74 @@ test('History is offered on a document, explains itself, and closes cleanly', as
 
   await cleanup(label)
 })
+
+test('below 760px the tab strip becomes a dropdown', async ({ page }) => {
+  const label = `${LABEL}-narrow-tabs`
+  const { owner, workspace } = await seedWorkspace(label)
+  const first = await createDocument(workspace.id, 'doc')
+  const second = await createDocument(workspace.id, 'board')
+  await signIn(page, owner.id)
+
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto(documentPath(first))
+  await expect(page.getByTestId('tab-overview')).toBeVisible()
+  await expect(page.getByTestId('nav-menu')).toBeHidden()
+  // One element, not two. A duplicated testid breaks every existing tab assertion.
+  await expect(page.getByTestId('tab-overview')).toHaveCount(1)
+
+  await page.setViewportSize({ width: 700, height: 800 })
+  await expect(page.getByTestId('tab-overview')).toBeHidden()
+  // The workspace name hides here too (handoff 5.5).
+  await expect(page.getByTestId('workspace-link')).toBeHidden()
+  const trigger = page.getByTestId('nav-menu')
+  await expect(trigger).toBeVisible()
+  // It names where you are, which is the one thing the strip showed that a single
+  // button has to keep.
+  await expect(trigger).toContainText(first.title)
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByTestId('nav-menu-item-overview')).toBeVisible()
+  await expect(page.getByTestId(`nav-menu-item-${first.id}`)).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(page.getByTestId(`nav-menu-item-${second.id}`)).not.toHaveAttribute('aria-current')
+
+  await page.getByTestId(`nav-menu-item-${second.id}`).click()
+  await expect(page).toHaveURL(documentPath(second))
+  // The nav survives the navigation now, so a menu left open would stay open over
+  // the new page.
+  await expect(page.getByTestId(`nav-menu-item-${second.id}`)).toHaveCount(0)
+  await expect(trigger).toContainText(second.title)
+
+  await trigger.click()
+  // Clicking the trigger leaves it focused, so Escape would pass the focus check with
+  // no focus return. Move focus into the list first, without closing it.
+  await page.getByTestId('nav-menu-item-overview').focus()
+  await expect(trigger).not.toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('nav-menu-item-overview')).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+
+  await cleanup(label)
+})
+
+test('at 760px the nav does not force the page to scroll sideways', async ({ page }) => {
+  const label = `${LABEL}-760`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+
+  await page.setViewportSize({ width: 760, height: 800 })
+  await page.goto(documentPath(document))
+  await expect(page.getByTestId('nav-menu')).toBeVisible()
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  )
+  expect(overflow).toBeLessThanOrEqual(0)
+
+  await cleanup(label)
+})
