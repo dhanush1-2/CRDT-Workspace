@@ -768,9 +768,21 @@ test('a preview fades in over 0.4s, and not at all under reduced motion', async 
   await page.goto(documentPath(document))
 
   const panel = await openPanel(page)
+  // A name that matches no keyframes still reads as an animation in computed style (the
+  // app-wide hashed-name bug), so ask the browser whether one is actually running. It
+  // lasts 0.4s, so watch for it from inside the page rather than racing it from here.
+  await page.evaluate(() => {
+    const w = window as unknown as { sawFade: boolean }
+    w.sawFade = false
+    new MutationObserver(() => {
+      const el = document.querySelector('[data-testid="version-preview"]')
+      if (el && el.getAnimations().length > 0) w.sawFade = true
+    }).observe(document.body, { childList: true, subtree: true })
+  })
   await panel.getByTestId('history-row').nth(2).click()
   const preview = page.getByTestId('version-preview')
   await expect(preview).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { sawFade: boolean }).sawFade)).toBe(true)
   const animation = () =>
     preview.evaluate((el) => {
       const style = getComputedStyle(el)
@@ -782,4 +794,95 @@ test('a preview fades in over 0.4s, and not at all under reduced motion', async 
   await panel.getByTestId('history-row').nth(1).click()
   await expect(editorText(page)).toHaveText('Hello world')
   expect((await animation()).startsWith('none')).toBe(true)
+})
+
+test('the preview is announced: a labelled region, and a status that names the version', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('announce'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  // Present and empty before anything is chosen, so a screen reader hears it change.
+  await expect(page.getByTestId('preview-status')).toHaveText('')
+  await expect(page.getByRole('region', { name: /Earlier version/ })).toHaveCount(0)
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+
+  await expect(page.getByRole('region', { name: 'Earlier version of this document' })).toBeVisible()
+  const announcement = page.getByTestId('preview-status')
+  await expect(announcement).toHaveText(/^Showing the version from [A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}, by Grace\.$/)
+  await expect(announcement).toHaveAttribute('role', 'status')
+
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(announcement).toHaveText(/, by Unknown\.$/)
+})
+
+test('a board preview is labelled as a board', async ({ page }) => {
+  const { owner, document } = await seedBoard(labelFor('announce-board'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(page.getByRole('region', { name: 'Earlier version of this board' })).toBeVisible()
+})
+
+test('a failed preview can be retried by choosing the same row again, with no stale notice', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('retry'))
+  const rows = await prisma.documentUpdate.findMany({
+    where: { documentId: document.id },
+    orderBy: { id: 'asc' },
+    select: { id: true },
+  })
+  await signIn(page, owner.id)
+  let failing = true
+  let slow = false
+  await page.route(`**/api/documents/${document.id}/history/${rows[1]!.id}`, async (route) => {
+    if (failing) return route.fulfill({ status: 500, json: { error: 'database is on fire' } })
+    // The retry takes a moment, so a notice left over from the failure would be visible.
+    if (slow) await new Promise((resolve) => setTimeout(resolve, 1000))
+    await route.continue()
+  })
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const row = panel.getByTestId('history-row').nth(1)
+  await row.click()
+  await expect(page.getByTestId('preview-notice')).toContainText('Could not load that version')
+
+  failing = false
+  slow = true
+  await row.click()
+
+  // While the retry is in flight the old notice is gone, not left up until the answer.
+  await expect(page.getByTestId('preview-notice')).toHaveCount(0)
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(editorText(page)).toHaveText('Hello world')
+  await expect(page.getByTestId('preview-notice')).toHaveCount(0)
+})
+
+test('choosing the row that is already previewed changes nothing on screen', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('repick'))
+  await signIn(page, owner.id)
+  const stateRequests: string[] = []
+  page.on('request', (request) => {
+    if (STATE_REQUEST.test(request.url())) stateRequests.push(request.url())
+  })
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  // Mark the editor's element: a rebuilt editor would not carry the mark.
+  await editorText(page).evaluate((el) => el.setAttribute('data-marked', 'yes'))
+  const requests = stateRequests.length
+
+  await panel.getByTestId('history-row').nth(2).click()
+  await page.waitForTimeout(500)
+
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(editorText(page)).toHaveAttribute('data-marked', 'yes')
+  expect(stateRequests).toHaveLength(requests)
 })

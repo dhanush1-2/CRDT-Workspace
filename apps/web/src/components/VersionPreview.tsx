@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as Y from 'yjs'
 import { yXmlFragmentToProsemirrorJSON } from '@tiptap/y-tiptap'
 import type { JSONContent } from '@tiptap/react'
@@ -11,8 +11,8 @@ import { fetchVersionState, VersionTooLargeError } from '@/lib/history-client'
 import styles from './version-preview.module.css'
 
 /** What a fetched state became: text for a document, a throwaway Y.Doc for a board. */
-type Built = { versionId: string } & ({ content: JSONContent } | { board: Y.Doc })
-type Failure = { versionId: string; message: string }
+type Built = { versionId: string; label?: string } & ({ content: JSONContent } | { board: Y.Doc })
+type Failure = { versionId: string; attempt: number; message: string }
 
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
 
@@ -23,14 +23,19 @@ const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
  * it when the version changes or the preview goes away. Never the live doc: the bytes are
  * applied to a new one, which has no provider, no socket and no persistence.
  */
-function build(type: 'doc' | 'board', versionId: string, bytes: Uint8Array): Built {
+function build(
+  type: 'doc' | 'board',
+  versionId: string,
+  label: string | undefined,
+  bytes: Uint8Array,
+): Built {
   const doc = new Y.Doc()
   try {
     Y.applyUpdate(doc, bytes)
-    if (type === 'board') return { versionId, board: doc }
+    if (type === 'board') return { versionId, label, board: doc }
     const content = yXmlFragmentToProsemirrorJSON(doc.getXmlFragment(EDITOR_FRAGMENT)) as JSONContent
     doc.destroy()
-    return { versionId, content: content.content?.length ? content : EMPTY_DOC }
+    return { versionId, label, content: content.content?.length ? content : EMPTY_DOC }
   } catch (error) {
     doc.destroy()
     throw error
@@ -51,6 +56,8 @@ function build(type: 'doc' | 'board', versionId: string, bytes: Uint8Array): Bui
 export function VersionPreview({
   documentId,
   versionId,
+  attempt = 0,
+  label,
   type,
   heading,
   sheetClassName,
@@ -59,6 +66,10 @@ export function VersionPreview({
   documentId: string
   /** Null when nothing is selected. */
   versionId: string | null
+  /** Which pick of that version this is; a higher one retries a failed load. */
+  attempt?: number
+  /** Names the version for a screen reader. */
+  label?: string
   type: 'doc' | 'board'
   /** A plain, non-editable title: a past version cannot be renamed. */
   heading: ReactNode
@@ -71,21 +82,29 @@ export function VersionPreview({
   const [shown, setShown] = useState<Built | null>(null)
   const [failure, setFailure] = useState<Failure | null>(null)
 
+  // Read by the effect below without being one of its dependencies: a version that is
+  // already on screen must not be fetched and rebuilt because it was clicked again.
+  const showing = useRef<string | null>(null)
+  showing.current = shown?.versionId ?? null
+  const labelRef = useRef(label)
+  labelRef.current = label
+
   useEffect(() => {
     if (!versionId) {
       setShown(null)
       return
     }
+    if (showing.current === versionId) return
     let current = true
     fetchVersionState(documentId, versionId, { urgent: true }).then(
       (bytes) => {
         if (!current) return
         try {
-          setShown(build(type, versionId, bytes))
+          setShown(build(type, versionId, labelRef.current, bytes))
           setFailure(null)
         } catch {
           setShown(null)
-          setFailure({ versionId, message: 'Could not read that version.' })
+          setFailure({ versionId, attempt, message: 'Could not read that version.' })
         }
       },
       (error: unknown) => {
@@ -93,6 +112,7 @@ export function VersionPreview({
         setShown(null)
         setFailure({
           versionId,
+          attempt,
           message:
             error instanceof VersionTooLargeError
               ? 'This version is too large to preview.'
@@ -103,7 +123,7 @@ export function VersionPreview({
     return () => {
       current = false
     }
-  }, [documentId, versionId, type])
+  }, [documentId, versionId, attempt, type])
 
   // A board's throwaway Y.Doc goes when it is replaced or the preview unmounts.
   useEffect(() => {
@@ -112,7 +132,9 @@ export function VersionPreview({
     return () => doc.destroy()
   }, [shown])
 
-  const failed = failure?.versionId === versionId ? failure : null
+  // Tied to the attempt, so choosing the row again drops the old notice in the same
+  // render, before the new fetch has had time to fail or succeed.
+  const failed = failure?.versionId === versionId && failure.attempt === attempt ? failure : null
   const preview = versionId && !failed ? shown : null
 
   // The live view fades back in when it returns from a preview (it mounts again then),
@@ -134,9 +156,16 @@ export function VersionPreview({
           {failed.message}
         </p>
       )}
+      {/* Always mounted, so a screen reader is watching it before its text changes. Focus
+          stays in the panel, so without this the page swapping underneath is silent. */}
+      <p role="status" className={styles.visuallyHidden} data-testid="preview-status">
+        {preview?.label ? `Showing the version from ${preview.label}.` : ''}
+      </p>
       {preview ? (
         <div
           key={preview.versionId}
+          role="region"
+          aria-label={`Earlier version of this ${type === 'board' ? 'board' : 'document'}`}
           className={styles.fade}
           data-testid="version-preview"
           data-version-preview=""

@@ -8,9 +8,18 @@ import { useSyncExternalStore } from 'react'
  * preview, and the nav's "viewing an old version" pill reads it too. The document id is
  * part of the value so a pick never outlives a navigation to another document.
  */
-export type VersionSelection = { documentId: string; versionId: string }
+export type VersionSelection = {
+  documentId: string
+  versionId: string
+  /** Rises with every pick, so choosing a version again can mean "try again". */
+  attempt: number
+  /** What a screen reader is told is on screen, e.g. "Sep 30, 16:40, by Grace". */
+  label?: string
+}
 
 let selection: VersionSelection | null = null
+// Never reset: a pick that comes back to a version it failed on earlier must still look new.
+let picks = 0
 const listeners = new Set<() => void>()
 
 function publish(next: VersionSelection | null): void {
@@ -18,10 +27,15 @@ function publish(next: VersionSelection | null): void {
   for (const listener of listeners) listener()
 }
 
-export function selectVersion(documentId: string, versionId: string): void {
-  // The same pick again changes nothing, and a notify would re-render every reader.
-  if (selection?.documentId === documentId && selection.versionId === versionId) return
-  publish({ documentId, versionId })
+/**
+ * Choosing the version that is already chosen is a retry, not a no-op: after a failed
+ * preview the row stays selected and its notice says "try again", and the only thing
+ * the user can do from there is click it. The preview ignores the new attempt when it is
+ * already showing that version, so a repeat click on a working one changes nothing.
+ */
+export function selectVersion(documentId: string, versionId: string, label?: string): void {
+  picks += 1
+  publish({ documentId, versionId, attempt: picks, label })
 }
 
 /**

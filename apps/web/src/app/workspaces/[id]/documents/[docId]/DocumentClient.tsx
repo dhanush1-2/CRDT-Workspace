@@ -109,6 +109,8 @@ export function DocumentClient({
     <VersionPreview
       documentId={documentId}
       versionId={selection?.versionId ?? null}
+      attempt={selection?.attempt ?? 0}
+      label={selection?.label}
       type={type}
       heading={previewHeading}
       sheetClassName={styles.page}
