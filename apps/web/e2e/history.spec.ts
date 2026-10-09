@@ -180,6 +180,50 @@ test('the close button closes the panel and returns focus to the History button'
   await expect(page.getByTestId('history')).toBeFocused()
 })
 
+test('a keyboard user lands in the panel on open, can Tab through it, and Escape comes back', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('keyboard'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const button = page.getByTestId('history')
+  await button.focus()
+  await page.keyboard.press('Enter')
+  const panel = page.getByTestId('history-panel')
+  await expect(panel).toBeVisible()
+
+  // The panel is portalled to the end of <body>, so without a focus move the next Tab
+  // would walk the rest of the nav, the toolbar and the editor before reaching it.
+  // The heading, so a screen reader announces the panel it has just entered.
+  await expect(panel.getByRole('heading', { name: 'History' })).toBeFocused()
+
+  await page.keyboard.press('Tab')
+  await expect(panel.getByRole('button', { name: 'Close history' })).toBeFocused()
+  // Rows must exist before the next Tab, or it would leave a still-loading panel.
+  await expect(panel.getByTestId('history-row')).toHaveCount(3)
+  await page.keyboard.press('Tab')
+  await expect(panel.getByTestId('history-row').first()).toBeFocused()
+
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(button).toBeFocused()
+})
+
+test('opening with the mouse also lands focus in the panel, with no ring on the heading', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('mousefocus'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const heading = panel.getByRole('heading', { name: 'History' })
+
+  await expect(heading).toBeFocused()
+  expect(await heading.evaluate((el) => el.matches(':focus-visible'))).toBe(false)
+})
+
 test('a document with no updates shows an empty state, not a spinner forever', async ({ page }) => {
   const label = labelFor('empty')
   const { owner, workspace } = await seedWorkspace(label)

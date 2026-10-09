@@ -60,6 +60,8 @@ async function describeVersion(
     ])
     return describeChange(build(before), build(after), type, version.updateCount)
   } catch {
+    // Any failure falls back to the count for this open. The client's cache evicts
+    // failures (a 413 excepted, which would only repeat), so reopening the panel retries.
     return describeCount(version.updateCount)
   } finally {
     for (const doc of docs) doc.destroy()
@@ -90,6 +92,16 @@ export function HistoryPanel({
   const [descriptions, setDescriptions] = useState<Record<string, string>>({})
   // Rows whose description has been asked for: a row scrolling in and out must not ask twice.
   const requested = useRef(new Set<string>())
+  const heading = useRef<HTMLHeadingElement>(null)
+
+  // The panel is portalled to the end of <body>, so it does not follow its button in tab
+  // order; left alone, a keyboard user would Tab through the rest of the page to reach
+  // it. Focus goes to the heading, not a control, so a screen reader announces the panel
+  // it has entered and the first Tab lands on the close button. Not a trap: Tab and
+  // Escape leave it as usual (HistoryButton returns focus to its button on Escape).
+  useEffect(() => {
+    heading.current?.focus()
+  }, [])
 
   useEffect(() => {
     let current = true
@@ -142,7 +154,7 @@ export function HistoryPanel({
       data-testid="history-panel"
     >
       <div className={styles.header}>
-        <h2 id="history-title" className={styles.title}>
+        <h2 id="history-title" ref={heading} tabIndex={-1} className={styles.title}>
           History
         </h2>
         <button type="button" className={styles.close} onClick={onClose} aria-label="Close history">
