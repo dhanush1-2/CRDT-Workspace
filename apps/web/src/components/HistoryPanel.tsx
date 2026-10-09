@@ -333,6 +333,7 @@ export function HistoryPanel({
                   description={descriptions[version.id]}
                   selected={version.id === highlightedId}
                   follow={scrub !== null && version.id === highlightedId}
+                  scrubbing={scrub !== null}
                   onSeen={describe}
                   onSelect={(chosen) => {
                     abandonScrub()
@@ -353,6 +354,7 @@ function Row({
   description,
   selected,
   follow,
+  scrubbing,
   onSeen,
   onSelect,
 }: {
@@ -361,6 +363,11 @@ function Row({
   selected: boolean
   /** The slider is moving and is on this row: keep it in view. */
   follow: boolean
+  /**
+   * The slider is moving, on this row or another. A row it passes is not one the user has
+   * stopped at, so nothing is described until it settles.
+   */
+  scrubbing: boolean
   onSeen: (versionId: string) => void
   onSelect: (version: DocumentVersion) => void
 }) {
@@ -369,7 +376,14 @@ function Row({
   // Describe a row when it is on screen. Inside the list's scroll container the
   // intersection is clipped to what is actually visible, so a row below the fold
   // does not count until it is scrolled to.
+  //
+  // Not while the slider is moving: it scrolls each row it reaches into view, and each
+  // would be described on the way past. The observer is simply not made until the slider
+  // settles, when `scrubbing` flips and the effect runs again, so the rows left on screen
+  // are the ones described. Gating inside `onSeen` instead would be wrong: an observer
+  // disconnects after its first hit, so a refused row would never be offered again.
   useEffect(() => {
+    if (scrubbing) return
     const element = button.current
     if (!element) return
     const observer = new IntersectionObserver(
@@ -382,17 +396,18 @@ function Row({
     )
     observer.observe(element)
     return () => observer.disconnect()
-  }, [onSeen, version.id])
+  }, [onSeen, version.id, scrubbing])
 
   // A row the slider has moved to may be far down a long list.
   useEffect(() => {
     if (follow) button.current?.scrollIntoView({ block: 'nearest' })
   }, [follow])
 
-  // A selected row is described whether or not it was ever scrolled to.
+  // A selected row is described whether or not it was ever scrolled to, once the slider
+  // has stopped on it: while it moves, the highlight is only passing through.
   useEffect(() => {
-    if (selected) onSeen(version.id)
-  }, [selected, onSeen, version.id])
+    if (selected && !scrubbing) onSeen(version.id)
+  }, [selected, scrubbing, onSeen, version.id])
 
   const name = version.author?.name || 'Unknown'
   return (

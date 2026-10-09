@@ -1255,6 +1255,81 @@ test('closing the panel while the slider is unsettled discards the choice', asyn
   t.requests.release()
 })
 
+test('scrubbing across many versions describes only the rows it comes to rest on', async ({
+  page,
+}) => {
+  const label = labelFor('scrub-describe')
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  const texts = Array.from({ length: 40 }, (_, i) => `${i % 10}`)
+  await seedVersions(
+    document.id,
+    paragraphUpdates(texts).map((update, i) => ({
+      userId: owner.id,
+      update,
+      minutesAgo: (texts.length - i) * 60,
+    })),
+  )
+  await signIn(page, owner.id)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.clock.install()
+  // Nothing is held back here: the descriptions go out as they would for a user, and what
+  // is counted is every state request that reaches the network.
+  const stateRequests: string[] = []
+  page.on('request', (request) => {
+    if (STATE_REQUEST.test(request.url())) stateRequests.push(request.url())
+  })
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(40)
+  await expect(panel.getByTestId('history-row-description').nth(0)).toHaveText('Added 1 character')
+
+  /** Waits until no state request has been sent for a second. */
+  async function quiet() {
+    let last = -1
+    let stable = 0
+    while (stable < 5) {
+      await page.waitForTimeout(200)
+      stable = stateRequests.length === last ? stable + 1 : 0
+      last = stateRequests.length
+    }
+  }
+  await quiet()
+  const before = stateRequests.length
+
+  const elapse = await freezeClock(page)
+  await sliderOf(panel).focus()
+  // Row r is r + 1 presses left of Now. About a dozen rows were on screen and described
+  // when the panel opened; 36 presses rest on row 35, passing two dozen that were not.
+  for (let press = 0; press < 36; press++) await page.keyboard.press('ArrowLeft')
+  await expect(rows.nth(35)).toHaveAttribute('aria-pressed', 'true')
+  await elapse(200)
+  await expect(editorText(page)).toHaveText(texts.slice(0, 40 - 35).join(''))
+  await quiet()
+
+  // The rows on screen where it came to rest, counting the margin the observers look into.
+  const visible = await panel.evaluate((el) => {
+    const list = el.querySelector('ul')!.getBoundingClientRect()
+    return [...el.querySelectorAll('[data-testid="history-row"]')].filter((row) => {
+      const box = row.getBoundingClientRect()
+      return box.bottom > list.top - 80 && box.top < list.bottom + 80
+    }).length
+  })
+  const fresh = stateRequests.length - before
+  // Each visible row needs its own state and the one before it, which neighbours share:
+  // one more than the rows, and the chosen version's own state is among them. The two
+  // dozen rows it passed on the way need nothing.
+  test.info().annotations.push({
+    type: 'scrub fetches',
+    description: `${fresh} new state requests, ${visible} rows in reach`,
+  })
+  expect(fresh).toBeLessThanOrEqual(visible + 2)
+  // The rows it rests on do get their sentences.
+  await expect(rows.nth(35).getByTestId('history-row-description')).not.toHaveText('…')
+})
+
 test('the chosen row is drawn differently from the others, and eases over 0.35s', async ({ page }) => {
   const { owner, document } = await seedThree(labelFor('slider-motion'))
   await signIn(page, owner.id)
