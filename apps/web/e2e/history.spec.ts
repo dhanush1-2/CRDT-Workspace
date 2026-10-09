@@ -1416,7 +1416,8 @@ test('Back to now removes the pill and the preview, returns the live document, a
   // Focus did not vanish with the pill: it is in the live editor.
   await expect(liveText(page)).toBeFocused()
   await expect(page.getByTestId('toast')).toHaveCount(0)
-  // The panel's own control agrees the document is live again.
+  // The panel's own control agrees the document is live again: still open, nothing pressed.
+  await expect(panel).toBeVisible()
   await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
   expect(await prisma.documentUpdate.count({ where: { documentId: document.id } })).toBe(before)
 })
@@ -1441,15 +1442,18 @@ test('an editor sees Restore; a viewer sees the pill and Back to now but no Rest
     [owner, true],
   ] as const) {
     const context = await browser.newContext()
-    const page = await openAsUser(context, user.id, document)
-    const panel = await openPanel(page)
-    await panel.getByTestId('history-row').nth(1).click()
-    await expect(pill(page)).toBeVisible()
-    await expect(page.getByTestId('version-back')).toBeVisible()
-    // Absent, not merely disabled: a viewer has no such action to be refused.
-    await expect(page.getByTestId('version-restore')).toHaveCount(canRestore ? 1 : 0)
-    await expect(page.getByRole('button', { name: 'Restore' })).toHaveCount(canRestore ? 1 : 0)
-    await context.close()
+    try {
+      const page = await openAsUser(context, user.id, document)
+      const panel = await openPanel(page)
+      await panel.getByTestId('history-row').nth(1).click()
+      await expect(pill(page)).toBeVisible()
+      await expect(page.getByTestId('version-back')).toBeVisible()
+      // Absent, not merely disabled: a viewer has no such action to be refused.
+      await expect(page.getByTestId('version-restore')).toHaveCount(canRestore ? 1 : 0)
+      await expect(page.getByRole('button', { name: 'Restore' })).toHaveCount(canRestore ? 1 : 0)
+    } finally {
+      await context.close()
+    }
   }
 })
 
@@ -1486,7 +1490,15 @@ test('Restore on a board puts the older board back', async ({ page }) => {
   await expect(page.getByTestId('card-old')).toBeVisible()
   await expect(page.getByTestId('card-newer')).toHaveCount(0)
   // No editor to focus on a board: the title takes it, so focus is somewhere sensible.
-  await expect(page.getByTestId('document-heading')).toBeFocused()
+  const heading = page.getByTestId('document-heading')
+  await expect(heading).toBeFocused()
+  // It was focused by script after a mouse click, so it draws no ring of its own.
+  expect(await heading.evaluate((el) => el.matches(':focus-visible'))).toBe(false)
+  expect(await heading.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none')
+  // And it does not stay a click target: once focus leaves, it is not focusable again.
+  await page.keyboard.press('Tab')
+  await expect(heading).not.toBeFocused()
+  await expect(heading).not.toHaveAttribute('tabindex')
 })
 
 test('after a restore the list has a new newest entry, attributed to whoever restored', async ({
@@ -1504,35 +1516,38 @@ test('after a restore the list has a new newest entry, attributed to whoever res
   ])
 
   const context = await browser.newContext()
-  const page = await openAsUser(context, editor.id, document)
-  const panel = await openPanel(page)
-  const rows = panel.getByTestId('history-row')
-  await expect(rows).toHaveCount(2)
-  await expect(rows.nth(0).getByTestId('history-row-author')).toHaveText('Grace')
+  try {
+    const page = await openAsUser(context, editor.id, document)
+    const panel = await openPanel(page)
+    const rows = panel.getByTestId('history-row')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.nth(0).getByTestId('history-row-author')).toHaveText('Grace')
 
-  await rows.nth(1).click()
-  await expect(editorText(page)).toHaveText('Hello')
-  await page.getByTestId('version-restore').click()
-  await expect(liveText(page)).toHaveText('Hello')
+    await rows.nth(1).click()
+    await expect(editorText(page)).toHaveText('Hello')
+    await page.getByTestId('version-restore').click()
+    await expect(liveText(page)).toHaveText('Hello')
 
-  // The sync server writes updates to the database on a short timer, so the new version
-  // exists a moment after the restore. Reopen the list until it is there; the condition is
-  // the newest row's author, not a delay.
-  await expect(async () => {
-    if (await page.getByTestId('history-panel').isVisible()) await page.getByTestId('history').click()
-    const reopened = await openPanel(page)
-    await expect(reopened.getByTestId('history-row')).toHaveCount(3, { timeout: 1000 })
-    await expect(reopened.getByTestId('history-row').nth(0).getByTestId('history-row-author')).toHaveText(
-      'Eddie',
-      { timeout: 1000 },
-    )
-  }).toPass({ timeout: 15_000 })
-  const newest = await prisma.documentUpdate.findFirst({
-    where: { documentId: document.id },
-    orderBy: { id: 'desc' },
-  })
-  expect(newest?.userId).toBe(editor.id)
-  await context.close()
+    // The sync server writes updates to the database on a short timer, so the new version
+    // exists a moment after the restore. Reopen the list until it is there; the condition is
+    // the newest row's author, not a delay.
+    await expect(async () => {
+      if (await page.getByTestId('history-panel').isVisible()) await page.getByTestId('history').click()
+      const reopened = await openPanel(page)
+      await expect(reopened.getByTestId('history-row')).toHaveCount(3, { timeout: 1000 })
+      await expect(reopened.getByTestId('history-row').nth(0).getByTestId('history-row-author')).toHaveText(
+        'Eddie',
+        { timeout: 1000 },
+      )
+    }).toPass({ timeout: 15_000 })
+    const newest = await prisma.documentUpdate.findFirst({
+      where: { documentId: document.id },
+      orderBy: { id: 'desc' },
+    })
+    expect(newest?.userId).toBe(editor.id)
+  } finally {
+    await context.close()
+  }
 })
 
 test('a restore raises a message naming the version, with no claim of merging when alone', async ({
@@ -1550,6 +1565,77 @@ test('a restore raises a message naming the version, with no claim of merging wh
 
   // Exactly the short form, naming the version by the time the pill showed.
   await expect(page.getByTestId('toast')).toHaveText(`Restored version from ${time}`)
+})
+
+test('a slider pick, not a row click, shows the pill with that version\'s author and time', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('bar-slider'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(3)
+  const label = page.getByTestId('version-bar-label')
+
+  await sliderOf(panel).fill('2')
+  await expect(editorText(page)).toHaveText('Hello world!!')
+  await expect(label).toHaveText(new RegExp(`^Heidi · ${TIME}$`))
+
+  await sliderOf(panel).fill('0')
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(label).toHaveText(new RegExp(`^Grace · ${TIME}$`))
+  // The time is the one in the row for that version.
+  const shown = (await label.innerText()).split(' · ')[1]!
+  expect(await rows.nth(2).innerText()).toContain(shown)
+
+  // Back to the far right stop leaves the preview, and the pill with it.
+  await sliderOf(panel).fill('3')
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(pill(page)).toHaveCount(0)
+})
+
+test('Restore is absent until the document has synced once, then appears', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('bar-sync'))
+  await signIn(page, owner.id)
+
+  // Hold the sync connection: the socket opens from the page's side, but nothing reaches
+  // the server (what the page sends is kept) and nothing comes back, so the local doc
+  // stays empty and the provider never syncs. Letting go connects it for real and replays
+  // what the page sent, which is how the first sync then completes.
+  const held: Array<string | Buffer> = []
+  let release: (() => void) | null = null
+  await page.routeWebSocket(/localhost:1234/, (ws) => {
+    ws.onMessage((message) => held.push(message))
+    release = () => {
+      const server = ws.connectToServer()
+      ws.onMessage((message) => server.send(message))
+      server.onMessage((message) => ws.send(message))
+      for (const message of held.splice(0)) server.send(message)
+    }
+  })
+  await page.goto(documentPath(document))
+  // Opened, but not synced: nothing has been sent to the server.
+  await expect.poll(() => release !== null).toBe(true)
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(pill(page)).toBeVisible()
+  await expect(page.getByTestId('version-back')).toBeVisible()
+  // An empty local doc would take the whole old text as inserts, and the server's copy
+  // would then land on top of it. So there is no Restore to press yet.
+  await expect(page.getByTestId('version-restore')).toHaveCount(0)
+  await page.waitForTimeout(500)
+  await expect(page.getByTestId('version-restore')).toHaveCount(0)
+
+  release!()
+  await expect(page.getByTestId('version-restore')).toBeVisible()
+
+  // And it now restores cleanly: the old text once, not twice.
+  await page.getByTestId('version-restore').click()
+  await expect(liveText(page)).toHaveText('Hello')
 })
 
 test('pressing Restore twice at once restores once', async ({ page }) => {
@@ -1619,47 +1705,50 @@ test('restoring while another browser types keeps their edit, and says it merged
 
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
-  const pageA = await openAsUser(contextA, owner.id, document)
-  const pageB = await openAsUser(contextB, editor.id, document)
-  // A knows B is here: that is what the message is decided by.
-  await expect(pageA.getByTestId('presence').getByRole('img', { name: 'Eddie' })).toBeVisible()
-  await expect(liveText(pageB)).toHaveText('Hello world!!')
+  try {
+    const pageA = await openAsUser(contextA, owner.id, document)
+    const pageB = await openAsUser(contextB, editor.id, document)
+    // A knows B is here: that is what the message is decided by.
+    await expect(pageA.getByTestId('presence').getByRole('img', { name: 'Eddie' })).toBeVisible()
+    await expect(liveText(pageB)).toHaveText('Hello world!!')
 
-  const panel = await openPanel(pageA)
-  await panel.getByTestId('history-row').nth(2).click()
-  await expect(editorText(pageA)).toHaveText('Hello')
+    const panel = await openPanel(pageA)
+    await panel.getByTestId('history-row').nth(2).click()
+    await expect(editorText(pageA)).toHaveText('Hello')
 
-  // B types a long run, one key at a time, and is still typing when A presses Restore.
-  const run = Array.from({ length: 70 }, (_, i) => String.fromCharCode(97 + (i % 26))).join('')
-  await liveText(pageB).click()
-  await pageB.keyboard.press('Control+End')
-  const typing = pageB.keyboard.type(run, { delay: 60 })
-  await expect(liveText(pageB)).toContainText(run.slice(0, 8))
-  await pageA.getByTestId('version-restore').click()
+    // B types a long run, one key at a time, and is still typing when A presses Restore.
+    const run = Array.from({ length: 70 }, (_, i) => String.fromCharCode(97 + (i % 26))).join('')
+    await liveText(pageB).click()
+    await pageB.keyboard.press('Control+End')
+    const typing = pageB.keyboard.type(run, { delay: 60 })
+    await expect(liveText(pageB)).toContainText(run.slice(0, 8))
+    await pageA.getByTestId('version-restore').click()
 
-  // The message does not claim an exact revert.
-  await expect(pageA.getByTestId('toast')).toContainText('merged with changes made since')
-  await expect(pageA.getByTestId('toast')).toHaveText(
-    new RegExp(`^Restored version from ${TIME} · merged with changes made since$`),
-  )
-  await typing
+    // The message does not claim an exact revert.
+    await expect(pageA.getByTestId('toast')).toContainText('merged with changes made since')
+    await expect(pageA.getByTestId('toast')).toHaveText(
+      new RegExp(`^Restored version from ${TIME} · merged with changes made since$`),
+    )
+    await typing
 
-  // What B typed after the restore reached A is in both browsers, and the two agree.
-  const tail = run.slice(-20)
-  await expect(liveText(pageA)).toContainText(tail)
-  await expect(liveText(pageB)).toContainText(tail)
-  await expect(liveText(pageB)).not.toContainText('world')
-  // Without the other person's caret label, which is drawn inside the text.
-  const plain = (page: Page) =>
-    liveText(page).evaluate((el) => {
-      const copy = el.cloneNode(true) as HTMLElement
-      copy.querySelectorAll('.collaboration-carets__caret').forEach((caret) => caret.remove())
-      return copy.textContent
-    })
-  const [a, b] = [await plain(pageA), await plain(pageB)]
-  expect(a).toBe(b)
-  expect(a!.startsWith('Hello')).toBe(true)
+    // What B typed after the restore reached A is in both browsers, and the two agree.
+    const tail = run.slice(-20)
+    await expect(liveText(pageA)).toContainText(tail)
+    await expect(liveText(pageB)).toContainText(tail)
+    await expect(liveText(pageB)).not.toContainText('world')
+    // Without the other person's caret label, which is drawn inside the text.
+    const plain = (page: Page) =>
+      liveText(page).evaluate((el) => {
+        const copy = el.cloneNode(true) as HTMLElement
+        copy.querySelectorAll('.collaboration-carets__caret').forEach((caret) => caret.remove())
+        return copy.textContent
+      })
+    const [a, b] = [await plain(pageA), await plain(pageB)]
+    expect(a).toBe(b)
+    expect(a!.startsWith('Hello')).toBe(true)
 
-  await contextA.close()
-  await contextB.close()
+  } finally {
+    await contextA.close()
+    await contextB.close()
+  }
 })

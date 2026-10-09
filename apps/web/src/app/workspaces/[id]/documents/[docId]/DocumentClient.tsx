@@ -39,7 +39,10 @@ function focusLiveView(editable: boolean): () => void {
     }
     const heading = document.querySelector<HTMLElement>('[data-testid="document-heading"]')
     if (!heading) return
+    // Focusable for this one call only: left in place it would make the title a click
+    // target that takes focus, which a heading should not be.
     heading.tabIndex = -1
+    heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true })
     heading.focus({ preventScroll: true })
   }
   attempt()
@@ -59,7 +62,7 @@ export function DocumentClient({
   readOnly: boolean
   user: { name: string; color: string }
 }) {
-  const { doc, provider, status } = useCollaborativeDoc(documentId)
+  const { doc, provider, status, synced } = useCollaborativeDoc(documentId)
   const presence = usePresence(provider)
   useAnnouncePresence(provider, user)
 
@@ -118,7 +121,8 @@ export function DocumentClient({
       // sync server would refuse the update from one anyway.
       const state = await fetchVersionState(documentId, versionId)
       restoreFromState(doc, type, state)
-    } catch {
+    } catch (error) {
+      console.error('restoring a version failed', error)
       toast('Could not restore that version. Try again.')
       return
     }
@@ -178,6 +182,12 @@ export function DocumentClient({
     </h1>
   )
 
+  // Restore waits for the first sync. Before it the local doc is empty, and the restore
+  // primitives write a diff against what they see: the whole old content as new inserts,
+  // which the server's state would then be merged with, duplicating it. After the first
+  // sync a later disconnect is fine: the diff is against real content and merges on
+  // reconnect.
+  //
   // Only while a version is chosen and its preview is what is on screen. The pill is
   // fixed to the viewport under the nav (see version-bar.module.css), so it can be
   // rendered here beside the page rather than inside the shell's nav.
@@ -185,7 +195,7 @@ export function DocumentClient({
     <VersionBar
       author={shown.details.author}
       time={shown.details.time}
-      canRestore={!readOnly && doc !== null}
+      canRestore={!readOnly && doc !== null && synced}
       onRestore={() => restore(shown.versionId, shown.details!.time)}
       onBackToNow={backToNow}
     />

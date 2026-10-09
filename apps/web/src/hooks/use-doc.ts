@@ -15,6 +15,10 @@ async function fetchToken(documentId: string): Promise<string> {
 export function useCollaborativeDoc(documentId: string) {
   const [session, setSession] = useState<DocSession | null>(null)
   const [status, setStatus] = useState<DocStatus>('connecting')
+  // Whether the provider has synced at least once. Not provider.synced, which goes back
+  // to false on every disconnect: what matters to a caller is whether the local doc has
+  // ever received the server's state, since before that it is empty and not the document.
+  const [synced, setSynced] = useState(false)
 
   useEffect(() => {
     const created = createDocSession({
@@ -27,14 +31,20 @@ export function useCollaborativeDoc(documentId: string) {
       disableBc: new URLSearchParams(window.location.search).has('nobc'),
     })
     const unsubscribe = created.onStatus(setStatus)
+    const onSync = (isSynced: boolean) => {
+      if (isSynced) setSynced(true)
+    }
+    created.provider.on('sync', onSync)
     setSession(created)
 
     return () => {
+      created.provider.off('sync', onSync)
+      setSynced(false)
       unsubscribe()
       created.destroy()
       setSession(null)
     }
   }, [documentId])
 
-  return { doc: session?.doc ?? null, provider: session?.provider ?? null, status }
+  return { doc: session?.doc ?? null, provider: session?.provider ?? null, status, synced }
 }
