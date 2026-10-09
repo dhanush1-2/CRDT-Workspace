@@ -34,3 +34,20 @@ export function formatRelativeTime(then: Date, now: Date = new Date()): string {
     ...(sameYear ? {} : { year: 'numeric' }),
   })
 }
+
+/**
+ * "Sep 30, 16:40" for a version's line in the history panel: an absolute time, because
+ * "3 days ago" cannot tell two versions from the same afternoon apart. The year appears
+ * only when it differs from `now`'s. Read in the viewer's time zone, so this belongs on
+ * the client; it would disagree with the server's during a server render.
+ */
+export function formatVersionTime(then: Date, now: Date = new Date()): string {
+  const date = then.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(then.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+  })
+  // hourCycle h23 so midnight is 00:05, not 24:05 or 12:05 AM.
+  const time = then.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return `${date}, ${time}`
+}

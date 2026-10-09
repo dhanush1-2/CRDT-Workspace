@@ -1005,7 +1005,7 @@ test('entering the dead band from above never makes the nav oscillate', async ({
   await cleanup(label)
 })
 
-test('History is offered on a document, explains itself, and closes cleanly', async ({ page }) => {
+test('History is offered on a document, opens its panel, and closes cleanly', async ({ page }) => {
   const label = `${LABEL}-history`
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'doc')
@@ -1024,12 +1024,11 @@ test('History is offered on a document, explains itself, and closes cleanly', as
   await expect(button).toHaveAttribute('aria-expanded', 'true')
   const panel = page.getByTestId('history-panel')
   await expect(panel).toBeVisible()
-  // It must not imply it works. Whatever the wording, it has to say it is not here yet.
-  await expect(panel).toContainText('not available yet')
+  await expect(panel.getByRole('heading', { name: 'History' })).toBeVisible()
 
   // Clicking the button leaves it focused, so Escape would pass this check even with
-  // no focus return. Clicking the panel's text moves focus to the body first.
-  await panel.getByText('Version history is not available yet').click()
+  // no focus return. Clicking the panel's heading moves focus to the body first.
+  await panel.getByRole('heading', { name: 'History' }).click()
   await expect(button).not.toBeFocused()
 
   await page.keyboard.press('Escape')

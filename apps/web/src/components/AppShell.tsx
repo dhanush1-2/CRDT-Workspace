@@ -365,7 +365,12 @@ export function AppShell({
                 documentId={activeDocumentId ?? null}
               />
             )}
-            {onDocument && <HistoryButton />}
+            {activeDocumentId !== undefined && (
+              <HistoryButton
+                documentId={activeDocumentId}
+                type={documents?.find((document) => document.id === activeDocumentId)?.type}
+              />
+            )}
             <SyncStatus documentId={activeDocumentId ?? null} />
 
             {workspace && (

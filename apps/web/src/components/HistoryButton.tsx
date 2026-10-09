@@ -1,27 +1,60 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { HistoryPanel } from './HistoryPanel'
 import styles from './app-shell.module.css'
 
+/** The nav's bottom edge when nothing says otherwise, as app-shell.module.css declares it. */
+const DEFAULT_NAV_BOTTOM = '68px'
+
 /**
- * The nav's History control.
+ * The nav's History control, and the owner of whether its panel is open.
  *
- * The panel the design specifies lists every saved version of a document with its
- * author and lets you preview or restore one. None of that exists yet: updates carry
- * a Yjs client number rather than a user, and there is no snapshot list, content or
- * restore route. Those are the history backend's work.
+ * A disclosure, not a menu: the panel is a list the user reads and picks from, so
+ * aria-expanded plus aria-controls describes it and no menu semantics are invented.
  *
- * The button ships anyway, because the alternative to a control that explains itself
- * is a nav that quietly lacks a feature the design has. It must never imply the
- * feature works.
- *
- * A disclosure, not a menu: the panel is prose, so aria-expanded plus aria-controls
- * describes it exactly and no menu/menuitem semantics are invented for it.
+ * The panel is rendered into document.body, not here. This button sits inside the nav,
+ * and the nav's backdrop-filter makes it the containing block for position:fixed
+ * descendants and a backdrop root: a fixed panel left inside it would be placed in the
+ * 68px bar, and its blur would sample the nav instead of the page. A portal keeps the
+ * React tree (state, props, context) while moving the DOM out. The open/Escape/outside-
+ * click logic stays here, with the panel ref standing in for "inside": DOM `contains`
+ * works across a portal, which React's synthetic events do not rely on.
  */
-export function HistoryButton() {
+export function HistoryButton({
+  documentId,
+  type,
+}: {
+  documentId: string
+  /** From the nav's document list; unknown if the document is not in it yet. */
+  type?: 'doc' | 'board'
+}) {
   const [open, setOpen] = useState(false)
+  // The row the user picked, with its document so a pick never outlives a navigation.
+  const [picked, setPicked] = useState<{ documentId: string; versionId: string } | null>(null)
+  const [navBottom, setNavBottom] = useState(DEFAULT_NAV_BOTTOM)
   const button = useRef<HTMLButtonElement>(null)
-  const panel = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLElement>(null)
+
+  /**
+   * --nav-bottom lives on the shell (68px, 52px once the nav condenses), and the panel
+   * is no longer inside the shell, so it does not cascade here. Read it from the shell's
+   * computed style instead of repeating the two numbers: the shell stays the one place
+   * that knows them. null when the button is not inside a shell.
+   */
+  function readNavBottom(): string | null {
+    const shell = button.current?.closest('[data-nav-condensed]')
+    if (!shell) return null
+    return getComputedStyle(shell).getPropertyValue('--nav-bottom').trim() || null
+  }
+
+  function toggle() {
+    // Read before opening, so the panel's first frame is already where the nav is: read
+    // afterwards it would start at 68 and slide to 52 when opened on a scrolled page.
+    if (!open) setNavBottom(readNavBottom() ?? DEFAULT_NAV_BOTTOM)
+    setOpen((was) => !was)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -41,13 +74,25 @@ export function HistoryButton() {
       setOpen(false)
     }
 
+    // The nav condenses on scroll by flipping this attribute on the shell, which changes
+    // --nav-bottom; follow it so the panel stays 16px under the bar.
+    const shell = button.current?.closest('[data-nav-condensed]')
+    const observer = new MutationObserver(() => setNavBottom(readNavBottom() ?? DEFAULT_NAV_BOTTOM))
+    if (shell) observer.observe(shell, { attributes: true, attributeFilter: ['data-nav-condensed'] })
+
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('pointerdown', onPointerDown)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('pointerdown', onPointerDown)
+      observer.disconnect()
     }
   }, [open])
+
+  function close() {
+    setOpen(false)
+    button.current?.focus()
+  }
 
   return (
     <div className={styles.historyWrap}>
@@ -55,7 +100,7 @@ export function HistoryButton() {
         type="button"
         ref={button}
         className={`${styles.history} ${open ? styles.historyOpen : ''}`}
-        onClick={() => setOpen((was) => !was)}
+        onClick={toggle}
         aria-expanded={open}
         aria-controls="history-panel"
         data-testid="history"
@@ -63,23 +108,22 @@ export function HistoryButton() {
         History
       </button>
 
-      {open && (
-        <div
-          id="history-panel"
-          ref={panel}
-          className={styles.historyPanel}
-          role="group"
-          aria-label="History"
-          data-testid="history-panel"
-        >
-          <p className={styles.historyTitle}>History</p>
-          <p className={styles.historyBody}>
-            Version history is not available yet. When it arrives, this panel will list
-            every saved version of this document with who changed it, and let you preview
-            or restore one.
-          </p>
-        </div>
-      )}
+      {/* `open` only becomes true in an event handler, so this never runs during a
+          server render, where there is no document to portal into. */}
+      {open &&
+        createPortal(
+          <HistoryPanel
+            key={documentId}
+            ref={panel}
+            style={{ '--nav-bottom': navBottom } as CSSProperties}
+            documentId={documentId}
+            type={type}
+            onClose={close}
+            onPreview={(version) => setPicked({ documentId, versionId: version.id })}
+            selectedVersionId={picked?.documentId === documentId ? picked.versionId : null}
+          />,
+          document.body,
+        )}
     </div>
   )
 }

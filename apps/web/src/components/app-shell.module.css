@@ -321,11 +321,8 @@
   z-index: 1;
 }
 
-/* The panel is positioned against this, not against the nav: the nav's
-   backdrop-filter makes it a containing block for fixed descendants, and an
-   absolutely positioned panel wants a positioned parent of its own anyway. */
+/* The panel itself is not in here: it is portalled to <body> (see HistoryButton). */
 .historyWrap {
-  position: relative;
   flex: none;
 }
 
@@ -354,43 +351,6 @@
   .history {
     transition: background var(--dur-fast) var(--ease);
   }
-}
-
-.historyPanel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 300px;
-  padding: 18px 20px 20px;
-  border-radius: var(--r-panel);
-  background: var(--glass-sheet);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    var(--glass-hl),
-    0 18px 40px rgba(30, 30, 50, 0.16);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .historyPanel {
-    transform-origin: top right;
-    animation: g-pop 0.45s var(--ease);
-  }
-}
-
-/* 18/600, the heading size the design gives the real panel. */
-.historyTitle {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.historyBody {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-muted);
 }
 
 /* Below 760px the tabs become one dropdown and the workspace name hides (handoff 5.5).

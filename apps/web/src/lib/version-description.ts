@@ -25,6 +25,14 @@ export function describeChange(
   const sentence = type === 'board' ? describeBoard(before, after) : describeDocument(before, after)
   if (sentence) return sentence
 
+  return describeCount(updateCount)
+}
+
+/**
+ * The floor `describeChange` falls back to. Exported for a caller that cannot build the
+ * two states (one was too large to fetch) but still owes the row the same wording.
+ */
+export function describeCount(updateCount: number): string {
   return `${updateCount} ${updateCount === 1 ? 'change' : 'changes'}`
 }
 

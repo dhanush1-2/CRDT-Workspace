@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCount, formatRelativeTime } from '../src/lib/format.js'
+import { formatCount, formatRelativeTime, formatVersionTime } from '../src/lib/format.js'
 
 describe('formatCount', () => {
   it('uses the singular for exactly one and the plural otherwise, including zero', () => {
@@ -61,5 +61,22 @@ describe('formatRelativeTime', () => {
     )
     expect(formatRelativeTime(new Date(2026, 8, 20, 12), localNow)).toBe('Sep 20')
     expect(formatRelativeTime(new Date(2025, 11, 30, 12), localNow)).toBe('Dec 30, 2025')
+  })
+})
+
+describe('formatVersionTime', () => {
+  // Local-time constructors, because the formatter reads the viewer's calendar fields.
+  const now = new Date(2026, 9, 1, 12)
+
+  it('reads "Sep 30, 16:40": a short date, then a 24-hour clock', () => {
+    expect(formatVersionTime(new Date(2026, 8, 30, 16, 40), now)).toBe('Sep 30, 16:40')
+  })
+
+  it('pads the hour and minute, and calls midnight 00', () => {
+    expect(formatVersionTime(new Date(2026, 8, 3, 0, 5), now)).toBe('Sep 3, 00:05')
+  })
+
+  it('adds the year when it is not this one', () => {
+    expect(formatVersionTime(new Date(2025, 11, 30, 9, 7), now)).toBe('Dec 30, 2025, 09:07')
   })
 })
