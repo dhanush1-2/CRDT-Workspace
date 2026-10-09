@@ -59,8 +59,9 @@ of which is real). Both rejected.
 - The UI must tell the truth about the merge: after a restore with other people present,
   say so rather than implying an exact revert. Exact copy is specifically what this
   design does not promise.
-- Viewers cannot restore. The existing role check covers it; the restore route must
-  enforce `editor` or better rather than relying on the UI hiding the button.
+- Viewers cannot restore. The existing role check covers it, and it is the sync server's
+  per-frame guard rather than a route: there is no restore route (see "Derived" below),
+  so a viewer's restore update frame is rejected like any other edit from a viewer.
 
 ## Decision 3 — Offline edits survive a tab close (revised)
 
@@ -130,14 +131,26 @@ From the three decisions, the capabilities the UI plans need:
 
 | Capability | Shape | Serves |
 |---|---|---|
-| Snapshot list | `GET /api/documents/[id]/history` → `[{ id, createdAt, author: { id, name } \| null, description }]` | History panel rows |
-| Snapshot content | `GET /api/documents/[id]/history/[snapshotId]` → the state needed to preview | Version preview bar |
-| Restore | `POST /api/documents/[id]/history/[snapshotId]/restore` → applies as a new update | Restore action |
-| Version number | a monotonic sequence the client can display | Status popover "Version" |
+| Snapshot list | **Built.** `GET /api/documents/[id]/history?limit=` (1 to 200, default 50) → `{ versions: [{ id, startedAt, endedAt, author: { id, name } \| null, updateCount }] }`, ids as strings. `listVersions` in `apps/web/src/lib/document-history.ts`. Not the `{ id, createdAt, ... description }` shape first drafted here: a version is a run of updates, so it has a start and an end, and no description. | History panel rows |
+| Snapshot content | **Built.** `GET /api/documents/[id]/history/[version]` → the document's state at that version as raw Yjs update bytes (`application/octet-stream`). `stateAtVersion` in `apps/web/src/lib/document-history.ts`. | Version preview bar |
+| Restore | **Not a route.** `restoreBoard(live, from)` in `@crdt/shared/board` and `restoreEditor(live, from)` in `apps/web/src/lib/restore-editor.ts`, applied on the client to the live doc, and sent through the existing socket like any edit. Originally `POST /api/documents/[id]/history/[snapshotId]/restore`; amended for three reasons below. | Restore action |
+| Version number | **No work needed.** The newest entry from `listVersions` is the current version, and `DocumentUpdate.id` was already a monotonic `BigInt` sequence. | Status popover "Version" |
 | Queued-edit count | count of unsynced updates held in the page | Offline pill "N changes" |
 | Latency | round-trip measurement against the sync server | Status popover "Response time" |
 | Card notes | `description` plus an activity log on the card's `Y.Map` | Card detail sheet |
 | Local persistence | `y-indexeddb` beside the websocket provider, plus the two "save a copy" flows | Offline edits surviving a tab close |
+
+**Why restore is not a route.** Three reasons:
+
+1. The ProseMirror schema exists only on the client. Restoring the editor means diffing
+   the past document into the live fragment (`updateYFragment`), which needs the schema
+   the client builds from its extensions. The server has no such schema.
+2. The sync server's per-frame role check already enforces editor-or-better on every
+   update frame. A route that wrote an update would be a second write path that skips it,
+   and would need its own copy of the check.
+3. An update written by the server has no connection behind it, so it has no author
+   (server-originated updates persist with a null `userId`). A restore sent through the
+   restorer's own socket is attributed to them, as Decision 2 requires.
 
 The version number and the queued count are **not** the same thing and must not be
 conflated: the version is server-assigned and shared, the queued count is per-client and
@@ -164,6 +177,79 @@ toggle.
 **Consequence:** the two conflict flows in Decision 3 are not edge cases for a minority
 who opted in — they are on the main path for everyone. The "save a copy" path must be
 built properly, not stubbed.
+
+## Decisions made during implementation
+
+Made while building the history and authorship backend
+(`2026-10-03-history-and-authorship-backend.md`), not by the design owner. Each can be
+overruled.
+
+- **Version grouping window: 5 minutes.** `listVersions` merges consecutive updates by the
+  same author when no gap exceeds 5 minutes (exactly 5 merges, 6 splits). Rows with a
+  null author group with each other, never with a known author. Every few keystrokes
+  write a row, so without grouping an hour of typing is thousands of entries. The number
+  is a guess at what reads as one sitting; it is one constant, `VERSION_GAP_MINUTES`.
+- **Scan bound: the newest 5,000 rows.** `listVersions` groups only the most recent
+  5,000 update rows of the document (`VERSION_SCAN_ROWS`), as a backward index scan. This
+  keeps the cost flat no matter how long the document lives. The cost is that older
+  history is not listed, and the oldest version listed is clipped if its run straddles
+  the boundary: its `startedAt` is late and its `updateCount` low, though its id and
+  author are correct.
+- **Raw bytes, not base64.** The version-content route returns `application/octet-stream`.
+  Base64 in JSON is a third larger and costs an encode and decode for nothing, since
+  `fetch` can hand the client an `ArrayBuffer` that `Y.applyUpdate` takes directly. Because
+  a version never changes, the response carries `Cache-Control: private, max-age=31536000,
+  immutable`.
+- **The two restore primitives live in different packages.** `restoreBoard` is in
+  `@crdt/shared/board` because the board is plain `Y.Map` and `Y.Array` data that needs
+  no editor schema, and it sits beside the board mutations it is built from. It restores
+  field by field in one transaction, brings back deleted columns and cards, and removes
+  ones added since. `restoreEditor` is in `apps/web` because it needs ProseMirror; it diffs
+  with `updateYFragment`, and a restore that changes nothing writes nothing.
+- **Version content is rebuilt from update rows, never snapshots.** `stateAtVersion`
+  replays every row with id up to the version. A snapshot is encoded from the sync
+  server's live doc, which already holds edits queued but not yet persisted, while its
+  `throughUpdateId` is only the last persisted row. So a snapshot can contain edits made
+  after the id it claims to cover, and using one would show, and restore, later edits.
+  Update rows are never deleted by the app, so they are an exact history.
+- **A deleted author does not drop the batch.** In `store.append`, if the insert fails
+  because the author's user row no longer exists, the batch is written again with null
+  authors, once. Dropping real edits to save a name would be wrong. The failure is
+  recognised by the `DocumentUpdate_userId_fkey` constraint name; on this Prisma version
+  with the pg driver adapter it arrives at `meta.driverAdapterError.cause.constraint.index`,
+  not `meta.field_name`. A deleted document is still a logged no-op, as before.
+
+## Limitations of what was built
+
+- **History older than the scan window is not listed.** Only the newest 5,000 update rows
+  are grouped. The fix is a version table written as updates land, so the list reads
+  that instead of regrouping rows. It is not built.
+- **Version content costs O(rows up to the version).** `stateAtVersion` reads and merges
+  every row up to the requested id, so cost grows with the document's history. The
+  optimisation is to start from a snapshot, which needs snapshots that are exact (encoded
+  at the recorded id) and a way to tell them from the legacy ones already written, which
+  lag. Not built.
+- **Query plan of the version list, as measured** on a scratch document with 12,000 rows
+  (plus 3,000 on another): the inner scan is `Index Scan Backward` on
+  `DocumentUpdate_documentId_id_idx` under a `Limit`, reading exactly 5,000 rows in 0.6
+  ms. Total execution 5.2 ms in the database, 13 ms for `listVersions` end to end. The
+  plan is a single-table index scan with no join, so it does not depend on planner
+  statistics, which were stale in the test (estimated 21 rows, 5,000 actual).
+- **Restore is not an exact revert when anyone else is editing.** As Decision 2 says, the
+  result is the restored version plus any concurrent edit. The UI owes the user that
+  sentence when other people are present. The UI is not in this plan.
+- **Updates written before the migration have no author** and render as unknown. This is
+  permanent for those rows: backfilling would invent history. Updates by a deleted
+  account also become unknown (`ON DELETE SET NULL`).
+- **A cached version can outlive a logout.** The version-content response is cacheable
+  for a year, `private`. On a shared browser profile, someone else can re-read a version
+  that was already fetched after the first user signs out. Severity Low: the bytes are
+  one document's past state, and only on a profile that already fetched them.
+- **Deployment order.** Production must run `prisma migrate deploy` against the
+  production database before the sync server that writes `userId` is deployed. The
+  migration `20261003000000_update_authorship` is additive (a nullable column, an index
+  and a foreign key), so the old code keeps working against the new schema, but the new
+  code fails every write against the old one.
 
 ## No open questions
 

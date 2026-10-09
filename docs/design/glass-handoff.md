@@ -762,7 +762,8 @@ Six plans are complete:
 A seventh, `2026-10-03-document-formatting-toolbar.md`, is recorded in its own
 section below; it also changed no schema, sync-server code or API route.
 
-**None of them changed the schema, the sync server, or any API route.** The first
+**None of them changed the schema, the sync server, or any API route** (the history and
+authorship backend, recorded under "History and authorship backend", did all three). The first
 three were visual only. The palette and share sheet plan added real behaviour —
 two overlays, keyboard shortcuts, toasts, and moving invite and role editing out
 of the People panel — but still reached for no new endpoint: it reuses the
@@ -1456,6 +1457,33 @@ wrapper, so its 11px type is 7.7px at 70%.
 - **Home's last control wraps alone at 760px**: Clear formatting drops to a second row
   with its separator in front of it.
 
+### History and authorship backend
+
+Plan: `2026-10-03-history-and-authorship-backend.md`. Backend only; no UI changed. Unlike
+the plans above, this one did change the schema, the sync server and the API routes.
+Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.md`.
+
+- **Authorship.** A nullable `DocumentUpdate.userId` (foreign key to `User`, `ON DELETE
+  SET NULL`, indexed), migration `20261003000000_update_authorship`, additive. The sync
+  server records the sending connection's user on every persisted update; updates the
+  server originates persist with null. If the author's user row no longer exists, the
+  batch is written again with null authors rather than dropped. Rows from before the
+  migration have no author and show as unknown, permanently.
+- **Version list.** `GET /api/documents/[id]/history?limit=` (1 to 200, default 50) returns
+  `{ versions }`, each `{ id, startedAt, endedAt, author, updateCount }` with a string id.
+  Consecutive updates by the same author with no gap over 5 minutes are one version.
+  Only the newest 5,000 update rows are scanned, so older history is not listed.
+- **Version content.** `GET /api/documents/[id]/history/[version]` returns the document's
+  state at that version as raw bytes (`application/octet-stream`). The id must be digits
+  only and a row of that document, else 404. Non-members get 404; viewers may read.
+  Rebuilt from update rows only, never snapshots, so cost grows with history.
+- **Restore.** No route. `restoreBoard(live, from)` in `@crdt/shared/board` and
+  `restoreEditor(live, from)` in `apps/web/src/lib/restore-editor.ts` write the past state
+  into the live doc on the client, through the existing socket. Viewers cannot restore:
+  the sync server's per-frame guard rejects their update frames.
+- **Deployment.** Run `prisma migrate deploy` against the production database **before**
+  deploying the sync server that writes `userId`.
+
 ### Deferred, each needing its own plan
 
 - **Status popover, offline and syncing pills.** The status pill itself is built (see
@@ -1466,8 +1494,14 @@ wrapper, so its 11px type is 7.7px at 70%.
   forgotten. They need the Yjs provider, which lives in `DocumentClient` and is not
   reachable from the nav: the store publishes status and peers, not the provider.
   They belong to a plan that exposes provider controls, likely with the popover.
-- **History panel and version preview bar.** Need a snapshot list and fetch API, and
-  authorship on updates. The History button is built (see "Shell routing and nav").
+- **History panel and version preview bar.** The backend is built (see "History and
+  authorship backend" above): the version list route `GET /api/documents/[id]/history`,
+  the state-at-a-version route `GET /api/documents/[id]/history/[version]`,
+  `apps/web/src/lib/document-history.ts`, authorship on `DocumentUpdate.userId`, and the
+  `restoreBoard` / `restoreEditor` primitives. Deferred on the UI alone: the panel's rows,
+  the preview bar, and the restore action wired to those primitives, including the line
+  that tells the user a restore with other people present is not an exact revert. The
+  History button is built (see "Shell routing and nav").
 - **Card detail sheet.** Blocked on `description` and an activity log on the
   card's `Y.Map`; neither exists in the CRDT shape today, and adding them is a
   schema change this work barred. Two things were left ready or left out on
@@ -1486,9 +1520,10 @@ wrapper, so its 11px type is 7.7px at 70%.
   search field and the status pill below about 500px, or let the nav scroll
   horizontally.
 - **The "updated" line on document tiles shows time only, with no author.** The
-  prototype's mock reads "Grace · 2 min ago". Per-update authorship does not
-  exist in the schema, so the author half waits for the history and authorship
-  plan.
+  prototype's mock reads "Grace · 2 min ago". The schema is no longer the blocker:
+  `DocumentUpdate.userId` exists and the sync server fills it. What is missing is the
+  tile's last-activity query returning the newest update's author, and the tile showing
+  it. Documents whose newest update predates the migration will have no author to show.
 - **Last-activity query efficiency is planner-dependent.** It is a lateral join.
   Its normal plan is one index seek per document (EXPLAIN: Index Scan Backward on
   `DocumentUpdate_documentId_id_idx` inside the Limit, 0.040 ms). On heavily
@@ -1514,6 +1549,12 @@ wrapper, so its 11px type is 7.7px at 70%.
   board title is saved to Postgres and the person renaming sees it at once, but others
   see it only after a navigation that refetches, `router.refresh()` or a reload (Decision
   5). Moving titles into the CRDT would make them live; that is a separate change.
+- **Version content bytes stay cached after logout (Low).** The version route sends
+  `Cache-Control: private, max-age=31536000, immutable`, so on a shared browser profile
+  a previously fetched version can be read again after the first user signs out.
+- **Fetching a version gets slower as a document's history grows.** It replays every
+  update row up to that version. Starting from a snapshot would fix it, but needs exact
+  snapshots and a way to tell them from the legacy ones.
 - **The account button's initial has low contrast for some colours.** It is your colour
   on white, about 2.1 to 2.8:1 for amber, teal and sky, the same ratios the old filled
   avatar had. Not fixed.
