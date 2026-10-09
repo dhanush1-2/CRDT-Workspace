@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { WebSocket } from 'ws'
@@ -10,7 +10,28 @@ import { UpdateQueue } from '../src/update-queue.js'
 
 const SECRET = 'test-secret-that-is-long-enough!!'
 
+// A real account, so the authored-write path is exercised end to end: token `sub` ->
+// onPersist userId -> queue -> DocumentUpdate.userId foreign key. Fake ids would only
+// ever take the "author no longer exists" fallback, which writes null.
+const AUTHOR_EMAIL = 'durability-author@test.local'
+
 let documentId: string
+let authorId: string
+
+async function cleanUp() {
+  await prisma.workspace.deleteMany({ where: { name: 'durability' } })
+  await prisma.user.deleteMany({ where: { email: AUTHOR_EMAIL } })
+}
+
+beforeAll(async () => {
+  await cleanUp()
+  authorId = (
+    await prisma.user.create({
+      data: { email: AUTHOR_EMAIL, name: 'Durability Author' },
+      select: { id: true },
+    })
+  ).id
+})
 
 beforeEach(async () => {
   const ws = await prisma.workspace.create({ data: { name: 'durability', ownerId: 'usr_t' } })
@@ -21,7 +42,7 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
-  await prisma.workspace.deleteMany({ where: { name: 'durability' } })
+  await cleanUp()
   await prisma.$disconnect()
 })
 
@@ -42,7 +63,7 @@ async function startServer(store: DocumentStore): Promise<{ server: SyncServer; 
 
 async function connect(server: SyncServer, name: string) {
   const token = await signDocToken(
-    { sub: `usr_${name}`, docId: documentId, role: 'editor', name, color: '#000' },
+    { sub: authorId, docId: documentId, role: 'editor', name, color: '#000' },
     SECRET,
   )
   const doc = new Y.Doc()
@@ -64,9 +85,19 @@ describe('durability', () => {
     writer.doc.getText('t').insert(0, 'survives restart')
 
     await new Promise((r) => setTimeout(r, 150))
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
     await first.queue.close()
+    const fellBack = errors.mock.calls.some((call) => String(call[0]).includes('author no longer exists'))
+    errors.mockRestore()
     writer.provider.destroy()
     await first.server.close()
+
+    // The edit was attributed to its real author, not written unattributed. A null here
+    // would mean index.ts stopped passing userId into the queue, or the store fell back.
+    const rows = await prisma.documentUpdate.findMany({ where: { documentId }, select: { userId: true } })
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every((row) => row.userId === authorId)).toBe(true)
+    expect(fellBack).toBe(false)
 
     // A fresh store instance, not the one `first` used, so nothing about this pass can
     // be credited to in-memory bookkeeping carried across the "restart" — only what a
@@ -158,7 +189,7 @@ describe('durability', () => {
     const { server, queue } = await startServer(store)
 
     const token = await signDocToken(
-      { sub: 'usr_v', docId: documentId, role: 'viewer', name: 'v', color: '#000' },
+      { sub: authorId, docId: documentId, role: 'viewer', name: 'v', color: '#000' },
       SECRET,
     )
     const doc = new Y.Doc()
