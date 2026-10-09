@@ -317,7 +317,7 @@ test('the panel is a tall column at the right of the page, not confined to the n
   await page.goto(documentPath(document))
 
   const panel = await openPanel(page)
-  // Let the g-side entrance finish: it slides in from 28px to the right.
+  // The panel settles at its right edge.
   await expect(panel.getByTestId('history-row')).toHaveCount(3)
   await expect.poll(async () => Math.round((await panel.boundingBox())!.x)).toBe(1280 - 16 - 330)
 

@@ -1535,8 +1535,9 @@ No schema, sync-server or route change. Design record for the merge wording: Dec
 - **What the list fetches.** The version list is one request: 2,519 bytes for 15 versions,
   1,690 for 10, 8,364 for 50. No state is fetched for a row until it is on screen: an
   `IntersectionObserver` with an 80px margin asks for the row's sentence, and the selected row
-  is always described. A sentence needs the row's own state and its older neighbour's, so a
-  panel showing N rows fetches about N+1 states. Measured on open: 13 states and 10,804 bytes
+  is always described, once the slider has stopped on it. A sentence needs the row's own
+  state and its older neighbour's, so a panel showing N rows fetches about N+1 states.
+  Measured on open: 13 states and 10,804 bytes
   for a 15-version board in an 800px panel (222 to 1,455 bytes each, all issued in 81 ms); 10
   states and 14,346 bytes for the 10-version document; 13 states and 6,838 bytes on a 50-row
   list, so not one per version. Scrolling the 15-row board to its end brought it to 15 states
@@ -1552,9 +1553,13 @@ No schema, sync-server or route change. Design record for the merge wording: Dec
   move at once; the choice is made only when it settles: 200 ms after the last input, on
   window `pointerup` or `pointercancel`, or on window blur. A row click cancels a pending
   choice and closing the panel discards it. A scrub therefore makes one preview, not one
-  per stop; see Known limitations for what the highlight still fetches. `aria-valuetext`
+  per stop, and the rows it passes are not described either (see below). `aria-valuetext`
   reads "Sep 30, 16:40, by Grace" or "Now". Checked on both documents: one ArrowLeft at a time,
   every stop's row, pill and previewed content matched its version.
+  While the thumb is moving, no row is described, whether it is highlighted or merely
+  scrolled into view on the way; the rows on screen when it settles are. A pending choice
+  is also dropped if the selection changes under it (Back to now pressed within the 200 ms
+  pause), so it cannot bring a preview back after the user left it.
 - **The version preview** (`VersionPreview.tsx`, `version-selection.ts`). Choosing a version
   builds a throwaway `Y.Doc` from its bytes, with no provider, socket or persistence, and
   renders it read-only: `Board` with `readOnly` and `provider={null}`, or `DocumentEditor` with
@@ -1683,18 +1688,30 @@ question for the owner (Decision 2 of the design record); the copy was not chang
   5). Moving titles into the CRDT would make them live; that is a separate change.
 - **Version content bytes stay cached after logout (Low).** The version route sends
   `Cache-Control: private, max-age=31536000, immutable`, so on a shared browser profile
-  a previously fetched version can be read again after the first user signs out.
+  a previously fetched version can be read again after the first user signs out. The
+  panel's own in-memory copy of fetched states is cleared at sign-out, so only the HTTP
+  cache is exposed.
 - **Fetching a version gets slower as a document's history grows.** It replays every
   update row up to that version. Starting from a snapshot would fix it, but needs exact
   snapshots and a way to tell them from the legacy ones. The panel multiplies this: each
   row's sentence needs two of these replays (its own state and its neighbour's).
-- **Scrubbing the slider over rows that have no sentence yet fetches a state for each
-  row it passes.** The preview itself is chosen once, when the thumb settles, but a row
-  that is highlighted is also described, and describing needs its state. Measured on a
-  50-row list with 13 rows already described: 25 fast ArrowLeft presses (247 ms) made 13
-  state requests, about 5.3 KB, all within 90 ms of the last press and none from the
-  settle. They go two at a time and are cached, so a second pass costs nothing. Fix, if
-  it matters: describe a row only once the thumb has rested on it.
+- **A scrub describes only the rows it comes to rest on.** The rows the thumb passes are
+  neither described nor fetched: `Row` takes a `scrubbing` flag, its observer is not made
+  while the slider moves, and the selected-row request waits for it to stop. When the
+  slider settles the observers are made again and fire for the rows actually on screen. The
+  cost that is left is the rows at the resting place, which is the same cost as scrolling
+  the list there. Measured on a 40-row list with 13 rows described on open (e2e, 800px
+  panel): 36 ArrowLeft presses made 12 state requests after the scrub settled, for 13 rows
+  within the observers' reach; with the change reverted the same scrub made 27, and
+  reverting either half alone (the observer or the selected-row request) also made 27.
+  The count is bounded in the test at rows in reach plus 2.
+- **Returning from a preview resets the zoom and page width, and drops the undo history.**
+  The live editor is unmounted while a preview shows and mounted again on return, so the
+  View tab's zoom and page width go back to 100% and Narrow (they are local state in
+  `DocumentEditor`, and per-document persistence was not asked for). The editor is
+  recreated, so Cmd-Z cannot reach edits made before the preview, and a restore cannot be
+  undone with Cmd-Z. The way back from a restore is the history panel: the version before
+  it is still listed.
 - **Two people typing together make a very noisy list.** Any change of author starts a
   new version, so the grouping that works for one writer does not for two. Measured:
   two browsers typing 40 characters each for 4.2 s wrote 80 update rows that became 66

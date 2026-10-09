@@ -22,7 +22,7 @@ Written at `dd4e0e0`. Corrected since: the panel's material is now handoff §13'
 - **Restore is not a route.** The backend plan established why: the ProseMirror schema exists only on the client, the sync server's per-frame role check already rejects a viewer's writes, and a server-written update has no connection behind it and therefore no author. Call the primitives.
 - **Restore does not promise an exact revert**, per Decision 2 of the design. If anyone else is editing when it lands, both apply, and the result is the restored version plus their edit. The UI must say so rather than implying a clean revert.
 - **Viewers may preview and may not restore.** The Restore control is hidden for them, and the protocol rejects it regardless.
-- Every colour, radius, duration and easing from a token where one exists. The panel is `--r-panel` (28) and the rows are `--r-card` (18). `@keyframes g-side` already exists, written for this panel and currently unused.
+- Every colour, radius, duration and easing from a token where one exists. The panel is `--r-panel` (28) and the rows are `--r-card` (18). `@keyframes g-side` already exists, written for this panel and unused at the time of writing. (Note, added after the build: the entrance this plan promises never runs. A name in an `animation:` declaration inside a CSS module is hashed, and the keyframes in `globals.css` are not, so `g-side` and the other `g-*` entrances do nothing from a module. See the handoff's Known limitations. The plan is left as written below.)
 - Pair every `backdrop-filter` with `-webkit-backdrop-filter`. Every animation and transition inside `@media (prefers-reduced-motion: no-preference)`.
 - **The panel sits below the nav.** The design's layer order is canvas, content, history panel, nav, sheets, palette, messages. The panel's `top: 84px` assumes the unshrunk nav; the shell plan's scroll-condense moves the bar, so check what the panel does when the nav condenses and say what you found.
 - Every test proven to discriminate. **Commit before mutating.**
@@ -194,7 +194,7 @@ git commit -m "feat(history): derive a sentence describing what changed between 
 
 ### Task 2: The panel, listing real versions
 
-The spec: `A fixed panel at top:84px; right:16px; bottom:16px, 330px wide, radius 28, glass, entrance g-side .6s` / `Header "History" (18/600) + close` / `Version list, newest first: each entry has an avatar, a description and "Grace · Sep 30, 16:40". The selected entry is highlighted.`
+The spec: `A fixed panel at top:84px; right:16px; bottom:16px, 330px wide, radius 28, glass, entrance g-side .6s` (the entrance does not run; see the note on `@keyframes g-side` near the top) / `Header "History" (18/600) + close` / `Version list, newest first: each entry has an avatar, a description and "Grace · Sep 30, 16:40". The selected entry is highlighted.`
 
 **Files:**
 - Modify: `apps/web/src/components/HistoryButton.tsx`
@@ -246,7 +246,7 @@ Case 3 needs a version with `userId` null — insert the update row directly wit
 
 The panel fetches on mount, holds `versions`, `loading` and `error`, and renders one row per version. Each row needs the previous version's state to describe itself, which means fetching every version's bytes — far too much for a list. **Fetch descriptions lazily:** render the row with author and time immediately and the description as "…" until its two states have been fetched, fetching only the rows that are on screen. Simpler alternative, and the one to take first: fetch states for the **newest ten** rows on mount and show `${updateCount} changes` for the rest. Measure both ways and report the byte cost; take the simple one unless it is visibly slow.
 
-Styles (handoff §13): `position: fixed; top: calc(var(--nav-bottom, 68px) + 16px); right: 16px; bottom: 16px; width: 330px; z-index: 25`, `border-radius: var(--r-panel)` (28px), `background: rgba(255, 255, 255, 0.66)` (a §13 literal with no token; comment it as such, and pair it with the existing no-backdrop-filter fallback pattern at a higher white), `backdrop-filter: var(--blur-3)` with its `-webkit-` pair (blur 30), `box-shadow: var(--glass-hl)`, `animation: g-side 0.6s var(--ease)`, `z-index` below the nav's 30 and above the content's 1 — the design's layer order puts it there. Rows at `--r-card` with 32px avatars; the selected row highlighted, transitioning over 0.35s per the interaction spec.
+Styles (handoff §13): `position: fixed; top: calc(var(--nav-bottom, 68px) + 16px); right: 16px; bottom: 16px; width: 330px; z-index: 25`, `border-radius: var(--r-panel)` (28px), `background: rgba(255, 255, 255, 0.66)` (a §13 literal with no token; comment it as such, and pair it with the existing no-backdrop-filter fallback pattern at a higher white), `backdrop-filter: var(--blur-3)` with its `-webkit-` pair (blur 30), `box-shadow: var(--glass-hl)`, `animation: g-side 0.6s var(--ease)` (as planned; the entrance does not run, see the note near the top), `z-index` below the nav's 30 and above the content's 1 — the design's layer order puts it there. Rows at `--r-card` with 32px avatars; the selected row highlighted, transitioning over 0.35s per the interaction spec.
 
 - [ ] **Step 4: Follow the condensed nav**
 
@@ -436,7 +436,7 @@ Open a board in two browsers. Make a dozen changes from both. Open the panel: ar
 
 - [ ] **Step 2: Record it**
 
-In the handoff, move the history button, the history panel and the version preview bar out of `### Deferred` into the built list, and remove the note that `g-side` is unused. Record:
+In the handoff, move the history button, the history panel and the version preview bar out of `### Deferred` into the built list, and record that the `g-side` entrance does not run (hashed keyframe names, see Known limitations) rather than removing a note that the keyframes are unused: they still are, in effect. Record:
 
 - that version descriptions are **derived by diffing two states**, that a single recognisable change gets a sentence and anything else gets a count, and the real ratio you measured
 - how many versions' states the list fetches up front, and the byte cost
@@ -459,7 +459,7 @@ git commit -m "docs: record the history panel, version preview and restore surfa
 
 ## Self-Review
 
-**1. Spec coverage.** `## 7. History panel` item by item: the panel's geometry and `g-side` entrance, the header and close, the version list with avatar, description and author-and-time, the selected highlight (Task 2); the Earliest-to-Now slider and the 0.35s highlight move (Task 4); the read-only preview and its 0.4s fade (Task 3); the dark pill with author, time, Restore and Back to now, and the restore message (Task 5). Task 1 exists because the spec asks for a sentence the backend cannot supply.
+**1. Spec coverage.** `## 7. History panel` item by item: the panel's geometry and `g-side` entrance (declared, but it does not run), the header and close, the version list with avatar, description and author-and-time, the selected highlight (Task 2); the Earliest-to-Now slider and the 0.35s highlight move (Task 4); the read-only preview and its 0.4s fade (Task 3); the dark pill with author, time, Restore and Back to now, and the restore message (Task 5). Task 1 exists because the spec asks for a sentence the backend cannot supply.
 
 Deliberately **not** here: the status popover and the offline pills, which belong to the connection-states plan; the card sheet's activity list, which is per-card CRDT state and a different thing from document version history; and any server-side restore, which the backend plan ruled out with reasons.
 
