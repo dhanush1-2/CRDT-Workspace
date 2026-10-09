@@ -1421,7 +1421,7 @@ marks and nodes, all of which the Y.Doc already represents as ordinary XML.
 | Table | "a table plugin" | `@tiptap/extension-table`, `resizable: false` | No column-resize handles; nothing in the toolbar drives them. |
 | Sticky offset (§12.1) | "12px under the nav" | `top: calc(var(--nav-bottom) + 12px)`: 80px, and 64px once the nav condenses | `--nav-bottom` is set on the shell from the nav's state (68px, condensed 52px); the toolbar's `top` animates with the nav over .4s. |
 
-**Asked for by §12 and not built**
+**Asked for by §12 and not built at the time**
 
 - **The history preview's "toolbar hidden" state.** Built later, by
   `2026-10-04-history-panel-and-preview.md`: `DocumentEditor` takes `toolbar={false}` and a
@@ -1516,8 +1516,9 @@ No schema, sync-server or route change. Design record for the merge wording: Dec
   is opaque Yjs bytes, so a row's sentence is made by building the state before and after
   and comparing. A single recognisable change gets a sentence ("Added 'New card'", "Renamed
   the list 'New column' to 'Backlog'", "Moved 'New card' to Doing", "Deleted the list 'X' and
-  its 2 cards", "Added 33 characters", "Removed 3 characters"). Anything else gets a count
-  ("2 changes"); a text change that involves structure or formatting says "Edited the text".
+  its 2 cards", "Added 33 characters", "Removed 3 characters"). On a board anything else gets
+  a count ("2 changes"); in a document, a text change that involves structure or formatting
+  says "Edited the text", and a count appears only when a state is missing or fails to load.
   A wrong sentence about someone's document is worse than a vague one, so the count is the
   floor, not a bug. The first version is "Created the board" or "Created the document", and
   only when the list reaches the document's first version.
@@ -1527,9 +1528,9 @@ No schema, sync-server or route change. Design record for the merge wording: Dec
   version holding one change got a sentence. Document, 12 scripted turns: 10 versions, 10
   sentences and 0 counts, but only 4 are specific (Created, Added 33 characters, Removed 3
   characters, Added 2 characters); the other 6 say "Edited the text". With two people typing
-  together: 49 sentences and 1 count in 50 rows, nearly all "Added 1 character". In the board
-  and document runs, all 25 rows named the right author, in the order the database recorded them. Cards cannot be renamed in
-  the UI yet, so every card is 'New card' and every list starts as 'New column'; the sentences
+  together: 49 sentences and 1 count in 50 rows, all small additions of one to three
+  characters. In the board and document runs, all 25 rows named the right author, in the
+  order the database recorded them. Cards cannot be renamed in the UI yet, so every card is 'New card' and every list starts as 'New column'; the sentences
   are true but do not tell cards apart.
 - **What the list fetches.** The version list is one request: 2,519 bytes for 15 versions,
   1,690 for 10, 8,364 for 50. No state is fetched for a row until it is on screen: an
@@ -1539,7 +1540,8 @@ No schema, sync-server or route change. Design record for the merge wording: Dec
   for a 15-version board in an 800px panel (222 to 1,455 bytes each, all issued in 81 ms); 10
   states and 14,346 bytes for the 10-version document; 13 states and 6,838 bytes on a 50-row
   list, so not one per version. Scrolling the 15-row board to its end brought it to 15 states
-  and 11,102 bytes. State requests run two at a time, cached for the session by (document,
+  and 11,102 bytes. Background state requests run two at a time (the chosen version's
+  fetch jumps the queue and is not capped), cached for the session by (document,
   version) with 64 kept, and a failure falls back to the count. A state is the whole
   document, so its size follows the document, and the server cost of each follows its
   history (see Known limitations).
@@ -1696,7 +1698,8 @@ question for the owner (Decision 2 of the design record); the copy was not chang
 - **Two people typing together make a very noisy list.** Any change of author starts a
   new version, so the grouping that works for one writer does not for two. Measured:
   two browsers typing 40 characters each for 4.2 s wrote 80 update rows that became 66
-  versions, mostly "Added 1 character"; ten rounds of taking turns (20 turns, 60 rows)
+  versions, each a small addition (inferred from one update per keystroke; the panel
+  text for that run was not read); ten rounds of taking turns (20 turns, 60 rows)
   made 19. The panel lists the newest 50, so after a minute of co-editing it shows only
   the last couple of minutes of work, and the oldest listed row reads "1 change" because
   nothing is known to precede it. The 5-minute window and the alternation rule are the
