@@ -229,12 +229,14 @@ overruled.
   optimisation is to start from a snapshot, which needs snapshots that are exact (encoded
   at the recorded id) and a way to tell them from the legacy ones already written, which
   lag. Not built.
-- **Query plan of the version list, as measured** on a scratch document with 12,000 rows
-  (plus 3,000 on another): the inner scan is `Index Scan Backward` on
-  `DocumentUpdate_documentId_id_idx` under a `Limit`, reading exactly 5,000 rows in 0.6
-  ms. Total execution 5.2 ms in the database, 13 ms for `listVersions` end to end. The
-  plan is a single-table index scan with no join, so it does not depend on planner
-  statistics, which were stale in the test (estimated 21 rows, 5,000 actual).
+- **Query plan of the version list, as measured** on a 12,000-row scratch document (plus
+  3,000 rows on another), so the 5,000-row bound was actually exercised: the inner scan is
+  `Index Scan Backward` on `DocumentUpdate_documentId_id_idx` under a `Limit`, reading
+  exactly 5,000 rows in 0.6 ms. Total execution 5.2 ms in the database, 13 ms for
+  `listVersions` end to end. That is the plan on this data, with stale statistics
+  (estimated 21 rows, 5,000 actual). It is not guaranteed: the same query shape can
+  degrade to a primary-key scan with a filter on skewed data, as the last-activity query
+  did (see "Last-activity query efficiency is planner-dependent" in the handoff).
 - **Restore is not an exact revert when anyone else is editing.** As Decision 2 says, the
   result is the restored version plus any concurrent edit. The UI owes the user that
   sentence when other people are present. The UI is not in this plan.

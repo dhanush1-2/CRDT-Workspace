@@ -1474,8 +1474,8 @@ Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.m
   Consecutive updates by the same author with no gap over 5 minutes are one version.
   Only the newest 5,000 update rows are scanned, so older history is not listed.
 - **Version content.** `GET /api/documents/[id]/history/[version]` returns the document's
-  state at that version as raw bytes (`application/octet-stream`). The id must be digits
-  only and a row of that document, else 404. Non-members get 404; viewers may read.
+  state at that version as raw bytes (`application/octet-stream`). A non-digit id
+  returns 400; an id that is not a row of this document, or is out of range, returns 404. Non-members get 404; viewers may read.
   Rebuilt from update rows only, never snapshots, so cost grows with history.
 - **Restore.** No route. `restoreBoard(live, from)` in `@crdt/shared/board` and
   `restoreEditor(live, from)` in `apps/web/src/lib/restore-editor.ts` write the past state
