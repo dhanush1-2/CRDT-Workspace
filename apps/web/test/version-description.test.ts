@@ -110,6 +110,35 @@ describe('describeChange on a board', () => {
     expect(sentence).toContain('…')
   })
 
+  it('cuts a long destination title as it cuts a card title', () => {
+    const before = board()
+    addColumn(before, { id: 'long', title: 'y'.repeat(100) })
+    const after = forked(before)
+    moveCard(after, 'c1', { columnId: 'long' })
+    const moved = describeChange(before, after, 'board', 1)
+    expect(moved.length).toBeLessThan(70)
+    expect(moved.startsWith("Moved 'Enforce roles' to yyy")).toBe(true)
+    expect(moved).toContain('…')
+
+    const reorder = forked(before)
+    addCard(reorder, { id: 'c2', title: 'Second', columnId: 'long' })
+    addCard(reorder, { id: 'c3', title: 'Third', columnId: 'long' })
+    const swapped = forked(reorder)
+    moveCard(swapped, 'c3', { columnId: 'long', beforeCardId: 'c2' })
+    const sentence = describeChange(reorder, swapped, 'board', 1)
+    expect(sentence.startsWith("Reordered 'Third' in yyy")).toBe(true)
+    expect(sentence.length).toBeLessThan(70)
+    expect(sentence).toContain('…')
+  })
+
+  it('falls back to a count when the destination list has no title to name', () => {
+    const before = board()
+    addColumn(before, { id: 'blank', title: '' })
+    const after = forked(before)
+    moveCard(after, 'c1', { columnId: 'blank' })
+    expect(describeChange(before, after, 'board', 1)).toBe('1 change')
+  })
+
   it('falls back to a count when several things changed', () => {
     const before = board()
     const after = forked(before)
@@ -198,6 +227,53 @@ describe('describeChange on a document', () => {
     const after = forked(before)
     textNode(after).format(0, 5, { bold: {} })
     expect(describeChange(before, after, 'doc', 1)).toBe('Edited the text')
+  })
+
+  function blocks(...items: Array<{ type?: string; text: string }>): Y.Doc {
+    const doc = new Y.Doc()
+    prosemirrorJSONToYXmlFragment(
+      getEditorSchema(),
+      {
+        type: 'doc',
+        content: items.map(({ type = 'paragraph', text }) => ({
+          type,
+          ...(type === 'heading' ? { attrs: { level: 1 } } : {}),
+          content: text ? [{ type: 'text', text }] : [],
+        })),
+      },
+      doc.getXmlFragment(EDITOR_FRAGMENT),
+    )
+    return doc
+  }
+
+  it('does not call typed text plus a bold change elsewhere an insertion', () => {
+    const before = withText('hello world')
+    const after = forked(before)
+    textNode(after).insert(11, '!!!')
+    textNode(after).format(0, 5, { bold: {} })
+    expect(describeChange(before, after, 'doc', 2)).toBe('Edited the text')
+  })
+
+  it('does not call typed text plus a paragraph turned into a heading an insertion', () => {
+    const before = blocks({ text: 'hello' })
+    const after = blocks({ type: 'heading', text: 'hello there' })
+    expect(describeChange(before, after, 'doc', 2)).toBe('Edited the text')
+  })
+
+  it('does not call a deleted word plus a deleted empty paragraph a deletion', () => {
+    const before = blocks({ text: 'hello world' }, { text: '' })
+    const after = forked(before)
+    textNode(after).delete(5, 6)
+    after.getXmlFragment(EDITOR_FRAGMENT).delete(1, 1)
+    expect(describeChange(before, after, 'doc', 2)).toBe('Edited the text')
+  })
+
+  it('still counts text typed inside a bold run exactly', () => {
+    const before = withText('hello world')
+    textNode(before).format(0, 5, { bold: {} })
+    const after = forked(before)
+    textNode(after).insert(2, 'XY')
+    expect(describeChange(before, after, 'doc', 1)).toBe('Added 2 characters')
   })
 
   it('falls back to a count when nothing differs', () => {

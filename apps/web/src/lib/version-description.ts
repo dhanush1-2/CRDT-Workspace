@@ -31,9 +31,12 @@ export function describeChange(
 /** Titles go into a narrow list row, so a long one is cut rather than left to wrap. */
 const MAX_TITLE = 40
 
+function cut(title: string): string {
+  return title.length > MAX_TITLE ? `${title.slice(0, MAX_TITLE - 1).trimEnd()}…` : title
+}
+
 function quoted(title: string): string {
-  const shown = title.length > MAX_TITLE ? `${title.slice(0, MAX_TITLE - 1).trimEnd()}…` : title
-  return `'${shown}'`
+  return `'${cut(title)}'`
 }
 
 function plural(n: number, noun: string): string {
@@ -41,6 +44,15 @@ function plural(n: number, noun: string): string {
 }
 
 // --- Boards -----------------------------------------------------------------------
+
+/**
+ * The list's title is cut like a card's but left unquoted: the design's own sentence is
+ * "Moved 'Enforce roles' to Done". A list with an empty title has nothing to say, and
+ * "Moved 'X' to " would read as a bug, so that falls back to the count.
+ */
+function destination(prefix: string, columnTitle: string | undefined): string | null {
+  return columnTitle ? `${prefix} ${cut(columnTitle)}` : null
+}
 
 interface CardState {
   title: string
@@ -67,7 +79,8 @@ function readBoard(doc: Y.Doc): {
 function describeBoard(beforeDoc: Y.Doc, afterDoc: Y.Doc): string | null {
   const before = readBoard(beforeDoc)
   const after = readBoard(afterDoc)
-  const differences: string[] = []
+  // null is a difference that cannot be put into words (a list with no title to name).
+  const differences: Array<string | null> = []
 
   const removedColumns = new Set<string>()
   for (const [id, title] of before.columns) {
@@ -94,9 +107,9 @@ function describeBoard(beforeDoc: Y.Doc, afterDoc: Y.Doc): string | null {
       continue
     }
     if (now.columnId !== card.columnId) {
-      differences.push(`Moved ${quoted(now.title)} to ${after.columns.get(now.columnId) ?? ''}`)
+      differences.push(destination(`Moved ${quoted(now.title)} to`, after.columns.get(now.columnId)))
     } else if (now.order !== card.order) {
-      differences.push(`Reordered ${quoted(now.title)} in ${after.columns.get(now.columnId) ?? ''}`)
+      differences.push(destination(`Reordered ${quoted(now.title)} in`, after.columns.get(now.columnId)))
     }
     if (now.title !== card.title) {
       differences.push(`Renamed ${quoted(card.title)} to ${quoted(now.title)}`)
@@ -119,40 +132,56 @@ function describeBoard(beforeDoc: Y.Doc, afterDoc: Y.Doc): string | null {
 
 // --- Documents --------------------------------------------------------------------
 
-/** Every text node's characters, in order. Structure and marks are left out on purpose. */
-function plainText(node: unknown): string {
-  if (!node || typeof node !== 'object') return ''
-  const { type, text, content } = node as { type?: string; text?: string; content?: unknown[] }
-  if (type === 'text') return text ?? ''
-  return (content ?? []).map(plainText).join('')
+/**
+ * The document as a flat run of tokens: one per character (carrying its marks), plus
+ * open and close tokens for every node (carrying its type and attributes). Two versions
+ * can then be compared token by token, and a text change is distinguishable from a
+ * structure or formatting change because only the former is made of character tokens.
+ */
+function tokens(node: unknown, out: string[] = []): string[] {
+  if (!node || typeof node !== 'object') return out
+  const { type, text, content, attrs, marks } = node as {
+    type?: string
+    text?: string
+    content?: unknown[]
+    attrs?: unknown
+    marks?: unknown
+  }
+  if (type === 'text') {
+    const marked = JSON.stringify(marks ?? [])
+    for (const char of text ?? '') out.push(`c${marked}|${char}`)
+    return out
+  }
+  out.push(`<${type}${JSON.stringify(attrs ?? {})}`)
+  for (const child of content ?? []) tokens(child, out)
+  out.push('>')
+  return out
 }
+
+const isCharacter = (token: string) => token.startsWith('c')
 
 function describeDocument(beforeDoc: Y.Doc, afterDoc: Y.Doc): string | null {
   // The raw Y XML, not a schema-parsed document: reading it back needs no schema, and
   // reading it raw means a node the schema would drop still counts as a change.
-  const beforeJson = yXmlFragmentToProsemirrorJSON(beforeDoc.getXmlFragment(EDITOR_FRAGMENT))
-  const afterJson = yXmlFragmentToProsemirrorJSON(afterDoc.getXmlFragment(EDITOR_FRAGMENT))
-  const was = plainText(beforeJson)
-  const now = plainText(afterJson)
+  const was = tokens(yXmlFragmentToProsemirrorJSON(beforeDoc.getXmlFragment(EDITOR_FRAGMENT)))
+  const now = tokens(yXmlFragmentToProsemirrorJSON(afterDoc.getXmlFragment(EDITOR_FRAGMENT)))
 
-  if (was === now) {
-    // Same characters, different document: formatting, or a paragraph split. Not nothing.
-    return JSON.stringify(beforeJson) === JSON.stringify(afterJson) ? null : 'Edited the text'
-  }
-
-  // Trim what both ends share. What is left is one contiguous span in each version. If
-  // one span is empty, the edit was a pure insertion or deletion and its size is exact.
-  // Anything else (a replacement, or two edits far apart, which this cannot tell from
-  // one big replacement) is "edited", never a net character count that would misreport.
+  // Trim what both ends share. What is left is one contiguous span in each version. It
+  // is a plain "added" or "removed" only if one span is empty AND the other is nothing
+  // but characters: typed text beside a bolded word, a new heading or a deleted
+  // paragraph is not that, and saying "Added 3 characters" of it would be half the story.
+  // A replacement, or two edits far apart (indistinguishable from one big replacement),
+  // is "edited", never a net character count that would misreport.
   let start = 0
   const shortest = Math.min(was.length, now.length)
   while (start < shortest && was[start] === now[start]) start++
   let end = 0
   while (end < shortest - start && was[was.length - 1 - end] === now[now.length - 1 - end]) end++
 
-  const removed = was.length - start - end
-  const added = now.length - start - end
-  if (removed === 0 && added > 0) return `Added ${plural(added, 'character')}`
-  if (added === 0 && removed > 0) return `Removed ${plural(removed, 'character')}`
+  const removed = was.slice(start, was.length - end)
+  const added = now.slice(start, now.length - end)
+  if (removed.length === 0 && added.length === 0) return null
+  if (removed.length === 0 && added.every(isCharacter)) return `Added ${plural(added.length, 'character')}`
+  if (added.length === 0 && removed.every(isCharacter)) return `Removed ${plural(removed.length, 'character')}`
   return 'Edited the text'
 }
