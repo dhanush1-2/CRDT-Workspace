@@ -8,10 +8,11 @@ import { Board } from './Board'
 import { DocumentEditor } from './DocumentEditor'
 import { EDITOR_FRAGMENT } from './editor-fragment'
 import { fetchVersionState, VersionTooLargeError } from '@/lib/history-client'
+import type { VersionDetails } from '@/lib/version-selection'
 import styles from './version-preview.module.css'
 
 /** What a fetched state became: text for a document, a throwaway Y.Doc for a board. */
-type Built = { versionId: string; label?: string } & ({ content: JSONContent } | { board: Y.Doc })
+type Built = { versionId: string; label?: string; details?: VersionDetails } & ({ content: JSONContent } | { board: Y.Doc })
 type Failure = { versionId: string; attempt: number; message: string }
 
 const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] }
@@ -27,15 +28,16 @@ function build(
   type: 'doc' | 'board',
   versionId: string,
   label: string | undefined,
+  details: VersionDetails | undefined,
   bytes: Uint8Array,
 ): Built {
   const doc = new Y.Doc()
   try {
     Y.applyUpdate(doc, bytes)
-    if (type === 'board') return { versionId, label, board: doc }
+    if (type === 'board') return { versionId, label, details, board: doc }
     const content = yXmlFragmentToProsemirrorJSON(doc.getXmlFragment(EDITOR_FRAGMENT)) as JSONContent
     doc.destroy()
-    return { versionId, label, content: content.content?.length ? content : EMPTY_DOC }
+    return { versionId, label, details, content: content.content?.length ? content : EMPTY_DOC }
   } catch (error) {
     doc.destroy()
     throw error
@@ -58,6 +60,8 @@ export function VersionPreview({
   versionId,
   attempt = 0,
   label,
+  details,
+  onShown,
   type,
   heading,
   sheetClassName,
@@ -70,6 +74,15 @@ export function VersionPreview({
   attempt?: number
   /** Names the version for a screen reader. */
   label?: string
+  /** The same version in parts, handed back through `onShown` for the pill to quote. */
+  details?: VersionDetails
+  /**
+   * Told which version is actually on screen: its id and details when a preview is
+   * showing, null when the live view is (nothing chosen, still loading the first, or
+   * the chosen one failed). The version on screen can trail the one chosen while the
+   * next one loads, so whoever describes it should ask here rather than assume.
+   */
+  onShown?: (shown: { versionId: string; details?: VersionDetails } | null) => void
   type: 'doc' | 'board'
   /** A plain, non-editable title: a past version cannot be renamed. */
   heading: ReactNode
@@ -88,6 +101,8 @@ export function VersionPreview({
   showing.current = shown?.versionId ?? null
   const labelRef = useRef(label)
   labelRef.current = label
+  const detailsRef = useRef(details)
+  detailsRef.current = details
 
   useEffect(() => {
     if (!versionId) {
@@ -100,7 +115,7 @@ export function VersionPreview({
       (bytes) => {
         if (!current) return
         try {
-          setShown(build(type, versionId, labelRef.current, bytes))
+          setShown(build(type, versionId, labelRef.current, detailsRef.current, bytes))
           setFailure(null)
         } catch {
           setShown(null)
@@ -143,6 +158,14 @@ export function VersionPreview({
   useEffect(() => {
     if (preview) setPreviewed(true)
   }, [preview])
+
+  const shownId = preview?.versionId ?? null
+  const shownDetails = preview?.details
+  const onShownRef = useRef(onShown)
+  onShownRef.current = onShown
+  useEffect(() => {
+    onShownRef.current?.(shownId ? { versionId: shownId, details: shownDetails } : null)
+  }, [shownId, shownDetails])
 
   return (
     <>

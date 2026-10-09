@@ -8,6 +8,13 @@ import { useSyncExternalStore } from 'react'
  * preview, and the nav's "viewing an old version" pill reads it too. The document id is
  * part of the value so a pick never outlives a navigation to another document.
  */
+export type VersionDetails = {
+  /** Who wrote the version, or "Unknown". */
+  author: string
+  /** When it ended, as the panel writes it: "Sep 30, 16:40". */
+  time: string
+}
+
 export type VersionSelection = {
   documentId: string
   versionId: string
@@ -15,6 +22,8 @@ export type VersionSelection = {
   attempt: number
   /** What a screen reader is told is on screen, e.g. "Sep 30, 16:40, by Grace". */
   label?: string
+  /** The same facts as `label`, in parts, for the pill and the restore message to quote. */
+  details?: VersionDetails
 }
 
 let selection: VersionSelection | null = null
@@ -33,9 +42,14 @@ function publish(next: VersionSelection | null): void {
  * the user can do from there is click it. The preview ignores the new attempt when it is
  * already showing that version, so a repeat click on a working one changes nothing.
  */
-export function selectVersion(documentId: string, versionId: string, label?: string): void {
+export function selectVersion(
+  documentId: string,
+  versionId: string,
+  label?: string,
+  details?: VersionDetails,
+): void {
   picks += 1
-  publish({ documentId, versionId, attempt: picks, label })
+  publish({ documentId, versionId, attempt: picks, label, details })
 }
 
 /**

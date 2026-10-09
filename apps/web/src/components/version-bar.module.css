@@ -1,0 +1,96 @@
+/*
+  The pill that says a past version is on screen. Fixed just under the nav, centred, and
+  read off the shell's --nav-bottom (68px, or 52px once the nav condenses), which
+  cascades here because the document page renders inside the shell. Inset auto margins
+  centre it instead of a transform, so the entrance below can use the transform alone.
+*/
+.bar {
+  position: fixed;
+  top: calc(var(--nav-bottom, 68px) + 8px);
+  left: 0;
+  right: 0;
+  z-index: 26;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 18px;
+  border-radius: var(--r-pill);
+  /* The toast's dark glass. */
+  background: rgba(28, 29, 27, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.label {
+  min-width: 0;
+  margin-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button {
+  flex: none;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.button:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.primary {
+  background: #fff;
+  color: var(--text);
+}
+
+.primary:hover {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.button[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* The page's focus ring is the accent on a light page; on this pill it would vanish. */
+.button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/*
+  Declared here rather than reusing globals.css's g-up: this build gives an animation
+  name inside a CSS module a per-file hash, so a bare `animation: g-up` points at
+  keyframes that do not exist and nothing animates (the toast's is in that state).
+*/
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bar {
+    animation: rise 0.55s var(--ease);
+  }
+}

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type BrowserContext, type Page } from '@playwright/test'
 import * as Y from 'yjs'
 import { addCard, addColumn } from '@crdt/shared/board'
 import { prisma } from '@crdt/db'
@@ -1307,4 +1307,359 @@ test('the slider is drawn in the accent colour but is still a native range input
   })
   expect(accent).not.toBe('')
   expect(await slider.evaluate((el) => getComputedStyle(el).accentColor)).toBe(accent)
+})
+
+// --- The version pill, and Restore -------------------------------------------------
+
+const pill = (page: Page) => page.getByTestId('version-bar')
+const TIME = '[A-Z][a-z]{2} \\d{1,2}, \\d{2}:\\d{2}'
+/** The live editor, as opposed to the preview's (which lives inside version-preview). */
+const liveText = (page: Page) => page.locator('[data-testid="document-page"] .ProseMirror')
+
+/** Opens the page as `userId` in its own context, connected through the server. */
+async function openAsUser(context: BrowserContext, userId: string, document: { id: string; workspaceId: string }) {
+  await context.addCookies([await sessionCookieFor(userId)])
+  const page = await context.newPage()
+  await page.goto(`${documentPath(document)}?nobc=1`)
+  await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+  return page
+}
+
+test('choosing a version shows a pill with that version\'s author and time, and no pill without one', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('bar-shows'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  await expect(page.locator('.ProseMirror')).toContainText('Hello world!!')
+  await expect(pill(page)).toHaveCount(0)
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(page.getByTestId('version-bar-label')).toHaveText(new RegExp(`^Grace · ${TIME}$`))
+
+  // It follows the version on screen as the choice moves.
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(editorText(page)).toHaveText('Hello world')
+  await expect(page.getByTestId('version-bar-label')).toHaveText(new RegExp(`^Unknown · ${TIME}$`))
+
+  // It quotes the same time as the panel's row.
+  const rowText = await panel.getByTestId('history-row').nth(1).innerText()
+  const shown = (await page.getByTestId('version-bar-label').innerText()).split(' · ')[1]!
+  expect(rowText).toContain(shown)
+})
+
+test('the pill sits centred under the nav, and enters with a real animation that reduced motion removes', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('bar-place'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  // A name that matches no keyframes still reads as an animation in computed style (the
+  // hashed-name bug), so ask the browser whether one is actually running.
+  await page.evaluate(() => {
+    const w = window as unknown as { sawRise: boolean }
+    w.sawRise = false
+    new MutationObserver(() => {
+      const el = document.querySelector('[data-testid="version-bar"]')
+      if (el && el.getAnimations().length > 0) w.sawRise = true
+    }).observe(document.body, { childList: true, subtree: true })
+  })
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(pill(page)).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { sawRise: boolean }).sawRise))
+    .toBe(true)
+  expect(
+    await pill(page).evaluate((el) => {
+      const style = getComputedStyle(el)
+      return `${style.animationName} ${style.animationDuration}`
+    }),
+  ).toMatch(/rise.* 0\.55s$/)
+
+  // Fixed under the nav and centred in the window.
+  const nav = await page.getByTestId('nav-bar').boundingBox()
+  const box = await pill(page).boundingBox()
+  const width = page.viewportSize()!.width
+  expect(box!.y).toBeGreaterThanOrEqual(nav!.y + nav!.height)
+  expect(box!.y - (nav!.y + nav!.height)).toBeLessThan(24)
+  expect(Math.abs(box!.x + box!.width / 2 - width / 2)).toBeLessThan(2)
+  expect(await pill(page).evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.getByTestId('version-back').click()
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(pill(page)).toBeVisible()
+  expect(await pill(page).evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
+})
+
+test('Back to now removes the pill and the preview, returns the live document, and changes nothing', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('bar-back'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  const before = await prisma.documentUpdate.count({ where: { documentId: document.id } })
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+
+  await page.getByTestId('version-back').click()
+
+  await expect(pill(page)).toHaveCount(0)
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(liveText(page)).toHaveText('Hello world!!')
+  // Focus did not vanish with the pill: it is in the live editor.
+  await expect(liveText(page)).toBeFocused()
+  await expect(page.getByTestId('toast')).toHaveCount(0)
+  // The panel's own control agrees the document is live again.
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
+  expect(await prisma.documentUpdate.count({ where: { documentId: document.id } })).toBe(before)
+})
+
+test('an editor sees Restore; a viewer sees the pill and Back to now but no Restore at all', async ({
+  browser,
+}) => {
+  const label = labelFor('bar-roles')
+  const { owner, workspace } = await seedWorkspace(label)
+  const editor = await addMember(workspace.id, label, 'editor')
+  const viewer = await addMember(workspace.id, label, 'viewer')
+  const document = await createDocument(workspace.id, 'doc')
+  const [created, ...rest] = paragraphUpdates(['Hello', ' world'])
+  await seedVersions(document.id, [
+    { userId: owner.id, update: created!, minutesAgo: 120 },
+    { userId: owner.id, update: rest[0]!, minutesAgo: 60 },
+  ])
+
+  for (const [user, canRestore] of [
+    [editor, true],
+    [viewer, false],
+    [owner, true],
+  ] as const) {
+    const context = await browser.newContext()
+    const page = await openAsUser(context, user.id, document)
+    const panel = await openPanel(page)
+    await panel.getByTestId('history-row').nth(1).click()
+    await expect(pill(page)).toBeVisible()
+    await expect(page.getByTestId('version-back')).toBeVisible()
+    // Absent, not merely disabled: a viewer has no such action to be refused.
+    await expect(page.getByTestId('version-restore')).toHaveCount(canRestore ? 1 : 0)
+    await expect(page.getByRole('button', { name: 'Restore' })).toHaveCount(canRestore ? 1 : 0)
+    await context.close()
+  }
+})
+
+test('Restore puts the old text into the live document, and the pill goes', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('bar-restores'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  await page.getByTestId('version-restore').click()
+
+  await expect(pill(page)).toHaveCount(0)
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  // The live editor now holds the old text, not the newer one.
+  await expect(liveText(page)).toHaveText('Hello')
+  await expect(liveText(page)).toBeFocused()
+})
+
+test('Restore on a board puts the older board back', async ({ page }) => {
+  const { owner, document } = await seedBoard(labelFor('bar-board'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  await expect(page.getByTestId('card-newer')).toBeVisible()
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(page.getByTestId('version-preview').getByTestId('card-old')).toBeVisible()
+  await expect(page.getByTestId('version-preview').getByTestId('card-newer')).toHaveCount(0)
+  await page.getByTestId('version-restore').click()
+
+  await expect(pill(page)).toHaveCount(0)
+  await expect(page.getByTestId('card-old')).toBeVisible()
+  await expect(page.getByTestId('card-newer')).toHaveCount(0)
+  // No editor to focus on a board: the title takes it, so focus is somewhere sensible.
+  await expect(page.getByTestId('document-heading')).toBeFocused()
+})
+
+test('after a restore the list has a new newest entry, attributed to whoever restored', async ({
+  browser,
+}) => {
+  const label = labelFor('bar-newest')
+  const { workspace } = await seedWorkspace(label)
+  const editor = await addMember(workspace.id, label, 'editor')
+  const document = await createDocument(workspace.id, 'doc')
+  const grace = await author(label, 'Grace')
+  const [created, ...rest] = paragraphUpdates(['Hello', ' world'])
+  await seedVersions(document.id, [
+    { userId: grace.id, update: created!, minutesAgo: 120 },
+    { userId: grace.id, update: rest[0]!, minutesAgo: 60 },
+  ])
+
+  const context = await browser.newContext()
+  const page = await openAsUser(context, editor.id, document)
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0).getByTestId('history-row-author')).toHaveText('Grace')
+
+  await rows.nth(1).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  await page.getByTestId('version-restore').click()
+  await expect(liveText(page)).toHaveText('Hello')
+
+  // The sync server writes updates to the database on a short timer, so the new version
+  // exists a moment after the restore. Reopen the list until it is there; the condition is
+  // the newest row's author, not a delay.
+  await expect(async () => {
+    if (await page.getByTestId('history-panel').isVisible()) await page.getByTestId('history').click()
+    const reopened = await openPanel(page)
+    await expect(reopened.getByTestId('history-row')).toHaveCount(3, { timeout: 1000 })
+    await expect(reopened.getByTestId('history-row').nth(0).getByTestId('history-row-author')).toHaveText(
+      'Eddie',
+      { timeout: 1000 },
+    )
+  }).toPass({ timeout: 15_000 })
+  const newest = await prisma.documentUpdate.findFirst({
+    where: { documentId: document.id },
+    orderBy: { id: 'desc' },
+  })
+  expect(newest?.userId).toBe(editor.id)
+  await context.close()
+})
+
+test('a restore raises a message naming the version, with no claim of merging when alone', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('bar-toast'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  const time = (await page.getByTestId('version-bar-label').innerText()).split(' · ')[1]!
+  await page.getByTestId('version-restore').click()
+
+  // Exactly the short form, naming the version by the time the pill showed.
+  await expect(page.getByTestId('toast')).toHaveText(`Restored version from ${time}`)
+})
+
+test('pressing Restore twice at once restores once', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('bar-double'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  // Two clicks in one task, before React can re-render the first one's effect.
+  await page.getByTestId('version-restore').evaluate((el) => {
+    ;(el as HTMLButtonElement).click()
+    ;(el as HTMLButtonElement).click()
+  })
+  await expect(liveText(page)).toHaveText('Hello')
+  await expect(page.getByTestId('toast')).toHaveCount(1)
+})
+
+test('no pill while the chosen version could not be previewed; Back to now is not needed, the live page is up', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('bar-fails'))
+  const rows = await prisma.documentUpdate.findMany({
+    where: { documentId: document.id },
+    orderBy: { id: 'asc' },
+    select: { id: true },
+  })
+  await signIn(page, owner.id)
+  await page.route(`**/api/documents/${document.id}/history/${rows[1]!.id}`, (route) =>
+    route.fulfill({ status: 500, json: { error: 'database is on fire' } }),
+  )
+  await page.route(`**/api/documents/${document.id}/history/${rows[0]!.id}`, (route) =>
+    route.fulfill({ status: 413, json: { error: 'too large to preview' } }),
+  )
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(page.getByTestId('preview-notice')).toContainText('Could not load that version')
+  await expect(pill(page)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Restore' })).toHaveCount(0)
+
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(page.getByTestId('preview-notice')).toHaveText('This version is too large to preview.')
+  await expect(pill(page)).toHaveCount(0)
+
+  // And a version that does load brings it.
+  await panel.getByTestId('history-row').nth(0).click()
+  await expect(editorText(page)).toHaveText('Hello world!!')
+  await expect(pill(page)).toBeVisible()
+})
+
+test('restoring while another browser types keeps their edit, and says it merged', async ({
+  browser,
+}) => {
+  const label = labelFor('bar-merge')
+  const { owner, workspace } = await seedWorkspace(label)
+  const editor = await addMember(workspace.id, label, 'editor')
+  const document = await createDocument(workspace.id, 'doc')
+  const [created, ...rest] = paragraphUpdates(['Hello', ' world', '!!'])
+  await seedVersions(document.id, [
+    { userId: owner.id, update: created!, minutesAgo: 180 },
+    { userId: owner.id, update: rest[0]!, minutesAgo: 120 },
+    { userId: owner.id, update: rest[1]!, minutesAgo: 60 },
+  ])
+
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const pageA = await openAsUser(contextA, owner.id, document)
+  const pageB = await openAsUser(contextB, editor.id, document)
+  // A knows B is here: that is what the message is decided by.
+  await expect(pageA.getByTestId('presence').getByRole('img', { name: 'Eddie' })).toBeVisible()
+  await expect(liveText(pageB)).toHaveText('Hello world!!')
+
+  const panel = await openPanel(pageA)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(pageA)).toHaveText('Hello')
+
+  // B types a long run, one key at a time, and is still typing when A presses Restore.
+  const run = Array.from({ length: 70 }, (_, i) => String.fromCharCode(97 + (i % 26))).join('')
+  await liveText(pageB).click()
+  await pageB.keyboard.press('Control+End')
+  const typing = pageB.keyboard.type(run, { delay: 60 })
+  await expect(liveText(pageB)).toContainText(run.slice(0, 8))
+  await pageA.getByTestId('version-restore').click()
+
+  // The message does not claim an exact revert.
+  await expect(pageA.getByTestId('toast')).toContainText('merged with changes made since')
+  await expect(pageA.getByTestId('toast')).toHaveText(
+    new RegExp(`^Restored version from ${TIME} · merged with changes made since$`),
+  )
+  await typing
+
+  // What B typed after the restore reached A is in both browsers, and the two agree.
+  const tail = run.slice(-20)
+  await expect(liveText(pageA)).toContainText(tail)
+  await expect(liveText(pageB)).toContainText(tail)
+  await expect(liveText(pageB)).not.toContainText('world')
+  // Without the other person's caret label, which is drawn inside the text.
+  const plain = (page: Page) =>
+    liveText(page).evaluate((el) => {
+      const copy = el.cloneNode(true) as HTMLElement
+      copy.querySelectorAll('.collaboration-carets__caret').forEach((caret) => caret.remove())
+      return copy.textContent
+    })
+  const [a, b] = [await plain(pageA), await plain(pageB)]
+  expect(a).toBe(b)
+  expect(a!.startsWith('Hello')).toBe(true)
+
+  await contextA.close()
+  await contextB.close()
 })

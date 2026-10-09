@@ -1,15 +1,50 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCollaborativeDoc } from '@/hooks/use-doc'
 import { useAnnouncePresence, usePresence } from '@/hooks/use-presence'
 import { Board } from '@/components/Board'
 import { DocumentEditor } from '@/components/DocumentEditor'
 import { InlineTitle } from '@/components/InlineTitle'
+import { VersionBar } from '@/components/VersionBar'
 import { VersionPreview } from '@/components/VersionPreview'
-import { clearDocState, publishDocState } from '@/lib/doc-state'
-import { clearVersion, useVersionSelection } from '@/lib/version-selection'
+import { useToast } from '@/components/ui/Toast'
+import { clearDocState, hasOthersHere, publishDocState } from '@/lib/doc-state'
+import { fetchVersionState } from '@/lib/history-client'
+import { restoreFromState, restoreMessage } from '@/lib/restore-version'
+import { clearVersion, useVersionSelection, type VersionDetails } from '@/lib/version-selection'
 import styles from './document.module.css'
+
+/**
+ * Puts keyboard focus on the live page once it is back, for when the pill that held it
+ * goes. The editor if there is one to type in; otherwise the title, which is given a
+ * tabindex only so it can be focused (it is not a tab stop). An editor is created a
+ * moment after the page mounts, so it is looked for over a few frames, not once.
+ * Returns a cancel.
+ */
+function focusLiveView(editable: boolean): () => void {
+  let frame = 0
+  let tries = 0
+  const attempt = () => {
+    const editor = document.querySelector<HTMLElement>(
+      '[data-testid="document-page"] .ProseMirror[contenteditable="true"]',
+    )
+    if (editor) {
+      editor.focus({ preventScroll: true })
+      return
+    }
+    if (editable && ++tries < 30) {
+      frame = requestAnimationFrame(attempt)
+      return
+    }
+    const heading = document.querySelector<HTMLElement>('[data-testid="document-heading"]')
+    if (!heading) return
+    heading.tabIndex = -1
+    heading.focus({ preventScroll: true })
+  }
+  attempt()
+  return () => cancelAnimationFrame(frame)
+}
 
 export function DocumentClient({
   documentId,
@@ -52,6 +87,44 @@ export function DocumentClient({
   // pick belongs to this document: leaving it, or the page unmounting, drops it.
   const selection = useVersionSelection(documentId)
   useEffect(() => () => clearVersion(documentId), [documentId])
+
+  // The version actually on screen, as VersionPreview reports it. Not the selection:
+  // that can name a version that failed to load (the live view stays, so there is nothing
+  // to restore or go back from) or trail the preview while the next one loads.
+  const [shown, setShown] = useState<{ versionId: string; details?: VersionDetails } | null>(null)
+  const toast = useToast()
+
+  // Read after the awaits in restore(), when the answer may have changed.
+  const others = hasOthersHere({ status, peers: presence })
+  const othersRef = useRef(others)
+  othersRef.current = others
+
+  const refocus = useRef(false)
+  useEffect(() => {
+    if (selection || !refocus.current) return
+    refocus.current = false
+    return focusLiveView(type === 'doc' && !readOnly)
+  }, [selection, type, readOnly])
+
+  function backToNow() {
+    refocus.current = true
+    clearVersion(documentId)
+  }
+
+  async function restore(versionId: string, time: string) {
+    if (!doc) return
+    try {
+      // Cached: the preview fetched it. A viewer cannot get here (no button), and the
+      // sync server would refuse the update from one anyway.
+      const state = await fetchVersionState(documentId, versionId)
+      restoreFromState(doc, type, state)
+    } catch {
+      toast('Could not restore that version. Try again.')
+      return
+    }
+    toast(restoreMessage(time, othersRef.current))
+    backToNow()
+  }
 
   /*
     The page's only heading. Editors get the title as an input that reads as the heading
@@ -105,16 +178,34 @@ export function DocumentClient({
     </h1>
   )
 
-  return (
-    <VersionPreview
-      documentId={documentId}
-      versionId={selection?.versionId ?? null}
-      attempt={selection?.attempt ?? 0}
-      label={selection?.label}
-      type={type}
-      heading={previewHeading}
-      sheetClassName={styles.page}
-      fallback={live}
+  // Only while a version is chosen and its preview is what is on screen. The pill is
+  // fixed to the viewport under the nav (see version-bar.module.css), so it can be
+  // rendered here beside the page rather than inside the shell's nav.
+  const pill = selection && shown?.details && (
+    <VersionBar
+      author={shown.details.author}
+      time={shown.details.time}
+      canRestore={!readOnly && doc !== null}
+      onRestore={() => restore(shown.versionId, shown.details!.time)}
+      onBackToNow={backToNow}
     />
+  )
+
+  return (
+    <>
+      {pill}
+      <VersionPreview
+        documentId={documentId}
+        versionId={selection?.versionId ?? null}
+        attempt={selection?.attempt ?? 0}
+        label={selection?.label}
+        details={selection?.details}
+        onShown={setShown}
+        type={type}
+        heading={previewHeading}
+        sheetClassName={styles.page}
+        fallback={live}
+      />
+    </>
   )
 }

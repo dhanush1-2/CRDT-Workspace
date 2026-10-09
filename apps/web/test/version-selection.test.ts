@@ -18,6 +18,11 @@ describe('version selection store', () => {
     })
   })
 
+  it('carries the author and time in parts, for the pill and the restore message', () => {
+    selectVersion('doc-1', '7', 'Sep 30, 16:40, by Grace', { author: 'Grace', time: 'Sep 30, 16:40' })
+    expect(getVersionSelection()?.details).toEqual({ author: 'Grace', time: 'Sep 30, 16:40' })
+  })
+
   it('a repeat pick of the same version is a retry: a new snapshot, with a higher attempt', () => {
     let calls = 0
     const stop = subscribeVersionSelection(() => {
