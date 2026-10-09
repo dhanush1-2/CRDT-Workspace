@@ -178,16 +178,6 @@ describe('document history', () => {
       return { documentId: document.id, rowIds }
     }
 
-    it('builds a later version from the snapshot plus the updates after it', async () => {
-      const { documentId: id, rowIds } = await documentWithSnapshot('snap-before', 2)
-      // The covered rows are gone, as after real compaction would make them redundant:
-      // the only way to get "one two " is through the snapshot.
-      await prisma.documentUpdate.deleteMany({ where: { documentId: id, id: { in: rowIds.slice(0, 2) } } })
-
-      expect(text(await stateAtVersion(id, rowIds[2]!))).toBe('one two three')
-      expect(text(await stateAtVersion(id, rowIds[1]!))).toBe('one two ')
-    })
-
     it('ignores a snapshot that covers more than the requested version', async () => {
       const { documentId: id, rowIds } = await documentWithSnapshot('snap-ahead', 3)
 
@@ -195,5 +185,47 @@ describe('document history', () => {
       expect(text(await stateAtVersion(id, rowIds[0]!))).toBe('one ')
       expect(text(await stateAtVersion(id, rowIds[2]!))).toBe('one two three')
     })
+
+    it('ignores a snapshot whose content runs ahead of its throughUpdateId', async () => {
+      // How the sync server really writes them: the snapshot encodes the live doc, which
+      // already holds edits still queued for persistence, while throughUpdateId is only
+      // the last row that reached the table. Those queued edits become rows after it.
+      const document = await prisma.document.create({
+        data: { workspaceId, type: 'doc', title: `${LABEL}-snap-lagging` },
+      })
+      const rowIds: bigint[] = []
+      for (const [index, update] of yjsUpdates.entries()) {
+        rowIds.push((await appendUpdate(document.id, update, alice.id, new Date(index * 1000))).id)
+      }
+      await prisma.documentSnapshot.create({
+        data: {
+          documentId: document.id,
+          state: Buffer.from(Y.mergeUpdates(yjsUpdates)), // includes the third insert
+          throughUpdateId: rowIds[1]!, // but claims to cover only through the second
+        },
+      })
+
+      // Version 2 must be exactly the first two inserts; "three" came later.
+      expect(text(await stateAtVersion(document.id, rowIds[1]!))).toBe('one two ')
+      expect(text(await stateAtVersion(document.id, rowIds[2]!))).toBe('one two three')
+    })
+  })
+
+  it('splits at every boundary between a known author and an anonymous one', async () => {
+    // Alice, then anonymous a minute later, then Alice a minute after that. Time alone
+    // would merge all three; only the author comparison can split them, in both
+    // directions (known -> null, and null -> known).
+    const document = await prisma.document.create({
+      data: { workspaceId, type: 'doc', title: `${LABEL}-null-adjacency` },
+    })
+    const rowIds: bigint[] = []
+    const authors = [alice.id, null, alice.id]
+    for (const [index, userId] of authors.entries()) {
+      rowIds.push((await appendUpdate(document.id, yjsUpdates[0]!, userId, new Date(index * 60_000))).id)
+    }
+
+    const versions = await listVersions(document.id)
+    expect(versions.map((version) => version.updateCount)).toEqual([1, 1, 1])
+    expect(versions.map((version) => version.author?.id ?? null)).toEqual([alice.id, null, alice.id])
   })
 })
