@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { prisma } from '@crdt/db'
-import { listVersions, stateAtVersion } from '../src/lib/document-history.js'
+import { listVersions, stateAtVersion, VersionTooLargeError, STATE_REPLAY_MAX_ROWS } from '../src/lib/document-history.js'
 
 const LABEL = 'history-integration'
 
@@ -128,6 +128,18 @@ describe('document history', () => {
     expect(versions.map((version) => version.updateCount)).toEqual([1, 2])
     expect(versions[0]!.id).toBe(String(gapIds[2]))
     expect(versions[1]!.id).toBe(String(gapIds[1]))
+  })
+
+  it('refuses to replay more rows than the cap, counting only rows up to the version', async () => {
+    expect(STATE_REPLAY_MAX_ROWS).toBe(20_000)
+
+    // The document has five rows. A cap of four is exceeded by the full log...
+    await expect(stateAtVersion(documentId, ids[4]!, 4)).rejects.toBeInstanceOf(VersionTooLargeError)
+    // ...exactly at the cap is allowed...
+    expect(await stateAtVersion(documentId, ids[4]!, 5)).not.toBeNull()
+    // ...and an early version of the same document is judged by its own row count (2),
+    // not the whole log's.
+    expect(await stateAtVersion(documentId, ids[1]!, 2)).not.toBeNull()
   })
 
   it('serves the document state as it was at a version', async () => {

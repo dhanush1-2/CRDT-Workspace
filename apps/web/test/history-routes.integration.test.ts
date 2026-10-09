@@ -8,6 +8,20 @@ import { signSession, SESSION_COOKIE } from '../src/lib/session.js'
 
 vi.mock('next/headers', () => ({ cookies: vi.fn() }))
 
+// The replay cap is 20,000 rows, too many to seed. Rather than add a test-only switch to
+// production code, this wraps the real stateAtVersion and passes the cap the optional
+// parameter already accepts. Everything else in the module (and the error class the
+// route's instanceof check uses) is the real one.
+const replay = vi.hoisted(() => ({ cap: undefined as number | undefined }))
+vi.mock('../src/lib/document-history.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/lib/document-history.js')>()
+  return {
+    ...actual,
+    stateAtVersion: (documentId: string, versionId: bigint) =>
+      actual.stateAtVersion(documentId, versionId, replay.cap),
+  }
+})
+
 // Unique prefix, matched with startsWith: the history library suite uses
 // `history-integration-...` and the e2e suite `...@e2e.test`; neither may be hit.
 const PREFIX = 'history-routes'
@@ -177,6 +191,22 @@ describe('GET /api/documents/[id]/history/[version]', () => {
   it('rejects a version that is not a plain non-negative integer with 400', async () => {
     for (const version of ['abc', '1.5', '1e3', '', ' 7', '0x10', '-1', '+1']) {
       expect((await read(ownerId, documentId, version)).status, JSON.stringify(version)).toBe(400)
+    }
+  })
+
+  it('is 413 when the version would replay more rows than the cap, and 200 once under it', async () => {
+    replay.cap = 2
+    try {
+      // ownIds[2] is the third row of the document: over a cap of 2.
+      const response = await read(viewerId, documentId, String(ownIds[2]))
+      expect(response.status).toBe(413)
+      expect(await response.json()).toEqual({ error: 'too large to preview' })
+      expect(response.headers.get('cache-control') ?? '').not.toContain('immutable')
+
+      // The second row replays exactly two rows: at the cap, so allowed.
+      expect((await read(viewerId, documentId, String(ownIds[1]))).status).toBe(200)
+    } finally {
+      replay.cap = undefined
     }
   })
 

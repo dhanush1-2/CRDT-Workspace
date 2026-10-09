@@ -1,6 +1,6 @@
 import { prisma } from '@crdt/db'
 import { requireDocumentRole, requireUser, toResponse } from '@/lib/auth-guard'
-import { stateAtVersion } from '@/lib/document-history'
+import { stateAtVersion, VersionTooLargeError } from '@/lib/document-history'
 
 // The id column is a signed 64-bit integer; anything larger cannot exist.
 const MAX_ID = 9223372036854775807n
@@ -43,6 +43,9 @@ export async function GET(
       },
     })
   } catch (error) {
+    if (error instanceof VersionTooLargeError) {
+      return Response.json({ error: 'too large to preview' }, { status: 413 })
+    }
     return toResponse(error)
   }
 }

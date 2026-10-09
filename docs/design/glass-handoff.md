@@ -1476,7 +1476,8 @@ Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.m
 - **Version content.** `GET /api/documents/[id]/history/[version]` returns the document's
   state at that version as raw bytes (`application/octet-stream`). A non-digit id
   returns 400; an id that is not a row of this document, or is out of range, returns 404. Non-members get 404; viewers may read.
-  Rebuilt from update rows only, never snapshots, so cost grows with history.
+  Rebuilt from update rows only, never snapshots, so cost grows with history; a version
+  that would replay more than 20,000 rows returns 413 `{ error: 'too large to preview' }`.
 - **Restore.** No route. `restoreBoard(live, from)` in `@crdt/shared/board` and
   `restoreEditor(live, from)` in `apps/web/src/lib/restore-editor.ts` write the past state
   into the live doc on the client, through the existing socket. Viewers cannot restore:

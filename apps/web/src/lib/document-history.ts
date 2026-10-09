@@ -108,6 +108,22 @@ export async function listVersions(documentId: string, limit = 50): Promise<Docu
 }
 
 /**
+ * The most update rows a single version preview will replay. Past this the request is
+ * refused (413) rather than loading an unbounded log into memory on a small instance.
+ */
+export const STATE_REPLAY_MAX_ROWS = 20_000
+
+export class VersionTooLargeError extends Error {
+  constructor(
+    readonly rows: number,
+    readonly limit: number,
+  ) {
+    super(`version needs ${rows} update rows, over the ${limit} replay limit`)
+    this.name = 'VersionTooLargeError'
+  }
+}
+
+/**
  * The document's state as of `versionId`, as one merged Yjs update.
  *
  * Built from the update rows alone: every row with `id <= versionId`, in id order.
@@ -126,7 +142,16 @@ export async function listVersions(documentId: string, limit = 50): Promise<Docu
 export async function stateAtVersion(
   documentId: string,
   versionId: bigint,
+  maxRows = STATE_REPLAY_MAX_ROWS,
 ): Promise<Uint8Array | null> {
+  // Cost is O(rows <= versionId): every one of them is loaded and merged on each call.
+  // Counting first is a cheap index range count that stops an old, busy document from
+  // pulling its whole log into memory.
+  const rows = await prisma.documentUpdate.count({
+    where: { documentId, id: { lte: versionId } },
+  })
+  if (rows > maxRows) throw new VersionTooLargeError(rows, maxRows)
+
   const updates = await prisma.documentUpdate.findMany({
     where: { documentId, id: { lte: versionId } },
     orderBy: { id: 'asc' },
@@ -134,5 +159,6 @@ export async function stateAtVersion(
   })
 
   if (updates.length === 0) return null
-  return Y.mergeUpdates(updates.map((row) => new Uint8Array(row.update)))
+  // Prisma returns Bytes columns as Uint8Array, which mergeUpdates takes as is.
+  return Y.mergeUpdates(updates.map((row) => row.update))
 }
