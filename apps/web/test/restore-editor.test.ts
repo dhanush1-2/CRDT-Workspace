@@ -16,7 +16,10 @@ function docWith(text: string): Y.Doc {
 }
 
 function jsonOf(doc: Y.Doc): unknown {
-  return yXmlFragmentToProsemirrorJSON(doc.getXmlFragment(EDITOR_FRAGMENT), getEditorSchema())
+  // Takes the fragment alone: the brief passed the schema as a second argument, which
+  // this version of @tiptap/y-tiptap does not accept (and would ignore). It reads the
+  // raw Y XML, so a mark the schema drops on restore shows up as a difference.
+  return yXmlFragmentToProsemirrorJSON(doc.getXmlFragment(EDITOR_FRAGMENT))
 }
 
 function textOf(doc: Y.Doc): string {
