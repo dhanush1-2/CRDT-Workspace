@@ -112,6 +112,10 @@ export function HistoryPanel({
   const [descriptions, setDescriptions] = useState<Record<string, string>>({})
   // Rows whose description has been asked for: a row scrolling in and out must not ask twice.
   const requested = useRef(new Set<string>())
+  // The document type `requested` and `descriptions` were made under. A row described
+  // before the type was known got its count; once it is known, the same row can have a
+  // sentence, and `requested` would refuse to ask again.
+  const describedFor = useRef(type)
   const heading = useRef<HTMLHeadingElement>(null)
 
   // The panel is portalled to the end of <body>, so it does not follow its button in tab
@@ -269,16 +273,36 @@ export function HistoryPanel({
 
   const describe = useCallback(
     (versionId: string) => {
-      if (!ready || requested.current.has(versionId)) return
+      if (!ready) return
+      // Reset here rather than in an effect: a selected row asks to be described in the
+      // same commit that brings the type, and a child's effect runs before its parent's,
+      // so an effect would reset after that request had already been refused.
+      if (describedFor.current !== type) {
+        describedFor.current = type
+        requested.current = new Set()
+      }
+      if (requested.current.has(versionId)) return
       requested.current.add(versionId)
       const index = ready.versions.findIndex((version) => version.id === versionId)
       if (index < 0) return
       void describeVersion(documentId, type, ready.versions, index, ready.complete).then(
-        (description) => setDescriptions((was) => ({ ...was, [versionId]: description })),
+        (description) => {
+          // Made under a type that has since changed: the newer request owns this row.
+          if (describedFor.current !== type) return
+          setDescriptions((was) => ({ ...was, [versionId]: description }))
+        },
       )
     },
     [documentId, type, ready],
   )
+
+  // The type arriving after the panel opened: drop the counts it described under, so a
+  // row not on screen is not left showing one until it is next seen.
+  const lastType = useRef(type)
+  useEffect(() => {
+    if (lastType.current === undefined && type !== undefined) setDescriptions({})
+    lastType.current = type
+  }, [type])
 
   return (
     <section
