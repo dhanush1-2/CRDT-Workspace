@@ -83,19 +83,45 @@ export function listReachesFirstVersion(versions: DocumentVersion[], limit: numb
 const MAX_CONCURRENT = 2
 
 let active = 0
-const waiting: Array<() => void> = []
 
-async function inQueue<T>(task: () => Promise<T>): Promise<T> {
-  if (active < MAX_CONCURRENT) active += 1
-  // Otherwise wait to be handed a slot, which stays counted in `active`.
-  else await new Promise<void>((resolve) => waiting.push(resolve))
-  try {
-    return await task()
-  } finally {
-    const next = waiting.shift()
-    if (next) next()
-    else active -= 1
-  }
+type Job = { key: string; start: (holdsSlot: boolean) => void }
+const waiting: Job[] = []
+
+/** Hands a freed slot to the next waiting job, or gives the slot back. */
+function release(): void {
+  const next = waiting.shift()
+  if (next) next.start(true)
+  else active -= 1
+}
+
+/**
+ * Runs `task` within the cap. An urgent one skips the line and the cap altogether: it is
+ * a person waiting on a click, there is only ever one such click at a time, and queueing
+ * it behind two slow background replays is the delay this exists to avoid.
+ */
+function schedule<T>(key: string, task: () => Promise<T>, urgent: boolean): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const start = (holdsSlot: boolean) => {
+      void task()
+        .then(resolve, reject)
+        .finally(() => {
+          if (holdsSlot) release()
+        })
+    }
+    if (urgent) start(false)
+    else if (active < MAX_CONCURRENT) {
+      active += 1
+      start(true)
+    } else waiting.push({ key, start })
+  })
+}
+
+/** Moves a job that is still waiting out of the queue and starts it, outside the cap. */
+function promote(key: string): void {
+  const at = waiting.findIndex((job) => job.key === key)
+  if (at < 0) return
+  const [job] = waiting.splice(at, 1)
+  job!.start(false)
 }
 
 /**
@@ -125,21 +151,30 @@ async function requestState(documentId: string, versionId: string): Promise<Uint
 /**
  * The document's Yjs state as of `versionId`.
  *
+ * `urgent` is for the version the user has just chosen: it does not wait behind the
+ * background fetches that describe the list's rows.
+ *
  * Rejects with VersionTooLargeError for a version the server will not replay, so the
  * caller can say so; that outcome is remembered, because asking again gets the same
  * answer. Any other failure is not remembered, so a retry asks again.
  */
-export function fetchVersionState(documentId: string, versionId: string): Promise<Uint8Array> {
+export function fetchVersionState(
+  documentId: string,
+  versionId: string,
+  { urgent = false }: { urgent?: boolean } = {},
+): Promise<Uint8Array> {
   const key = `${documentId}/${versionId}`
   const cached = cache.get(key)
   if (cached) {
+    // Already asked for in the background and still waiting its turn: the user wants it now.
+    if (urgent) promote(key)
     // Re-insert so the Map's order is recency.
     cache.delete(key)
     cache.set(key, cached)
     return cached
   }
 
-  const pending = inQueue(() => requestState(documentId, versionId))
+  const pending = schedule(key, () => requestState(documentId, versionId), urgent)
   cache.set(key, pending)
   pending.catch((error: unknown) => {
     if (!(error instanceof VersionTooLargeError) && cache.get(key) === pending) cache.delete(key)

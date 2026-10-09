@@ -248,7 +248,7 @@ function Row({
       type="button"
       ref={button}
       className={styles.row}
-      aria-current={selected ? 'true' : undefined}
+      aria-pressed={selected}
       onClick={() => onSelect(version)}
       data-testid="history-row"
     >

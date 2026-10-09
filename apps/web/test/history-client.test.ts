@@ -165,6 +165,82 @@ describe('fetchVersionState', () => {
   })
 })
 
+describe('fetchVersionState with { urgent: true }', () => {
+  /** A fetch that holds every request until the test lets it go, recording the order. */
+  function gatedFetch() {
+    const started: string[] = []
+    const gates = new Map<string, () => void>()
+    fetchMock.mockImplementation(async (input) => {
+      const id = String(input).split('/').pop()!
+      started.push(id)
+      await new Promise<void>((resolve) => gates.set(id, resolve))
+      return bytes(1)
+    })
+    return { started, release: (id: string) => gates.get(id)!() }
+  }
+
+  it('is sent at once, past the cap, when the background queue is full', async () => {
+    const { started, release } = gatedFetch()
+    const background = ['1', '2', '3', '4'].map((id) => fetchVersionState('doc-1', id))
+    await Promise.resolve()
+    expect(started).toEqual(['1', '2']) // two in flight, two queued
+
+    const urgent = fetchVersionState('doc-1', '9', { urgent: true })
+    await Promise.resolve()
+    expect(started).toEqual(['1', '2', '9'])
+
+    release('9')
+    await urgent
+    for (const id of ['1', '2', '3', '4']) {
+      await vi.waitFor(() => expect(started).toContain(id))
+      release(id)
+    }
+    await Promise.all(background)
+  })
+
+  it('pulls a version that is already queued to the front and starts it at once', async () => {
+    const { started, release } = gatedFetch()
+    const background = ['1', '2', '3', '4'].map((id) => fetchVersionState('doc-1', id))
+    await Promise.resolve()
+
+    const urgent = fetchVersionState('doc-1', '4', { urgent: true })
+    await Promise.resolve()
+    expect(started).toEqual(['1', '2', '4'])
+    // Still one request for it: the urgent call shares the queued promise.
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+
+    release('4')
+    await urgent
+    for (const id of ['1', '2', '3']) {
+      await vi.waitFor(() => expect(started).toContain(id))
+      release(id)
+    }
+    await Promise.all(background)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('does not disturb the cap for background work that follows', async () => {
+    let running = 0
+    let peak = 0
+    fetchMock.mockImplementation(async () => {
+      running += 1
+      peak = Math.max(peak, running)
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      running -= 1
+      return bytes(1)
+    })
+
+    await Promise.all([
+      fetchVersionState('doc-1', '1', { urgent: true }),
+      ...['2', '3', '4', '5', '6'].map((id) => fetchVersionState('doc-1', id)),
+    ])
+    // The urgent one ran with up to two background ones; afterwards the cap still holds.
+    peak = 0
+    await Promise.all(['7', '8', '9', '10'].map((id) => fetchVersionState('doc-1', id)))
+    expect(peak).toBe(2)
+  })
+})
+
 describe('listReachesFirstVersion', () => {
   const version = (id: string, updateCount: number): DocumentVersion => ({
     id,

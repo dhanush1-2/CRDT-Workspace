@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { EditorContent, useEditor } from '@tiptap/react'
+import { EditorContent, useEditor, type JSONContent } from '@tiptap/react'
 import Collaboration from '@tiptap/extension-collaboration'
 import CollaborationCaret from '@tiptap/extension-collaboration-caret'
 import type * as Y from 'yjs'
@@ -22,6 +22,13 @@ interface DocumentEditorProps {
   sheetClassName?: string
   /** The document's title, rendered at the top of the sheet. */
   heading: ReactNode
+  /**
+   * Fixed content, for showing a document that is not being edited (a past version).
+   * Used only without a doc: with one, the Y.Doc is the content.
+   */
+  content?: JSONContent
+  /** False hides the toolbar, which a read-only preview has nothing to put in. */
+  toolbar?: boolean
 }
 
 /**
@@ -42,6 +49,8 @@ export function DocumentEditor({
   readOnly = false,
   sheetClassName,
   heading,
+  content,
+  toolbar = true,
 }: DocumentEditorProps) {
   const collaborative = doc !== null && provider !== null
   // The View tab's two settings. They live here, not in the toolbar, because they change
@@ -57,6 +66,8 @@ export function DocumentEditor({
       // Not editable until it is bound: text typed into an editor with no Y.Doc behind
       // it would be thrown away when the binding arrives.
       editable: !readOnly && collaborative,
+      // Never alongside Collaboration, which fills the editor from the Y.Doc itself.
+      ...(collaborative ? {} : { content }),
       extensions: [
         // The document's shape lives in one place; see editor-schema.ts, which also
         // explains why StarterKit's undo is off.
@@ -71,20 +82,22 @@ export function DocumentEditor({
           : []),
       ],
     },
-    [doc, provider],
+    [doc, provider, content],
   )
 
   return (
     <>
-      <EditorToolbar
-        editor={editor}
-        // Home and Insert need an editor that is bound: for one effect the editor is
-        // unbound, non-editable and without the Collaboration extension, so it has no
-        // undo, and a click on Undo there throws. View does not depend on this.
-        editable={editor?.isEditable === true}
-        readOnly={readOnly}
-        view={{ zoom, onZoom: setZoom, pageWidth, onPageWidth: setPageWidth }}
-      />
+      {toolbar && (
+        <EditorToolbar
+          editor={editor}
+          // Home and Insert need an editor that is bound: for one effect the editor is
+          // unbound, non-editable and without the Collaboration extension, so it has no
+          // undo, and a click on Undo there throws. View does not depend on this.
+          editable={editor?.isEditable === true}
+          readOnly={readOnly}
+          view={{ zoom, onZoom: setZoom, pageWidth, onPageWidth: setPageWidth }}
+        />
+      )}
       {/* data-width, not a second class: the sheet's stylesheet owns what each width is. */}
       <div className={sheetClassName} data-testid="document-page" data-width={pageWidth}>
         {/* CSS zoom wraps the title as well as the editor (handoff 12.4, resolved against

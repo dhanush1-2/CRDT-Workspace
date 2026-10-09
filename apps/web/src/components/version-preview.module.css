@@ -1,0 +1,38 @@
+/*
+  One side of the page's 0.4s cross-fade: whichever view mounts fades in. A true
+  cross-fade would need the live view and the preview mounted together, which the preview
+  exists to avoid, so the outgoing view simply goes and the incoming one fades up.
+*/
+/*
+  Declared here rather than reusing globals.css's g-fade: this build gives an animation
+  name inside a CSS module a per-file hash, so a bare `animation: g-fade` points at
+  keyframes that do not exist and nothing animates (the History panel's g-side is in the
+  same state). A keyframes rule in the same module is hashed with it and does run.
+*/
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade {
+    animation: fade 0.4s var(--ease);
+  }
+}
+
+/* Shown above the live view when the chosen version cannot be previewed. */
+.notice {
+  max-width: 780px;
+  margin: 20px auto 0;
+  padding: 10px 16px;
+  border-radius: var(--r-item);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-hl);
+  font-size: 13px;
+  color: var(--text);
+}

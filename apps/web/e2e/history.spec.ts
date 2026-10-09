@@ -1,7 +1,16 @@
 import { test, expect, type Page } from '@playwright/test'
 import * as Y from 'yjs'
+import { addCard, addColumn } from '@crdt/shared/board'
 import { prisma } from '@crdt/db'
-import { cleanup, createDocument, documentPath, seedWorkspace, signIn } from './fixtures.js'
+import {
+  addMember,
+  cleanup,
+  createDocument,
+  documentPath,
+  seedWorkspace,
+  sessionCookieFor,
+  signIn,
+} from './fixtures.js'
 
 // One label per test, all swept after each one so a failure cannot leave rows in the
 // shared database. No label is a prefix of another: cleanup matches users by
@@ -144,7 +153,7 @@ test('a row carries a derived description, not a raw id', async ({ page }) => {
   for (let i = 0; i < 3; i++) await expect(descriptions.nth(i)).not.toHaveText(/^\d+$/)
 })
 
-test('clicking a row highlights it and nothing else', async ({ page }) => {
+test('clicking a row marks it pressed, one at a time, and leaves the list intact', async ({ page }) => {
   const { owner, document } = await seedThree(labelFor('select'))
   await signIn(page, owner.id)
   await page.goto(documentPath(document))
@@ -152,16 +161,16 @@ test('clicking a row highlights it and nothing else', async ({ page }) => {
   const panel = await openPanel(page)
   const rows = panel.getByTestId('history-row')
   await expect(rows).toHaveCount(3)
-  await expect(panel.locator('[aria-current="true"]')).toHaveCount(0)
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
 
   await rows.nth(1).click()
-  await expect(rows.nth(1)).toHaveAttribute('aria-current', 'true')
-  await expect(panel.locator('[aria-current="true"]')).toHaveCount(1)
+  await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(1)
 
   await rows.nth(2).click()
-  await expect(rows.nth(2)).toHaveAttribute('aria-current', 'true')
-  await expect(panel.locator('[aria-current="true"]')).toHaveCount(1)
-  // Selecting changes the highlight only: the panel stays open and the list is intact.
+  await expect(rows.nth(2)).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(1)
+  // Selecting does not close the panel or disturb the list.
   await expect(rows).toHaveCount(3)
 })
 
@@ -341,7 +350,7 @@ test('a version is fetched once: reopening the panel or selecting a row asks for
   await expect(panel.getByTestId('history-row-description').nth(0)).toHaveText('Added 2 characters')
   await panel.getByTestId('history-row').nth(1).click()
   await panel.getByTestId('history-row').nth(2).click()
-  await expect(panel.getByTestId('history-row').nth(2)).toHaveAttribute('aria-current', 'true')
+  await expect(panel.getByTestId('history-row').nth(2)).toHaveAttribute('aria-pressed', 'true')
 
   expect(stateRequests).toHaveLength(3)
 })
@@ -435,4 +444,342 @@ test('the oldest row of a truncated list is not called the creation of the docum
   await rows.nth(49).scrollIntoViewIfNeeded()
   // Its predecessor is not in the list, so there is nothing to compare it with.
   await expect(rows.nth(49).getByTestId('history-row-description')).toHaveText('1 change')
+})
+
+// --- Previewing a version ---------------------------------------------------------
+
+/**
+ * A board's history: version one (180 minutes ago) is one column holding "Old card";
+ * version two (60 minutes ago) adds "Newer card". Returns the ids the tests look for.
+ */
+async function seedBoard(label: string) {
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'board')
+  const doc = new Y.Doc()
+  const updates: Uint8Array[] = []
+  doc.on('update', (update: Uint8Array) => updates.push(update))
+  addColumn(doc, { id: 'col-a', title: 'Todo' })
+  addCard(doc, { id: 'old', title: 'Old card', columnId: 'col-a' })
+  addCard(doc, { id: 'newer', title: 'Newer card', columnId: 'col-a' })
+  await seedVersions(document.id, [
+    { userId: owner.id, update: updates[0]!, minutesAgo: 180 },
+    { userId: owner.id, update: updates[1]!, minutesAgo: 180 },
+    { userId: owner.id, update: updates[2]!, minutesAgo: 60 },
+  ])
+  return { owner, workspace, document }
+}
+
+const editorText = (page: Page) => page.getByTestId('version-preview').locator('.ProseMirror')
+
+test('previewing an older version of a board shows that moment, without the newer card', async ({
+  page,
+}) => {
+  const { owner, document } = await seedBoard(labelFor('board-preview'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  await expect(page.getByTestId('card-newer')).toBeVisible()
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+
+  const preview = page.getByTestId('version-preview')
+  await expect(preview).toBeVisible()
+  await expect(preview.getByTestId('card-old')).toContainText('Old card')
+  await expect(preview.getByTestId('card-newer')).toHaveCount(0)
+  // The live board is not on screen at the same time as the preview.
+  await expect(page.getByTestId('card-newer')).toHaveCount(0)
+})
+
+test('the live board is untouched underneath: closing the preview brings the newer card back', async ({
+  browser,
+}) => {
+  const label = labelFor('board-isolation')
+  const { owner, workspace, document } = await seedBoard(label)
+  const peer = await addMember(workspace.id, label, 'editor')
+  const before = await prisma.documentUpdate.count({ where: { documentId: document.id } })
+
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  try {
+    await contextA.addCookies([await sessionCookieFor(owner.id)])
+    await contextB.addCookies([await sessionCookieFor(peer.id)])
+    const page = await contextA.newPage()
+    const peerPage = await contextB.newPage()
+    await page.goto(`${documentPath(document)}?nobc=1`)
+    await peerPage.goto(`${documentPath(document)}?nobc=1`)
+    await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+    await expect(peerPage.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+    await expect(page.getByTestId('card-newer')).toBeVisible()
+
+    const panel = await openPanel(page)
+    await panel.getByTestId('history-row').nth(1).click()
+    await expect(page.getByTestId('version-preview').getByTestId('card-old')).toBeVisible()
+
+    // While A previews, B adds a card to the live board. The preview is a past moment
+    // and must not show it; the live document underneath must still receive it.
+    await peerPage.getByTestId('add-card-col-a').click()
+    await expect(peerPage.locator('article[data-testid^="card-"]')).toHaveCount(3)
+    await expect(page.getByTestId('version-preview').locator('article[data-testid^="card-"]')).toHaveCount(1)
+
+    await panel.getByRole('button', { name: 'Close history' }).click()
+
+    await expect(page.getByTestId('version-preview')).toHaveCount(0)
+    await expect(page.locator('article[data-testid^="card-"]')).toHaveCount(3)
+    await expect(page.getByTestId('card-newer')).toContainText('Newer card')
+    await expect(page.getByTestId('card-old')).toContainText('Old card')
+    // Previewing wrote nothing: the only new row is the peer's card.
+    await expect.poll(() => prisma.documentUpdate.count({ where: { documentId: document.id } })).toBe(before + 1)
+  } finally {
+    await contextA.close()
+    await contextB.close()
+  }
+})
+
+test('a board preview has no add, delete, rename or drag controls', async ({ page }) => {
+  const { owner, document } = await seedBoard(labelFor('board-readonly'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  // Contrast: the live board has them all, so their absence below means something.
+  await expect(page.getByTestId('add-column')).toBeVisible()
+  await expect(page.getByTestId('add-card-col-a')).toBeVisible()
+  await expect(page.locator('[draggable="true"]')).not.toHaveCount(0)
+  await expect(page.getByTestId('col-title-col-a')).toHaveJSProperty('tagName', 'INPUT')
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+  const preview = page.getByTestId('version-preview')
+  await expect(preview.getByTestId('card-old')).toBeVisible()
+
+  await expect(page.getByTestId('add-column')).toHaveCount(0)
+  await expect(page.getByTestId('add-card-col-a')).toHaveCount(0)
+  await expect(page.getByTestId('col-delete-col-a')).toHaveCount(0)
+  await expect(preview.getByRole('button')).toHaveCount(0)
+  await expect(preview.locator('input, textarea, [contenteditable="true"]')).toHaveCount(0)
+  await expect(preview.locator('[draggable="true"]')).toHaveCount(0)
+  // The column's title is text, and so is the board's: no title input anywhere on the page.
+  await expect(preview.getByTestId('col-title-col-a')).toHaveText('Todo')
+  await expect(page.getByTestId('document-title')).toHaveCount(0)
+  await expect(page.getByTestId('document-heading')).toHaveText('e2e board')
+})
+
+test('previewing an older version of a document shows that moment\'s text', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('doc-preview'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  await expect(page.locator('.ProseMirror')).toContainText('Hello world!!')
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(editorText(page)).toHaveText('Hello world')
+})
+
+test('a document preview cannot be typed into, and the live text is unchanged afterwards', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('doc-readonly'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+  const before = await prisma.documentUpdate.count({ where: { documentId: document.id } })
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  const text = editorText(page)
+  await expect(text).toHaveText('Hello')
+  await expect(text).toHaveAttribute('contenteditable', 'false')
+
+  await text.click()
+  await page.keyboard.type('zzz')
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Backspace')
+  await expect(text).toHaveText('Hello')
+
+  // No editing affordance anywhere in it: no toolbar, a plain title, no inputs.
+  await expect(page.getByTestId('tb-root')).toHaveCount(0)
+  await expect(page.getByTestId('document-title')).toHaveCount(0)
+  await expect(page.getByTestId('document-heading')).toHaveText('e2e doc')
+  await expect(page.getByTestId('version-preview').locator('input, textarea, button')).toHaveCount(0)
+
+  await panel.getByRole('button', { name: 'Close history' }).click()
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toHaveText('Hello world!!')
+  expect(await prisma.documentUpdate.count({ where: { documentId: document.id } })).toBe(before)
+})
+
+test('a preview that cannot be fetched leaves the live document on screen with an error', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('preview-fails'))
+  const rows = await prisma.documentUpdate.findMany({
+    where: { documentId: document.id },
+    orderBy: { id: 'asc' },
+    select: { id: true },
+  })
+  const failingId = rows[1]!.id.toString()
+  await signIn(page, owner.id)
+  await page.route(`**/api/documents/${document.id}/history/${failingId}`, (route) =>
+    route.fulfill({ status: 500, json: { error: 'database is on fire' } }),
+  )
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+
+  await expect(page.getByTestId('preview-notice')).toContainText('Could not load that version')
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toHaveText('Hello world!!')
+  await expect(panel.getByTestId('history-row').nth(1)).toHaveAttribute('aria-pressed', 'true')
+
+  // Another version still previews, and the notice goes.
+  await panel.getByTestId('history-row').nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(page.getByTestId('preview-notice')).toHaveCount(0)
+})
+
+test('a version too large to preview says so, keeps the live document, and never shows a blank page', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('preview-toolarge'))
+  const rows = await prisma.documentUpdate.findMany({
+    where: { documentId: document.id },
+    orderBy: { id: 'asc' },
+    select: { id: true },
+  })
+  await signIn(page, owner.id)
+  await page.route(`**/api/documents/${document.id}/history/${rows[1]!.id}`, (route) =>
+    route.fulfill({ status: 413, json: { error: 'too large to preview' } }),
+  )
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+
+  await expect(page.getByTestId('preview-notice')).toHaveText('This version is too large to preview.')
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toHaveText('Hello world!!')
+})
+
+test('clicking inside the preview keeps the panel open; clicking elsewhere closes both', async ({
+  page,
+}) => {
+  const { owner, document } = await seedBoard(labelFor('outside-click'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(1).click()
+  const preview = page.getByTestId('version-preview')
+  await expect(preview.getByTestId('card-old')).toBeVisible()
+
+  await preview.getByTestId('card-old').click()
+  await expect(panel).toBeVisible()
+  await expect(preview).toBeVisible()
+
+  // The strip above the nav bar: part of neither the panel nor the preview.
+  await page.mouse.click(640, 3)
+  await expect(panel).toHaveCount(0)
+  // The preview belongs to the open panel: it goes with it.
+  await expect(preview).toHaveCount(0)
+  await expect(page.getByTestId('card-newer')).toBeVisible()
+})
+
+test('selecting a row keeps focus in the panel and Escape still closes it', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('focus'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const row = panel.getByTestId('history-row').nth(2)
+  await row.click()
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(row).toBeFocused()
+  // Not pulled back to the heading by the selection: that is for opening only.
+  await expect(panel.getByRole('heading', { name: 'History' })).not.toBeFocused()
+
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(editorText(page)).toHaveCount(0)
+  await expect(page.getByTestId('history')).toBeFocused()
+})
+
+test('the selected row is previewed even while the list\'s description fetches are waiting', async ({
+  page,
+}) => {
+  const label = labelFor('priority')
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  const letters = 'ABCDEFGH'.split('')
+  await seedVersions(
+    document.id,
+    paragraphUpdates(letters).map((update, i) => ({
+      userId: owner.id,
+      update,
+      minutesAgo: (letters.length - i) * 60,
+    })),
+  )
+  const ids = (
+    await prisma.documentUpdate.findMany({
+      where: { documentId: document.id },
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    })
+  ).map((row) => row.id.toString())
+
+  await signIn(page, owner.id)
+  // Every state request is held, except the one for the row about to be clicked.
+  let wanted: string | null = null
+  const held: string[] = []
+  let letGo: () => void = () => {}
+  const gate = new Promise<void>((resolve) => (letGo = resolve))
+  await page.route(STATE_REQUEST, async (route) => {
+    const id = route.request().url().split('/').pop()!
+    if (id === wanted) return route.continue()
+    held.push(id)
+    await gate
+    await route.continue().catch(() => {})
+  })
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await expect(panel.getByTestId('history-row')).toHaveCount(8)
+  // Two background fetches are in flight and held; the rest are waiting behind them.
+  await expect.poll(() => held.length).toBe(2)
+
+  // Any row whose fetch has not been sent yet. Which two went first is up to the order
+  // the rows scrolled into view, so pick from what is left rather than assuming.
+  const row = ids.findIndex((id, i) => i >= 2 && !held.includes(id))
+  wanted = ids[row]!
+  await panel.getByTestId('history-row').nth(row).click()
+  // Row r from the top is version 8 - r of 8: its first 8 - r letters.
+  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - row).join(''))
+  // Still just the two held background fetches: nothing else was waiting on the preview.
+  expect(held).toHaveLength(2)
+
+  letGo()
+})
+
+test('a preview fades in over 0.4s, and not at all under reduced motion', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('fade'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await panel.getByTestId('history-row').nth(2).click()
+  const preview = page.getByTestId('version-preview')
+  await expect(preview).toBeVisible()
+  const animation = () =>
+    preview.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return `${style.animationName} ${style.animationDuration}`
+    })
+  expect(await animation()).toMatch(/fade.* 0\.4s$/)
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await panel.getByTestId('history-row').nth(1).click()
+  await expect(editorText(page)).toHaveText('Hello world')
+  expect((await animation()).startsWith('none')).toBe(true)
 })

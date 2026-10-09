@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { clearVersion, selectVersion, useVersionSelection } from '@/lib/version-selection'
 import { HistoryPanel } from './HistoryPanel'
 import styles from './app-shell.module.css'
 
@@ -31,8 +32,8 @@ export function HistoryButton({
   type?: 'doc' | 'board'
 }) {
   const [open, setOpen] = useState(false)
-  // The row the user picked, with its document so a pick never outlives a navigation.
-  const [picked, setPicked] = useState<{ documentId: string; versionId: string } | null>(null)
+  // The row the user picked. Shared, not local: the page reads it to show the preview.
+  const picked = useVersionSelection(documentId)
   const [navBottom, setNavBottom] = useState(DEFAULT_NAV_BOTTOM)
   const button = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLElement>(null)
@@ -56,6 +57,13 @@ export function HistoryButton({
     setOpen((was) => !was)
   }
 
+  // Closing the panel ends the preview it controls, however it was closed (the button,
+  // Escape, a click elsewhere), and so does this button going away.
+  useEffect(() => {
+    if (!open) clearVersion(documentId)
+  }, [open, documentId])
+  useEffect(() => () => clearVersion(documentId), [documentId])
+
   useEffect(() => {
     if (!open) return
 
@@ -71,6 +79,8 @@ export function HistoryButton({
       const target = event.target as Node
       // The button's own click toggles; closing here as well would reopen it.
       if (button.current?.contains(target) || panel.current?.contains(target)) return
+      // The preview is what the panel is driving: someone reading it has not left the panel.
+      if (target instanceof Element && target.closest('[data-version-preview]')) return
       setOpen(false)
     }
 
@@ -119,8 +129,8 @@ export function HistoryButton({
             documentId={documentId}
             type={type}
             onClose={close}
-            onPreview={(version) => setPicked({ documentId, versionId: version.id })}
-            selectedVersionId={picked?.documentId === documentId ? picked.versionId : null}
+            onPreview={(version) => selectVersion(documentId, version.id)}
+            selectedVersionId={picked?.versionId ?? null}
           />,
           document.body,
         )}

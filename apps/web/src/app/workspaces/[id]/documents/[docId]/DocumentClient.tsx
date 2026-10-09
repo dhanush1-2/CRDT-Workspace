@@ -6,7 +6,9 @@ import { useAnnouncePresence, usePresence } from '@/hooks/use-presence'
 import { Board } from '@/components/Board'
 import { DocumentEditor } from '@/components/DocumentEditor'
 import { InlineTitle } from '@/components/InlineTitle'
+import { VersionPreview } from '@/components/VersionPreview'
 import { clearDocState, publishDocState } from '@/lib/doc-state'
+import { clearVersion, useVersionSelection } from '@/lib/version-selection'
 import styles from './document.module.css'
 
 export function DocumentClient({
@@ -46,6 +48,11 @@ export function DocumentClient({
 
   useEffect(() => () => clearDocState(documentId), [documentId])
 
+  // A version picked in the History panel swaps the live view for a read-only one. The
+  // pick belongs to this document: leaving it, or the page unmounting, drops it.
+  const selection = useVersionSelection(documentId)
+  useEffect(() => () => clearVersion(documentId), [documentId])
+
   /*
     The page's only heading. Editors get the title as an input that reads as the heading
     (InlineTitle); viewers get the plain h1. A board now shows its title too: the owner
@@ -71,8 +78,11 @@ export function DocumentClient({
   // The toolbar floats above the sheet as its own panel, so the editor can no longer
   // sit inside a wrapper rendered here: DocumentEditor renders both, and takes the
   // sheet's class and the heading so the sheet is still styled and titled from here.
-  if (type === 'doc') {
-    return (
+  //
+  // The board is a horizontal scroller with its own gutters and would be crushed into
+  // a 780px column, so it gets no sheet and no toolbar.
+  const live =
+    type === 'doc' ? (
       <DocumentEditor
         doc={doc}
         provider={provider}
@@ -81,15 +91,28 @@ export function DocumentClient({
         sheetClassName={styles.page}
         heading={heading}
       />
+    ) : (
+      <div>
+        {heading}
+        {doc && <Board doc={doc} provider={provider} readOnly={readOnly} />}
+      </div>
     )
-  }
 
-  // The board is a horizontal scroller with its own gutters and would be crushed into
-  // a 780px column, so it gets no sheet and no toolbar.
+  // A past version cannot be renamed, so its title is the plain heading whoever is looking.
+  const previewHeading = (
+    <h1 className={headingClass} data-testid="document-heading">
+      {title}
+    </h1>
+  )
+
   return (
-    <div>
-      {heading}
-      {doc && <Board doc={doc} provider={provider} readOnly={readOnly} />}
-    </div>
+    <VersionPreview
+      documentId={documentId}
+      versionId={selection?.versionId ?? null}
+      type={type}
+      heading={previewHeading}
+      sheetClassName={styles.page}
+      fallback={live}
+    />
   )
 }
