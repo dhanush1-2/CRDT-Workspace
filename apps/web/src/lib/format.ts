@@ -51,3 +51,15 @@ export function formatVersionTime(then: Date, now: Date = new Date()): string {
   const time = then.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return `${date}, ${time}`
 }
+
+/**
+ * A version named for someone who cannot see it: "Sep 30, 16:40, by Grace". The author
+ * is "Unknown" when there is none (a version written before authorship existed, or by an
+ * account since deleted). Read aloud for the preview's announcement and the slider's value.
+ */
+export function formatVersionLabel(
+  version: { endedAt: Date; author: { name: string } | null },
+  now: Date = new Date(),
+): string {
+  return `${formatVersionTime(version.endedAt, now)}, by ${version.author?.name || 'Unknown'}`
+}

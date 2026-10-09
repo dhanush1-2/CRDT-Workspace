@@ -886,3 +886,303 @@ test('choosing the row that is already previewed changes nothing on screen', asy
   await expect(editorText(page)).toHaveAttribute('data-marked', 'yes')
   expect(stateRequests).toHaveLength(requests)
 })
+
+// --- The slider -------------------------------------------------------------------
+
+const sliderOf = (panel: ReturnType<Page['getByTestId']>) => panel.getByRole('slider', { name: 'Version' })
+
+/** `count` versions an hour apart, each appending a letter, all by the owner. */
+async function seedMany(label: string, count: number) {
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.slice(0, count).split('')
+  await seedVersions(
+    document.id,
+    paragraphUpdates(letters).map((update, i) => ({
+      userId: owner.id,
+      update,
+      minutesAgo: (letters.length - i) * 60,
+    })),
+  )
+  const ids = (
+    await prisma.documentUpdate.findMany({
+      where: { documentId: document.id },
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    })
+  ).map((row) => row.id.toString())
+  return { owner, document, letters, ids }
+}
+
+test('the slider spans every version, from Earliest at the left to Now at the right', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('slider-range'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await expect(panel.getByTestId('history-row')).toHaveCount(3)
+  const slider = sliderOf(panel)
+
+  await expect(slider).toBeEnabled()
+  await expect(slider).toHaveAttribute('type', 'range')
+  // One position per version, counted from the oldest.
+  await expect(slider).toHaveAttribute('min', '0')
+  await expect(slider).toHaveAttribute('max', '2')
+  // Nothing chosen means the live document: the far right.
+  await expect(slider).toHaveValue('2')
+  await expect(panel.getByText('Earliest', { exact: true })).toBeVisible()
+  await expect(panel.getByText('Now', { exact: true })).toBeVisible()
+  const box = (await slider.boundingBox())!
+  const earliest = (await panel.getByText('Earliest', { exact: true }).boundingBox())!
+  const now = (await panel.getByText('Now', { exact: true }).boundingBox())!
+  expect(earliest.x).toBeLessThan(now.x)
+  expect(earliest.x).toBeLessThan(box.x + box.width / 2)
+  expect(now.x).toBeGreaterThan(box.x + box.width / 2)
+})
+
+test('moving the slider to the far right leaves the preview', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('slider-now'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await rows.nth(2).click()
+  await expect(editorText(page)).toHaveText('Hello')
+  const slider = sliderOf(panel)
+  // The thumb follows a click on a row: Grace's is the oldest of three.
+  await expect(slider).toHaveValue('0')
+
+  await slider.focus()
+  await page.keyboard.press('End')
+
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toHaveText('Hello world!!')
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
+  await expect(slider).toHaveValue('2')
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Now')
+  // The newest row is where "Now" sits.
+  await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true')
+})
+
+test('moving the slider left previews an older version, and the matching row highlights', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('slider-left'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  const slider = sliderOf(panel)
+  await expect(rows).toHaveCount(3)
+
+  await slider.fill('1')
+  await expect(editorText(page)).toHaveText('Hello world')
+  await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(1)
+  await expect(rows.nth(0)).not.toHaveAttribute('aria-current', 'true')
+
+  await slider.fill('0')
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(rows.nth(2)).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(1)
+})
+
+test('the keyboard drives the slider: focus it and ArrowLeft moves the selection one step', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('slider-keys'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(3)
+  const slider = sliderOf(panel)
+
+  // Reachable by Tab: heading, then close, then the slider, then the rows.
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Tab')
+  await expect(slider).toBeFocused()
+
+  await page.keyboard.press('ArrowLeft')
+  await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  await expect(editorText(page)).toHaveText('Hello world')
+  // Said aloud as a person and a time, not as "1".
+  await expect(slider).toHaveAttribute('aria-valuetext', /^[A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}, by Unknown$/)
+
+  await page.keyboard.press('ArrowLeft')
+  await expect(rows.nth(2)).toHaveAttribute('aria-pressed', 'true')
+  await expect(editorText(page)).toHaveText('Hello')
+  await expect(slider).toHaveAttribute('aria-valuetext', /, by Grace$/)
+  // Focus stayed on the slider throughout.
+  await expect(slider).toBeFocused()
+
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Now')
+})
+
+test('a document with one version renders the slider disabled, not broken', async ({ page }) => {
+  const label = labelFor('slider-one')
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await seedVersions(document.id, [{ userId: owner.id, update: paragraphUpdates(['Only'])[0]!, minutesAgo: 30 }])
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await expect(panel.getByTestId('history-row')).toHaveCount(1)
+  const slider = sliderOf(panel)
+
+  await expect(slider).toBeVisible()
+  await expect(slider).toBeDisabled()
+  await expect(slider).toHaveAttribute('max', '0')
+  await expect(slider).toHaveValue('0')
+  // The row still works on its own.
+  await panel.getByTestId('history-row').click()
+  await expect(editorText(page)).toHaveText('Only')
+})
+
+test('there is no slider while the list is empty or loading', async ({ page }) => {
+  const label = labelFor('slider-empty')
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await expect(panel.getByTestId('history-empty')).toBeVisible()
+  await expect(sliderOf(panel)).toHaveCount(0)
+})
+
+/**
+ * Every state request is held except the preview's: the list's descriptions go out two
+ * at a time and sit on the gate, so the others wait behind them in the client's queue and
+ * never reach the network. What reaches it beyond those two is therefore a preview fetch,
+ * which skips the queue. That is what makes counting requests mean something here; with
+ * the descriptions let through, every row on screen would already be cached.
+ */
+async function holdBackgroundFetches(page: Page) {
+  const sent: string[] = []
+  let letGo: () => void = () => {}
+  const gate = new Promise<void>((resolve) => (letGo = resolve))
+  let wanted: string | null = null
+  const held: string[] = []
+  await page.route(STATE_REQUEST, async (route) => {
+    const id = route.request().url().split('/').pop()!
+    sent.push(id)
+    if (id === wanted) return route.continue()
+    held.push(id)
+    await gate
+    await route.continue().catch(() => {})
+  })
+  return {
+    sent,
+    held,
+    allow: (id: string) => (wanted = id),
+    release: letGo,
+  }
+}
+
+test('arrowing across several versions quickly fetches only the one it stops on', async ({ page }) => {
+  const { owner, document, letters, ids } = await seedMany(labelFor('slider-debounce-keys'), 8)
+  await signIn(page, owner.id)
+  const requests = await holdBackgroundFetches(page)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(8)
+  await expect.poll(() => requests.held.length).toBe(2)
+  const background = requests.sent.length
+  // Row 5 from the top is five steps left of Now. Its fetch is the only one let through.
+  requests.allow(ids[5]!)
+
+  const slider = sliderOf(panel)
+  await slider.focus()
+  for (let step = 1; step <= 5; step++) {
+    await page.keyboard.press('ArrowLeft')
+    // The highlight is not waiting for the pause: it is already on this step's row.
+    await expect(rows.nth(step)).toHaveAttribute('aria-pressed', 'true', { timeout: 150 })
+  }
+
+  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - 5).join(''))
+  // One preview fetch, for the version it stopped on, and none for the four it passed.
+  expect(requests.sent.slice(background)).toEqual([ids[5]])
+  requests.release()
+})
+
+test('dragging the thumb across several versions fetches only the one it is released on', async ({
+  page,
+}) => {
+  const { owner, document, letters, ids } = await seedMany(labelFor('slider-debounce-drag'), 8)
+  await signIn(page, owner.id)
+  const requests = await holdBackgroundFetches(page)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(8)
+  await expect.poll(() => requests.held.length).toBe(2)
+  const background = requests.sent.length
+  // The far left is the oldest version, the last row.
+  requests.allow(ids[7]!)
+
+  const slider = sliderOf(panel)
+  const box = (await slider.boundingBox())!
+  const y = box.y + box.height / 2
+  await page.mouse.move(box.x + box.width - 2, y)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 2, y, { steps: 14 })
+  // Still held down: the highlight has followed the thumb all the way, nothing is previewed yet.
+  await expect(rows.nth(7)).toHaveAttribute('aria-pressed', 'true')
+  await page.mouse.up()
+
+  await expect(editorText(page)).toHaveText(letters.slice(0, 1).join(''))
+  await expect(slider).toHaveValue('0')
+  expect(requests.sent.slice(background)).toEqual([ids[7]])
+  requests.release()
+})
+
+test('the highlight moves over 0.35s, and not at all under reduced motion', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('slider-motion'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const row = panel.getByTestId('history-row').nth(1)
+  const transition = () =>
+    row.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return `${style.transitionProperty} ${style.transitionDuration}`
+    })
+  expect(await transition()).toMatch(/background.* 0\.35s/)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  expect((await transition()).endsWith('0s')).toBe(true)
+})
+
+test('the slider is drawn in the accent colour but is still a native range input', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('slider-style'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  const slider = sliderOf(panel)
+  await expect(slider).toBeVisible()
+  expect(await slider.evaluate((el) => el.tagName + ':' + (el as HTMLInputElement).type)).toBe('INPUT:range')
+  // Restyled, not the browser's default blue control.
+  expect(await slider.evaluate((el) => getComputedStyle(el).appearance)).toBe('none')
+  const accent = await page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent)'
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  })
+  expect(accent).not.toBe('')
+  expect(await slider.evaluate((el) => getComputedStyle(el).accentColor)).toBe(accent)
+})

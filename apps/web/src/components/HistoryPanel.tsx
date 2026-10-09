@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import * as Y from 'yjs'
 import { colorFor } from '@/lib/color'
-import { formatVersionTime } from '@/lib/format'
+import { formatVersionLabel, formatVersionTime } from '@/lib/format'
 import {
   fetchVersions,
   fetchVersionState,
@@ -15,6 +15,16 @@ import styles from './history-panel.module.css'
 
 /** What the panel asks the server for. The panel is a recent-history view, not an archive. */
 const LIST_LIMIT = 50
+
+/**
+ * How long the slider waits after its last movement before it chooses a version. Each
+ * choice makes the server replay the document's history up to that version, so a drag
+ * across ten versions must not ask for ten replays. The thumb and the highlighted row
+ * move at once; only the choice waits.
+ */
+const SETTLE_MS = 200
+
+const NO_VERSIONS: DocumentVersion[] = []
 
 type Load =
   | { kind: 'loading' }
@@ -73,6 +83,7 @@ export function HistoryPanel({
   type,
   onClose,
   onPreview,
+  onLive,
   selectedVersionId,
   ref,
   style,
@@ -82,6 +93,8 @@ export function HistoryPanel({
   type?: 'doc' | 'board'
   onClose: () => void
   onPreview: (version: DocumentVersion) => void
+  /** The slider reached Now: leave the preview and show the live document. */
+  onLive: () => void
   selectedVersionId: string | null
   ref?: Ref<HTMLElement>
   /** Carries --nav-bottom, which does not cascade into a portal. */
@@ -131,6 +144,72 @@ export function HistoryPanel({
   }, [documentId, attempt])
 
   const ready = load.kind === 'ready' ? load : null
+  const versions = ready?.versions ?? NO_VERSIONS
+
+  // --- The slider ---
+  //
+  // Positions are counted from the oldest version, so the right-hand end (the last
+  // position) is Now: the live document, which is no version at all. `scrub` is where
+  // the thumb is while it is moving and has not yet chosen anything; null once settled,
+  // when the thumb goes back to following the selection.
+  const top = Math.max(versions.length - 1, 0)
+  const [scrub, setScrub] = useState<number | null>(null)
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const unsettled = useRef<number | null>(null)
+  // What a settle reads when it runs: it fires from a timer and a window listener, which
+  // would otherwise hold the props of the render that scheduled them.
+  const latest = useRef({ versions, selectedVersionId, onPreview, onLive })
+  latest.current = { versions, selectedVersionId, onPreview, onLive }
+
+  const clearSettleTimer = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current)
+    settleTimer.current = null
+  }, [])
+
+  /** Chooses the version the thumb is on, if it has moved since the last choice. */
+  const settle = useCallback(() => {
+    clearSettleTimer()
+    const index = unsettled.current
+    if (index === null) return
+    unsettled.current = null
+    setScrub(null)
+    const { versions, selectedVersionId, onPreview, onLive } = latest.current
+    const end = versions.length - 1
+    if (index >= end) {
+      if (selectedVersionId !== null) onLive()
+      return
+    }
+    // Not onPreview again for the version already chosen: a repeat choice means "retry".
+    const version = versions[end - index]
+    if (version && version.id !== selectedVersionId) onPreview(version)
+  }, [clearSettleTimer])
+
+  const moveTo = useCallback(
+    (index: number) => {
+      unsettled.current = index
+      setScrub(index)
+      clearSettleTimer()
+      settleTimer.current = setTimeout(settle, SETTLE_MS)
+    },
+    [settle, clearSettleTimer],
+  )
+
+  /** A row was chosen directly: whatever the thumb was heading for no longer matters. */
+  const abandonScrub = useCallback(() => {
+    clearSettleTimer()
+    unsettled.current = null
+    setScrub(null)
+  }, [clearSettleTimer])
+
+  useEffect(() => clearSettleTimer, [clearSettleTimer])
+
+  const selectedAt = versions.findIndex((version) => version.id === selectedVersionId)
+  const settledIndex = selectedAt < 0 ? top : top - selectedAt
+  const thumbAt = scrub ?? settledIndex
+  const atNow = scrub !== null ? scrub >= top : selectedVersionId === null
+  const highlightedId = scrub !== null ? (scrub >= top ? null : versions[top - scrub]?.id) : selectedVersionId
+  const thumbVersion = atNow ? undefined : versions[top - thumbAt]
+
   const describe = useCallback(
     (versionId: string) => {
       if (!ready || requested.current.has(versionId)) return
@@ -186,19 +265,55 @@ export function HistoryPanel({
       )}
 
       {ready && ready.versions.length > 0 && (
-        <ul className={styles.list}>
-          {ready.versions.map((version) => (
-            <li key={version.id}>
-              <Row
-                version={version}
-                description={descriptions[version.id]}
-                selected={version.id === selectedVersionId}
-                onSeen={describe}
-                onSelect={onPreview}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className={styles.scrub}>
+            <input
+              type="range"
+              className={styles.slider}
+              aria-label="Version"
+              aria-valuetext={thumbVersion ? formatVersionLabel(thumbVersion) : 'Now'}
+              min={0}
+              max={top}
+              step={1}
+              value={thumbAt}
+              // One version leaves nothing to move between.
+              disabled={ready.versions.length < 2}
+              onChange={(event) => moveTo(Number(event.currentTarget.value))}
+              // A drag ends with the pointer, which may be released away from the thumb, so
+              // the listener is on the window. A keyboard has no end to wait for: it settles
+              // after the pause, so a quick run of arrow presses is one choice.
+              onPointerDown={() => {
+                window.addEventListener('pointerup', settle, { once: true })
+                window.addEventListener('pointercancel', settle, { once: true })
+              }}
+              onBlur={settle}
+              data-testid="history-slider"
+            />
+            <div className={styles.ends} aria-hidden="true">
+              <span>Earliest</span>
+              <span>Now</span>
+            </div>
+          </div>
+          <ul className={styles.list}>
+            {ready.versions.map((version, index) => (
+              <li key={version.id}>
+                <Row
+                  version={version}
+                  description={descriptions[version.id]}
+                  selected={version.id === highlightedId}
+                  // Now sits on the newest row, which is as near as the list can point.
+                  current={atNow && index === 0}
+                  follow={scrub !== null && (version.id === highlightedId || (atNow && index === 0))}
+                  onSeen={describe}
+                  onSelect={(chosen) => {
+                    abandonScrub()
+                    onPreview(chosen)
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   )
@@ -208,12 +323,18 @@ function Row({
   version,
   description,
   selected,
+  current,
+  follow,
   onSeen,
   onSelect,
 }: {
   version: DocumentVersion
   description: string | undefined
   selected: boolean
+  /** The live document is showing and this is the newest version. */
+  current: boolean
+  /** The slider is moving and is on this row: keep it in view. */
+  follow: boolean
   onSeen: (versionId: string) => void
   onSelect: (version: DocumentVersion) => void
 }) {
@@ -237,6 +358,11 @@ function Row({
     return () => observer.disconnect()
   }, [onSeen, version.id])
 
+  // A row the slider has moved to may be far down a long list.
+  useEffect(() => {
+    if (follow) button.current?.scrollIntoView({ block: 'nearest' })
+  }, [follow])
+
   // A selected row is described whether or not it was ever scrolled to.
   useEffect(() => {
     if (selected) onSeen(version.id)
@@ -249,6 +375,7 @@ function Row({
       ref={button}
       className={styles.row}
       aria-pressed={selected}
+      aria-current={current ? 'true' : undefined}
       onClick={() => onSelect(version)}
       data-testid="history-row"
     >

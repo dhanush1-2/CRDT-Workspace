@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCount, formatRelativeTime, formatVersionTime } from '../src/lib/format.js'
+import { formatCount, formatRelativeTime, formatVersionLabel, formatVersionTime } from '../src/lib/format.js'
 
 describe('formatCount', () => {
   it('uses the singular for exactly one and the plural otherwise, including zero', () => {
@@ -78,5 +78,19 @@ describe('formatVersionTime', () => {
 
   it('adds the year when it is not this one', () => {
     expect(formatVersionTime(new Date(2025, 11, 30, 9, 7), now)).toBe('Dec 30, 2025, 09:07')
+  })
+})
+
+describe('formatVersionLabel', () => {
+  const now = new Date(2026, 9, 1, 12)
+  const endedAt = new Date(2026, 8, 30, 16, 40)
+
+  it('names the time and the author', () => {
+    expect(formatVersionLabel({ endedAt, author: { name: 'Grace' } }, now)).toBe('Sep 30, 16:40, by Grace')
+  })
+
+  it('says Unknown when there is no author, or the name is blank', () => {
+    expect(formatVersionLabel({ endedAt, author: null }, now)).toBe('Sep 30, 16:40, by Unknown')
+    expect(formatVersionLabel({ endedAt, author: { name: '' } }, now)).toBe('Sep 30, 16:40, by Unknown')
   })
 })

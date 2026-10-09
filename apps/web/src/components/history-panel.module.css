@@ -72,6 +72,90 @@
   background: rgba(0, 0, 0, 0.09);
 }
 
+/* Spec: "Accent: ... Used for buttons, the logo, focus rings and the slider". The native
+   range input is kept (keyboard, screen readers and touch come with it) and only its
+   track and thumb are drawn. */
+.scrub {
+  flex: none;
+  padding: 2px 20px 6px;
+}
+
+.slider {
+  display: block;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* The browser's own parts, if a part of the control is left to it. */
+  accent-color: var(--accent);
+}
+
+.slider:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--r-pill);
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--track);
+}
+
+.slider::-moz-range-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--track);
+}
+
+.slider::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  /* Centres an 18px thumb on the 4px track: (4 - 18) / 2. */
+  margin-top: -7px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px var(--accent-shadow);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px var(--accent-shadow);
+}
+
+.slider:not(:disabled):hover::-webkit-slider-thumb {
+  background: var(--accent-hover);
+}
+
+.slider:not(:disabled):hover::-moz-range-thumb {
+  background: var(--accent-hover);
+}
+
+.ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 .list {
   flex: 1 1 auto;
   min-height: 0;
@@ -100,6 +184,9 @@
   background: rgba(255, 255, 255, 0.75);
 }
 
+/* The chosen version, and Now (the newest row while the live document shows). The slider
+   moves this between rows, so it is a background the row's own transition can ease. */
+.row[aria-pressed='true'],
 .row[aria-current='true'] {
   background: rgba(255, 255, 255, 0.85);
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { formatVersionTime } from '@/lib/format'
+import { formatVersionLabel } from '@/lib/format'
 import { clearVersion, selectVersion, useVersionSelection } from '@/lib/version-selection'
 import { HistoryPanel } from './HistoryPanel'
 import styles from './app-shell.module.css'
@@ -130,13 +130,8 @@ export function HistoryButton({
             documentId={documentId}
             type={type}
             onClose={close}
-            onPreview={(version) =>
-              selectVersion(
-                documentId,
-                version.id,
-                `${formatVersionTime(version.endedAt)}, by ${version.author?.name || 'Unknown'}`,
-              )
-            }
+            onPreview={(version) => selectVersion(documentId, version.id, formatVersionLabel(version))}
+            onLive={() => clearVersion(documentId)}
             selectedVersionId={picked?.versionId ?? null}
           />,
           document.body,
