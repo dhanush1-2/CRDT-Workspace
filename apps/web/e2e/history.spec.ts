@@ -211,6 +211,9 @@ test('a keyboard user lands in the panel on open, can Tab through it, and Escape
   await expect(panel.getByRole('button', { name: 'Close history' })).toBeFocused()
   // Rows must exist before the next Tab, or it would leave a still-loading panel.
   await expect(panel.getByTestId('history-row')).toHaveCount(3)
+  // The slider sits between the header and the list.
+  await page.keyboard.press('Tab')
+  await expect(panel.getByRole('slider', { name: 'Version' })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(panel.getByTestId('history-row').first()).toBeFocused()
 
@@ -1098,20 +1101,22 @@ test('arrowing across several versions quickly fetches only the one it stops on'
   await expect(rows).toHaveCount(8)
   await expect.poll(() => requests.held.length).toBe(2)
   const background = requests.sent.length
-  // Row 5 from the top is five steps left of Now. Its fetch is the only one let through.
-  requests.allow(ids[5]!)
+  // Which two rows the background fetches took first depends on the order the rows
+  // scrolled into view, so pick a target from what is left: at least four steps from Now.
+  const target = ids.findIndex((id, i) => i >= 4 && !requests.held.includes(id))
+  requests.allow(ids[target]!)
 
   const slider = sliderOf(panel)
   await slider.focus()
-  for (let step = 1; step <= 5; step++) {
+  for (let step = 1; step <= target; step++) {
     await page.keyboard.press('ArrowLeft')
     // The highlight is not waiting for the pause: it is already on this step's row.
     await expect(rows.nth(step)).toHaveAttribute('aria-pressed', 'true', { timeout: 150 })
   }
 
-  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - 5).join(''))
-  // One preview fetch, for the version it stopped on, and none for the four it passed.
-  expect(requests.sent.slice(background)).toEqual([ids[5]])
+  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - target).join(''))
+  // One preview fetch, for the version it stopped on, and none for the ones it passed.
+  expect(requests.sent.slice(background)).toEqual([ids[target]])
   requests.release()
 })
 
@@ -1128,22 +1133,24 @@ test('dragging the thumb across several versions fetches only the one it is rele
   await expect(rows).toHaveCount(8)
   await expect.poll(() => requests.held.length).toBe(2)
   const background = requests.sent.length
-  // The far left is the oldest version, the last row.
-  requests.allow(ids[7]!)
+  const target = ids.findIndex((id, i) => i >= 4 && !requests.held.includes(id))
+  requests.allow(ids[target]!)
 
   const slider = sliderOf(panel)
   const box = (await slider.boundingBox())!
   const y = box.y + box.height / 2
-  await page.mouse.move(box.x + box.width - 2, y)
+  // The thumb's centre travels the track less half a thumb (18px) at each end.
+  const at = (value: number) => box.x + 9 + (value / (letters.length - 1)) * (box.width - 18)
+  await page.mouse.move(at(letters.length - 1), y)
   await page.mouse.down()
-  await page.mouse.move(box.x + 2, y, { steps: 14 })
-  // Still held down: the highlight has followed the thumb all the way, nothing is previewed yet.
-  await expect(rows.nth(7)).toHaveAttribute('aria-pressed', 'true')
+  await page.mouse.move(at(letters.length - 1 - target), y, { steps: 14 })
+  // Still held down: the highlight has followed the thumb, and nothing is previewed yet.
+  await expect(rows.nth(target)).toHaveAttribute('aria-pressed', 'true')
   await page.mouse.up()
 
-  await expect(editorText(page)).toHaveText(letters.slice(0, 1).join(''))
-  await expect(slider).toHaveValue('0')
-  expect(requests.sent.slice(background)).toEqual([ids[7]])
+  await expect(slider).toHaveValue(String(letters.length - 1 - target))
+  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - target).join(''))
+  expect(requests.sent.slice(background)).toEqual([ids[target]])
   requests.release()
 })
 
