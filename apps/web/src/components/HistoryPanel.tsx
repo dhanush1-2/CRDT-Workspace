@@ -148,14 +148,18 @@ export function HistoryPanel({
 
   // --- The slider ---
   //
-  // Positions are counted from the oldest version, so the right-hand end (the last
-  // position) is Now: the live document, which is no version at all. `scrub` is where
-  // the thumb is while it is moving and has not yet chosen anything; null once settled,
-  // when the thumb goes back to following the selection.
-  const top = Math.max(versions.length - 1, 0)
+  // One stop per version, counted from the oldest (stop 0 is the oldest version, stop
+  // length - 1 the newest listed one), plus a last stop, `count`, for Now. Now is the
+  // live document, which can hold edits newer than the newest version, so it is not the
+  // newest version and has no row. `scrub` is where the thumb is while it is moving and
+  // has not yet chosen anything; null once settled, when the thumb goes back to
+  // following the selection.
+  const count = versions.length
+  const versionAt = (stop: number): DocumentVersion | undefined => versions[count - 1 - stop]
   const [scrub, setScrub] = useState<number | null>(null)
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const unsettled = useRef<number | null>(null)
+  const stopWatchingPointer = useRef<(() => void) | null>(null)
   // What a settle reads when it runs: it fires from a timer and a window listener, which
   // would otherwise hold the props of the render that scheduled them.
   const latest = useRef({ versions, selectedVersionId, onPreview, onLive })
@@ -166,28 +170,27 @@ export function HistoryPanel({
     settleTimer.current = null
   }, [])
 
-  /** Chooses the version the thumb is on, if it has moved since the last choice. */
+  /** Chooses where the thumb is, if it has moved since the last choice. */
   const settle = useCallback(() => {
     clearSettleTimer()
-    const index = unsettled.current
-    if (index === null) return
+    const stop = unsettled.current
+    if (stop === null) return
     unsettled.current = null
     setScrub(null)
     const { versions, selectedVersionId, onPreview, onLive } = latest.current
-    const end = versions.length - 1
-    if (index >= end) {
+    if (stop >= versions.length) {
       if (selectedVersionId !== null) onLive()
       return
     }
     // Not onPreview again for the version already chosen: a repeat choice means "retry".
-    const version = versions[end - index]
+    const version = versions[versions.length - 1 - stop]
     if (version && version.id !== selectedVersionId) onPreview(version)
   }, [clearSettleTimer])
 
   const moveTo = useCallback(
-    (index: number) => {
-      unsettled.current = index
-      setScrub(index)
+    (stop: number) => {
+      unsettled.current = stop
+      setScrub(stop)
       clearSettleTimer()
       settleTimer.current = setTimeout(settle, SETTLE_MS)
     },
@@ -201,14 +204,49 @@ export function HistoryPanel({
     setScrub(null)
   }, [clearSettleTimer])
 
-  useEffect(() => clearSettleTimer, [clearSettleTimer])
+  /**
+   * A drag ends with the pointer, which may be released away from the thumb, so the
+   * listeners are on the window, and only while a drag is under way.
+   */
+  const watchPointer = useCallback(() => {
+    stopWatchingPointer.current?.()
+    const release = () => {
+      stopWatchingPointer.current?.()
+      settle()
+    }
+    window.addEventListener('pointerup', release)
+    window.addEventListener('pointercancel', release)
+    stopWatchingPointer.current = () => {
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', release)
+      stopWatchingPointer.current = null
+    }
+  }, [settle])
+
+  // The window losing focus is the one other time to choose without waiting. Not the
+  // slider losing it: clicking a row blurs the slider first, and that would fetch the
+  // version the thumb was on as well as the row's.
+  useEffect(() => {
+    window.addEventListener('blur', settle)
+    return () => window.removeEventListener('blur', settle)
+  }, [settle])
+
+  // Closing the panel discards a choice that has not settled: nothing is left to fire
+  // after the panel is gone and select a version on a document that is back to live.
+  useEffect(
+    () => () => {
+      clearSettleTimer()
+      unsettled.current = null
+      stopWatchingPointer.current?.()
+    },
+    [clearSettleTimer],
+  )
 
   const selectedAt = versions.findIndex((version) => version.id === selectedVersionId)
-  const settledIndex = selectedAt < 0 ? top : top - selectedAt
-  const thumbAt = scrub ?? settledIndex
-  const atNow = scrub !== null ? scrub >= top : selectedVersionId === null
-  const highlightedId = scrub !== null ? (scrub >= top ? null : versions[top - scrub]?.id) : selectedVersionId
-  const thumbVersion = atNow ? undefined : versions[top - thumbAt]
+  const settledStop = selectedAt < 0 ? count : count - 1 - selectedAt
+  const thumbAt = scrub ?? settledStop
+  const thumbVersion = versionAt(thumbAt)
+  const highlightedId = scrub !== null ? thumbVersion?.id : selectedVersionId
 
   const describe = useCallback(
     (versionId: string) => {
@@ -273,20 +311,13 @@ export function HistoryPanel({
               aria-label="Version"
               aria-valuetext={thumbVersion ? formatVersionLabel(thumbVersion) : 'Now'}
               min={0}
-              max={top}
+              max={count}
               step={1}
               value={thumbAt}
-              // One version leaves nothing to move between.
-              disabled={ready.versions.length < 2}
               onChange={(event) => moveTo(Number(event.currentTarget.value))}
-              // A drag ends with the pointer, which may be released away from the thumb, so
-              // the listener is on the window. A keyboard has no end to wait for: it settles
-              // after the pause, so a quick run of arrow presses is one choice.
-              onPointerDown={() => {
-                window.addEventListener('pointerup', settle, { once: true })
-                window.addEventListener('pointercancel', settle, { once: true })
-              }}
-              onBlur={settle}
+              // A keyboard has no end to wait for: it settles after the pause, so a quick
+              // run of arrow presses is one choice.
+              onPointerDown={watchPointer}
               data-testid="history-slider"
             />
             <div className={styles.ends} aria-hidden="true">
@@ -295,15 +326,13 @@ export function HistoryPanel({
             </div>
           </div>
           <ul className={styles.list}>
-            {ready.versions.map((version, index) => (
+            {ready.versions.map((version) => (
               <li key={version.id}>
                 <Row
                   version={version}
                   description={descriptions[version.id]}
                   selected={version.id === highlightedId}
-                  // Now sits on the newest row, which is as near as the list can point.
-                  current={atNow && index === 0}
-                  follow={scrub !== null && (version.id === highlightedId || (atNow && index === 0))}
+                  follow={scrub !== null && version.id === highlightedId}
                   onSeen={describe}
                   onSelect={(chosen) => {
                     abandonScrub()
@@ -323,7 +352,6 @@ function Row({
   version,
   description,
   selected,
-  current,
   follow,
   onSeen,
   onSelect,
@@ -331,8 +359,6 @@ function Row({
   version: DocumentVersion
   description: string | undefined
   selected: boolean
-  /** The live document is showing and this is the newest version. */
-  current: boolean
   /** The slider is moving and is on this row: keep it in view. */
   follow: boolean
   onSeen: (versionId: string) => void
@@ -375,7 +401,6 @@ function Row({
       ref={button}
       className={styles.row}
       aria-pressed={selected}
-      aria-current={current ? 'true' : undefined}
       onClick={() => onSelect(version)}
       data-testid="history-row"
     >

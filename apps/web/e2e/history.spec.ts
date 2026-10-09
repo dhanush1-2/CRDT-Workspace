@@ -917,7 +917,22 @@ async function seedMany(label: string, count: number) {
   return { owner, document, letters, ids }
 }
 
-test('the slider spans every version, from Earliest at the left to Now at the right', async ({ page }) => {
+/**
+ * Stops the page's clock at "now", so the slider's 200ms pause passes only when the test
+ * says so. Installed before the page loads (a clock cannot be added to timers already
+ * set), paused once the panel is open. `elapse` runs the clock on by `ms` and lets it
+ * flow again afterwards, so nothing else in the page is left waiting on a frozen clock.
+ */
+async function freezeClock(page: Page) {
+  const now = await page.evaluate(() => Date.now())
+  await page.clock.pauseAt(now + 1000)
+  return async (ms: number) => {
+    await page.clock.runFor(ms)
+    await page.clock.resume()
+  }
+}
+
+test('the slider has a stop for every version and one more, Now, at the far right', async ({ page }) => {
   const { owner, document } = await seedThree(labelFor('slider-range'))
   await signIn(page, owner.id)
   await page.goto(documentPath(document))
@@ -928,11 +943,11 @@ test('the slider spans every version, from Earliest at the left to Now at the ri
 
   await expect(slider).toBeEnabled()
   await expect(slider).toHaveAttribute('type', 'range')
-  // One position per version, counted from the oldest.
+  // Three versions and Now: stops 0 to 3, the last being the live document.
   await expect(slider).toHaveAttribute('min', '0')
-  await expect(slider).toHaveAttribute('max', '2')
-  // Nothing chosen means the live document: the far right.
-  await expect(slider).toHaveValue('2')
+  await expect(slider).toHaveAttribute('max', '3')
+  await expect(slider).toHaveValue('3')
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Now')
   await expect(panel.getByText('Earliest', { exact: true })).toBeVisible()
   await expect(panel.getByText('Now', { exact: true })).toBeVisible()
   const box = (await slider.boundingBox())!
@@ -941,6 +956,8 @@ test('the slider spans every version, from Earliest at the left to Now at the ri
   expect(earliest.x).toBeLessThan(now.x)
   expect(earliest.x).toBeLessThan(box.x + box.width / 2)
   expect(now.x).toBeGreaterThan(box.x + box.width / 2)
+  // Live: no version is the one on screen.
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
 })
 
 test('moving the slider to the far right leaves the preview', async ({ page }) => {
@@ -962,10 +979,8 @@ test('moving the slider to the far right leaves the preview', async ({ page }) =
   await expect(page.getByTestId('version-preview')).toHaveCount(0)
   await expect(page.locator('.ProseMirror')).toHaveText('Hello world!!')
   await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
-  await expect(slider).toHaveValue('2')
+  await expect(slider).toHaveValue('3')
   await expect(slider).toHaveAttribute('aria-valuetext', 'Now')
-  // The newest row is where "Now" sits.
-  await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true')
 })
 
 test('moving the slider left previews an older version, and the matching row highlights', async ({
@@ -980,11 +995,17 @@ test('moving the slider left previews an older version, and the matching row hig
   const slider = sliderOf(panel)
   await expect(rows).toHaveCount(3)
 
+  // The stop just left of Now is the newest version, previewed like any other.
+  await slider.fill('2')
+  await expect(page.getByTestId('version-preview')).toBeVisible()
+  await expect(editorText(page)).toHaveText('Hello world!!')
+  await expect(rows.nth(0)).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(1)
+
   await slider.fill('1')
   await expect(editorText(page)).toHaveText('Hello world')
   await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
   await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(1)
-  await expect(rows.nth(0)).not.toHaveAttribute('aria-current', 'true')
 
   await slider.fill('0')
   await expect(editorText(page)).toHaveText('Hello')
@@ -1009,11 +1030,17 @@ test('the keyboard drives the slider: focus it and ArrowLeft moves the selection
   await page.keyboard.press('Tab')
   await expect(slider).toBeFocused()
 
+  // From Now, one step left is the newest version.
+  await page.keyboard.press('ArrowLeft')
+  await expect(rows.nth(0)).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('version-preview')).toBeVisible()
+  await expect(slider).toHaveAttribute('aria-valuetext', /^[A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}, by Heidi$/)
+
   await page.keyboard.press('ArrowLeft')
   await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
   await expect(editorText(page)).toHaveText('Hello world')
   // Said aloud as a person and a time, not as "1".
-  await expect(slider).toHaveAttribute('aria-valuetext', /^[A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}, by Unknown$/)
+  await expect(slider).toHaveAttribute('aria-valuetext', /, by Unknown$/)
 
   await page.keyboard.press('ArrowLeft')
   await expect(rows.nth(2)).toHaveAttribute('aria-pressed', 'true')
@@ -1022,13 +1049,13 @@ test('the keyboard drives the slider: focus it and ArrowLeft moves the selection
   // Focus stayed on the slider throughout.
   await expect(slider).toBeFocused()
 
-  await page.keyboard.press('ArrowRight')
-  await page.keyboard.press('ArrowRight')
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
   await expect(page.getByTestId('version-preview')).toHaveCount(0)
   await expect(slider).toHaveAttribute('aria-valuetext', 'Now')
+  await expect(slider).toHaveValue('3')
 })
 
-test('a document with one version renders the slider disabled, not broken', async ({ page }) => {
+test('a document with one version has two stops, that version and Now', async ({ page }) => {
   const label = labelFor('slider-one')
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'doc')
@@ -1037,16 +1064,19 @@ test('a document with one version renders the slider disabled, not broken', asyn
   await page.goto(documentPath(document))
 
   const panel = await openPanel(page)
-  await expect(panel.getByTestId('history-row')).toHaveCount(1)
+  const row = panel.getByTestId('history-row')
+  await expect(row).toHaveCount(1)
   const slider = sliderOf(panel)
 
-  await expect(slider).toBeVisible()
-  await expect(slider).toBeDisabled()
-  await expect(slider).toHaveAttribute('max', '0')
-  await expect(slider).toHaveValue('0')
-  // The row still works on its own.
-  await panel.getByTestId('history-row').click()
+  await expect(slider).toBeEnabled()
+  await expect(slider).toHaveAttribute('max', '1')
+  await expect(slider).toHaveValue('1')
+  await slider.focus()
+  await page.keyboard.press('ArrowLeft')
   await expect(editorText(page)).toHaveText('Only')
+  await expect(row).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
 })
 
 test('there is no slider while the list is empty or loading', async ({ page }) => {
@@ -1072,12 +1102,12 @@ async function holdBackgroundFetches(page: Page) {
   const sent: string[] = []
   let letGo: () => void = () => {}
   const gate = new Promise<void>((resolve) => (letGo = resolve))
-  let wanted: string | null = null
+  const wanted = new Set<string>()
   const held: string[] = []
   await page.route(STATE_REQUEST, async (route) => {
     const id = route.request().url().split('/').pop()!
     sent.push(id)
-    if (id === wanted) return route.continue()
+    if (wanted.has(id)) return route.continue()
     held.push(id)
     await gate
     await route.continue().catch(() => {})
@@ -1085,90 +1115,175 @@ async function holdBackgroundFetches(page: Page) {
   return {
     sent,
     held,
-    allow: (id: string) => (wanted = id),
+    allow: (...ids: string[]) => ids.forEach((id) => wanted.add(id)),
     release: letGo,
   }
 }
 
-test('arrowing across several versions quickly fetches only the one it stops on', async ({ page }) => {
-  const { owner, document, letters, ids } = await seedMany(labelFor('slider-debounce-keys'), 8)
-  await signIn(page, owner.id)
+/** Opens the panel on 8 versions with the background fetches held; `begin` freezes the clock. */
+async function openHeld(page: Page, name: string) {
+  const seeded = await seedMany(labelFor(name), 8)
+  await signIn(page, seeded.owner.id)
+  await page.clock.install()
   const requests = await holdBackgroundFetches(page)
-  await page.goto(documentPath(document))
-
+  await page.goto(documentPath(seeded.document))
   const panel = await openPanel(page)
   const rows = panel.getByTestId('history-row')
   await expect(rows).toHaveCount(8)
   await expect.poll(() => requests.held.length).toBe(2)
-  const background = requests.sent.length
+  const elapse = await freezeClock(page)
   // Which two rows the background fetches took first depends on the order the rows
-  // scrolled into view, so pick a target from what is left: at least four steps from Now.
-  const target = ids.findIndex((id, i) => i >= 4 && !requests.held.includes(id))
-  requests.allow(ids[target]!)
+  // scrolled into view, so targets are picked from the rows that are left.
+  const free = seeded.ids.map((id, row) => ({ id, row })).filter(({ id }) => !requests.held.includes(id))
+  return { ...seeded, requests, panel, rows, elapse, free, background: requests.sent.length }
+}
 
-  const slider = sliderOf(panel)
+test('arrowing across several versions quickly fetches only the one it stops on', async ({ page }) => {
+  const t = await openHeld(page, 'slider-debounce-keys')
+  // At least four rows from the newest, so at least five presses from Now.
+  const target = t.free.find(({ row }) => row >= 4)!
+  t.requests.allow(target.id)
+
+  const slider = sliderOf(t.panel)
   await slider.focus()
-  for (let step = 1; step <= target; step++) {
-    await page.keyboard.press('ArrowLeft')
-    // The highlight is not waiting for the pause: it is already on this step's row.
-    await expect(rows.nth(step)).toHaveAttribute('aria-pressed', 'true', { timeout: 150 })
-  }
+  // Row r is r + 1 presses left of Now. The clock is stopped, so no pause can fall
+  // between presses: all of them are one movement.
+  await page.keyboard.press('ArrowLeft')
+  // The highlight does not wait for the pause: it is on the first stop already, and
+  // nothing has been asked for.
+  await expect(t.rows.nth(0)).toHaveAttribute('aria-pressed', 'true')
+  expect(t.requests.sent).toHaveLength(t.background)
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  for (let press = 1; press <= target.row; press++) await page.keyboard.press('ArrowLeft')
 
-  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - target).join(''))
+  await expect(t.rows.nth(target.row)).toHaveAttribute('aria-pressed', 'true')
+  await expect(t.panel.locator('[aria-pressed="true"]')).toHaveCount(1)
+  expect(t.requests.sent).toHaveLength(t.background)
+
+  await t.elapse(200)
+  await expect(editorText(page)).toHaveText(t.letters.slice(0, t.letters.length - target.row).join(''))
   // One preview fetch, for the version it stopped on, and none for the ones it passed.
-  expect(requests.sent.slice(background)).toEqual([ids[target]])
-  requests.release()
+  expect(t.requests.sent.slice(t.background)).toEqual([target.id])
+  t.requests.release()
 })
 
 test('dragging the thumb across several versions fetches only the one it is released on', async ({
   page,
 }) => {
-  const { owner, document, letters, ids } = await seedMany(labelFor('slider-debounce-drag'), 8)
-  await signIn(page, owner.id)
-  const requests = await holdBackgroundFetches(page)
-  await page.goto(documentPath(document))
+  const t = await openHeld(page, 'slider-debounce-drag')
+  const target = t.free.find(({ row }) => row >= 4)!
+  t.requests.allow(target.id)
 
-  const panel = await openPanel(page)
-  const rows = panel.getByTestId('history-row')
-  await expect(rows).toHaveCount(8)
-  await expect.poll(() => requests.held.length).toBe(2)
-  const background = requests.sent.length
-  const target = ids.findIndex((id, i) => i >= 4 && !requests.held.includes(id))
-  requests.allow(ids[target]!)
-
-  const slider = sliderOf(panel)
+  const slider = sliderOf(t.panel)
   const box = (await slider.boundingBox())!
   const y = box.y + box.height / 2
+  const stops = t.letters.length
   // The thumb's centre travels the track less half a thumb (18px) at each end.
-  const at = (value: number) => box.x + 9 + (value / (letters.length - 1)) * (box.width - 18)
-  await page.mouse.move(at(letters.length - 1), y)
+  const at = (stop: number) => box.x + 9 + (stop / stops) * (box.width - 18)
+  await page.mouse.move(at(stops), y)
   await page.mouse.down()
-  await page.mouse.move(at(letters.length - 1 - target), y, { steps: 14 })
-  // Still held down: the highlight has followed the thumb, and nothing is previewed yet.
-  await expect(rows.nth(target)).toHaveAttribute('aria-pressed', 'true')
-  await page.mouse.up()
+  await page.mouse.move(at(stops - 1 - target.row), y, { steps: 14 })
+  // Still held down: the highlight has followed the thumb, and nothing is asked for.
+  await expect(t.rows.nth(target.row)).toHaveAttribute('aria-pressed', 'true')
+  expect(t.requests.sent).toHaveLength(t.background)
 
-  await expect(slider).toHaveValue(String(letters.length - 1 - target))
-  await expect(editorText(page)).toHaveText(letters.slice(0, letters.length - target).join(''))
-  expect(requests.sent.slice(background)).toEqual([ids[target]])
-  requests.release()
+  // Releasing settles at once. The clock is stopped, so this cannot be the pause.
+  await page.mouse.up()
+  await expect(slider).toHaveValue(String(stops - 1 - target.row))
+  await expect(editorText(page)).toHaveText(t.letters.slice(0, t.letters.length - target.row).join(''))
+  expect(t.requests.sent.slice(t.background)).toEqual([target.id])
+  await t.elapse(0)
+  t.requests.release()
 })
 
-test('the highlight moves over 0.35s, and not at all under reduced motion', async ({ page }) => {
+test('the window losing focus settles a choice that is waiting on the pause', async ({ page }) => {
+  const t = await openHeld(page, 'slider-window-blur')
+  const target = t.free.find(({ row }) => row >= 2)!
+  t.requests.allow(target.id)
+
+  await sliderOf(t.panel).focus()
+  for (let press = 0; press <= target.row; press++) await page.keyboard.press('ArrowLeft')
+  expect(t.requests.sent).toHaveLength(t.background)
+
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+  await expect(editorText(page)).toHaveText(t.letters.slice(0, t.letters.length - target.row).join(''))
+  expect(t.requests.sent.slice(t.background)).toEqual([target.id])
+  await t.elapse(0)
+  t.requests.release()
+})
+
+test('clicking a row within the pause previews only that row, with one fetch', async ({ page }) => {
+  const t = await openHeld(page, 'slider-row-click')
+  // Two different rows that are free: the slider is left on one, the click lands on the other.
+  const [passed, clicked] = t.free.filter(({ row }) => row >= 1)
+  t.requests.allow(clicked!.id)
+
+  await sliderOf(t.panel).focus()
+  for (let press = 0; press <= passed!.row; press++) await page.keyboard.press('ArrowLeft')
+  await expect(t.rows.nth(passed!.row)).toHaveAttribute('aria-pressed', 'true')
+
+  // Chrome blurs the slider as the click lands; that must not settle what the thumb was on.
+  await t.rows.nth(clicked!.row).click()
+  await expect(editorText(page)).toHaveText(t.letters.slice(0, t.letters.length - clicked!.row).join(''))
+  await expect(t.rows.nth(clicked!.row)).toHaveAttribute('aria-pressed', 'true')
+  await expect(t.panel.locator('[aria-pressed="true"]')).toHaveCount(1)
+
+  // And the pause running out afterwards finds nothing left to choose.
+  await t.elapse(500)
+  await expect(t.rows.nth(clicked!.row)).toHaveAttribute('aria-pressed', 'true')
+  expect(t.requests.sent.slice(t.background)).toEqual([clicked!.id])
+  t.requests.release()
+})
+
+test('closing the panel while the slider is unsettled discards the choice', async ({ page }) => {
+  const t = await openHeld(page, 'slider-close')
+  const target = t.free.find(({ row }) => row >= 2)!
+  t.requests.allow(target.id)
+
+  await sliderOf(t.panel).focus()
+  for (let press = 0; press <= target.row; press++) await page.keyboard.press('ArrowLeft')
+  await expect(t.rows.nth(target.row)).toHaveAttribute('aria-pressed', 'true')
+
+  await t.panel.getByRole('button', { name: 'Close history' }).click()
+  await expect(t.panel).toHaveCount(0)
+  await t.elapse(500)
+
+  // The live document is back and nothing was fetched on the closed panel's behalf.
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toHaveText(t.letters.join(''))
+  expect(t.requests.sent.slice(t.background)).toEqual([])
+  t.requests.release()
+})
+
+test('the chosen row is drawn differently from the others, and eases over 0.35s', async ({ page }) => {
   const { owner, document } = await seedThree(labelFor('slider-motion'))
   await signIn(page, owner.id)
   await page.goto(documentPath(document))
 
   const panel = await openPanel(page)
-  const row = panel.getByTestId('history-row').nth(1)
-  const transition = () =>
-    row.evaluate((el) => {
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(3)
+  const transitions = () =>
+    rows.nth(1).evaluate((el) => {
       const style = getComputedStyle(el)
-      return `${style.transitionProperty} ${style.transitionDuration}`
+      const properties = style.transitionProperty.split(',').map((item) => item.trim())
+      const durations = style.transitionDuration.split(',').map((item) => item.trim())
+      return properties.map((property, i) => `${property} ${durations[i % durations.length]}`)
     })
-  expect(await transition()).toMatch(/background.* 0\.35s/)
+  expect(await transitions()).toContain('background 0.35s')
+  // Reduced motion: every transition item is instant, not just the last one listed.
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  expect((await transition()).endsWith('0s')).toBe(true)
+  const reduced = await transitions()
+  expect(reduced.length).toBeGreaterThan(0)
+  for (const item of reduced) expect(item).toMatch(/ 0s$/)
+
+  // With nothing animating, a chosen row has a different background from an unchosen one.
+  await sliderOf(panel).fill('1')
+  await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  const background = (index: number) => rows.nth(index).evaluate((el) => getComputedStyle(el).backgroundColor)
+  const chosen = await background(1)
+  expect(await background(0)).toBe(await background(2))
+  expect(chosen).not.toBe(await background(0))
 })
 
 test('the slider is drawn in the accent colour but is still a native range input', async ({ page }) => {

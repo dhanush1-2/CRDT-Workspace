@@ -184,10 +184,9 @@
   background: rgba(255, 255, 255, 0.75);
 }
 
-/* The chosen version, and Now (the newest row while the live document shows). The slider
-   moves this between rows, so it is a background the row's own transition can ease. */
-.row[aria-pressed='true'],
-.row[aria-current='true'] {
+/* The chosen version. The slider moves this between rows, so it is a background the
+   row's own transition can ease. While the live document shows, no row is chosen. */
+.row[aria-pressed='true'] {
   background: rgba(255, 255, 255, 0.85);
 }
 
