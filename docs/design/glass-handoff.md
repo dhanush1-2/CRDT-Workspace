@@ -980,8 +980,8 @@ sync-server change; one new API route.
 - **Presence count.** The status pill reads `{peers + 1} here` when anyone else is
   present, and the connection label ("Synced") when alone.
 - **History button.** On documents only, before the status pill, as §5.3 orders it. It
-  opens a panel that says history is not available yet. The panel's contents wait on the
-  history backend.
+  opens the History panel (see "History panel, version preview and restore" below). It
+  first opened a placeholder panel that said history was not available yet.
 
 | Where | §5.3 says | Built | Why |
 |---|---|---|---|
@@ -1423,9 +1423,10 @@ marks and nodes, all of which the Y.Doc already represents as ordinary XML.
 
 **Asked for by §12 and not built**
 
-- **The history preview's "toolbar hidden" state.** There is no preview in this repository
-  yet; it belongs to `2026-10-04-history-panel-and-preview.md`, whose note on the editor
-  component has been corrected (see that plan).
+- **The history preview's "toolbar hidden" state.** Built later, by
+  `2026-10-04-history-panel-and-preview.md`: `DocumentEditor` takes `toolbar={false}` and a
+  `content` prop, and there is no separate read-only editor (see "History panel, version
+  preview and restore" below).
 - **A way for keyboard-only and touch editors to follow a link.** Not a regression, since
   nobody could before; §12.6 lists no Open control, so Cmd/Ctrl-click is the only route.
   A rendered-only `title` on anchors in editable mode is the cheap partial fix.
@@ -1485,6 +1486,142 @@ Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.m
 - **Deployment.** Run `prisma migrate deploy` against the production database **before**
   deploying the sync server that writes `userId`.
 
+### History panel, version preview and restore
+
+Plan: `2026-10-04-history-panel-and-preview.md`. The UI over the backend recorded above.
+No schema, sync-server or route change. Design record for the merge wording: Decision 2 in
+`docs/superpowers/specs/2026-10-02-history-and-telemetry-design.md`.
+
+**What was built**
+
+- **The History button and panel** (`HistoryButton.tsx`, `HistoryPanel.tsx`,
+  `history-panel.module.css`). A fixed column at the right: 330px wide, 16px from the right and
+  bottom, radius `--r-panel`, `rgba(255,255,255,.66)` with `--blur-3`, `z-index` 25 (above the
+  content, below the nav's 30). Header "History" with a close circle, the slider, then the list,
+  newest first. A row is a 32px avatar in the author's colour, a sentence, and "Author · Mon D,
+  HH:MM". A version with no author reads "Unknown". The chosen row is `rgba(255,255,255,.85)`
+  and eases over 0.35s. The list asks for the newest 50 versions.
+- **The panel is portalled to `document.body`.** The nav's `backdrop-filter` makes the nav the
+  containing block for fixed descendants, so a panel inside it would sit in the 68px bar, and
+  its blur would sample the nav instead of the page. The React tree is unchanged, so state and
+  props still flow from `HistoryButton`; open, Escape and outside-click stay there. Because the
+  portal leaves the shell, `--nav-bottom` no longer cascades to it, so the button reads it
+  from the shell and sets it on the panel as an inline custom property.
+- **Focus.** On open, focus moves to the panel heading (`tabIndex -1`, no ring for the
+  mouse). Without that, a keyboard user would have to Tab through the rest of the page to
+  reach a panel that sits last in the DOM. The first Tab lands on Close, then the slider,
+  then the rows. Escape and Close return focus to the History button. Rows are
+  `aria-pressed` buttons.
+- **Descriptions are derived by diffing two states** (`version-description.ts`). An update
+  is opaque Yjs bytes, so a row's sentence is made by building the state before and after
+  and comparing. A single recognisable change gets a sentence ("Added 'New card'", "Renamed
+  the list 'New column' to 'Backlog'", "Moved 'New card' to Doing", "Deleted the list 'X' and
+  its 2 cards", "Added 33 characters", "Removed 3 characters"). Anything else gets a count
+  ("2 changes"); a text change that involves structure or formatting says "Edited the text".
+  A wrong sentence about someone's document is worse than a vague one, so the count is the
+  floor, not a bug. The first version is "Created the board" or "Created the document", and
+  only when the list reaches the document's first version.
+- **The ratio, measured** with two browsers (Owner and Eddie) taking turns. Board, 16 scripted
+  changes: 17 update rows grouped into 15 versions, 13 sentences and 2 counts (13:2, 87%).
+  Both counts were versions where the same author had made two changes in a row; every
+  version holding one change got a sentence. Document, 12 scripted turns: 10 versions, 10
+  sentences and 0 counts, but only 4 are specific (Created, Added 33 characters, Removed 3
+  characters, Added 2 characters); the other 6 say "Edited the text". With two people typing
+  together: 49 sentences and 1 count in 50 rows, nearly all "Added 1 character". In the board
+  and document runs, all 25 rows named the right author, in the order the database recorded them. Cards cannot be renamed in
+  the UI yet, so every card is 'New card' and every list starts as 'New column'; the sentences
+  are true but do not tell cards apart.
+- **What the list fetches.** The version list is one request: 2,519 bytes for 15 versions,
+  1,690 for 10, 8,364 for 50. No state is fetched for a row until it is on screen: an
+  `IntersectionObserver` with an 80px margin asks for the row's sentence, and the selected row
+  is always described. A sentence needs the row's own state and its older neighbour's, so a
+  panel showing N rows fetches about N+1 states. Measured on open: 13 states and 10,804 bytes
+  for a 15-version board in an 800px panel (222 to 1,455 bytes each, all issued in 81 ms); 10
+  states and 14,346 bytes for the 10-version document; 13 states and 6,838 bytes on a 50-row
+  list, so not one per version. Scrolling the 15-row board to its end brought it to 15 states
+  and 11,102 bytes. State requests run two at a time, cached for the session by (document,
+  version) with 64 kept, and a failure falls back to the count. A state is the whole
+  document, so its size follows the document, and the server cost of each follows its
+  history (see Known limitations).
+- **The slider** (`HistoryPanel.tsx`) is a native `<input type="range">`, kept for the
+  keyboard, screen readers and touch, restyled with the accent colour. It has one stop per
+  listed version plus a last stop, Now, which is the live document and has no row (the live
+  document can hold edits newer than the newest version). The thumb and the highlighted row
+  move at once; the choice is made only when it settles: 200 ms after the last input, on
+  window `pointerup` or `pointercancel`, or on window blur. A row click cancels a pending
+  choice and closing the panel discards it. A scrub therefore makes one preview, not one
+  per stop; see Known limitations for what the highlight still fetches. `aria-valuetext`
+  reads "Sep 30, 16:40, by Grace" or "Now". Checked on both documents: one ArrowLeft at a time,
+  every stop's row, pill and previewed content matched its version.
+- **The version preview** (`VersionPreview.tsx`, `version-selection.ts`). Choosing a version
+  builds a throwaway `Y.Doc` from its bytes, with no provider, socket or persistence, and
+  renders it read-only: `Board` with `readOnly` and `provider={null}`, or `DocumentEditor` with
+  its `content` and `toolbar={false}` props. There is no separate read-only editor. The title
+  is a plain heading. The live view is unmounted while a preview shows, so the two never
+  exist together, and **the live document is never written to**. Checked: while previewing, a
+  peer added a card, the preview did not change, the Owner's update rows stayed at 10 (the
+  total rose by the peer's one), and Back to now showed the board with the peer's card; typing
+  into a document preview changed nothing and the peer's copy was untouched. If a preview
+  fails to load or is too large (413), the live view stays up with a notice, and there is no
+  pill. The selection is a small module store keyed by document id; the panel writes it and
+  the page reads it. A repeat pick of the same row means "retry". The region is labelled
+  "Earlier version of this board/document", with a status line naming the version.
+- **The fade is one-sided.** The incoming view fades in over 0.4s (the preview, and the live
+  view when it returns); the outgoing one just goes. A true cross-fade needs both mounted at
+  once, and the preview exists so that they never are: with both in the page there would be a
+  moment when the live, writable view and a preview sat together. It is off under reduced
+  motion.
+- **The pill** (`VersionBar.tsx`, `version-bar.module.css`) is rendered by `DocumentClient`,
+  not `AppShell`, because Restore needs the live `Y.Doc`. Dark glass, fixed, centred, `z-index`
+  26, "Author · time", **Restore** (white) and **Back to now**. It is shown only while a
+  preview is actually on screen. **Restore is absent, not disabled, for viewers, and absent
+  until the document has synced with the server at least once**: before that the local doc
+  is empty, and a diff-based restore would write the whole old content as new inserts for
+  the server's copy to land on top of, duplicating it. A later disconnect is fine. The
+  connection-states plan has not run, so the pill stacks with no connection band.
+- **Restore goes out through the normal socket** (`restore-version.ts`, `restoreEditor`,
+  `restoreBoard`) and is attributed to whoever restored: the newest row after a restore was the
+  Owner's. A viewer's frames are refused by the sync server's role check. Focus returns to the
+  live editor, or the heading on a board. The toast is "Restored version from Mon D, HH:MM",
+  and adds " · merged with changes made since" when anyone else is present (connected and
+  at least one peer, `hasOthersHere`).
+
+**What a restore does to other people's edits, as measured**
+
+A restore is a diff from the restorer's current copy to the old state. It is not a merge of
+the old version with what has happened since. Everything that had already reached the
+restorer after that version is undone, along with the restorer's own later edits. Only edits
+still in flight when the restore lands survive. Observed:
+
+- Board, peer idle: Eddie had added a card after the chosen version and the Owner already had
+  it. After Restore both boards were exactly the chosen version, and Eddie's card was gone.
+  The toast still said "merged with changes made since".
+- Document, peer typing a 70-character run at 60 ms a key: the 13 characters already sent
+  when Restore landed were removed with everything else after the version, and the other 57
+  survived, appended after the restored text. Both browsers ended identical.
+
+So the toast is true that the result is not a clean revert, but "merged" suggests the other
+person's work was kept, and most of it was not. Whether the wording overclaims is an open
+question for the owner (Decision 2 of the design record); the copy was not changed.
+
+**Deviations from §13 and §5.6, and why**
+
+| Where | Design says | Built | Why |
+|---|---|---|---|
+| Panel `top` (§13) | `84px` | `calc(var(--nav-bottom, 68px) + 16px)`: 84px, and 68px once the nav condenses | `--nav-bottom` is 68px, or 52px condensed. The shell's bar shrinks on scroll; a fixed 84px would leave a 32px gap under it. `top` transitions over 0.4s with the nav, and a panel opened while condensed lands at 68 without starting from 84. |
+| Entrance (§13) | `g-side .6s` | None runs | The animation name is localised in the module and has no keyframes (Known limitations). Not worked around, since the fix is app-wide. `g-side` stays defined in `globals.css` and the panel is its only user, so it is still effectively unused. |
+| Pill offset (§5.6) | 10px below the nav | `--nav-bottom + 8px` | Read from the same variable, so it follows a condensing nav, but it has no transition of its own (the panel does). |
+| Pill home (§5.6) | in the under-nav pill family | `DocumentClient` | Needs the live doc for Restore. |
+| Fade (§13) | .4s fade | one-sided | See above. |
+| Slider (§13) | range input, "Earliest … Now" | native range with n+1 stops, committing on settle | Keyboard first; one preview per scrub. |
+| Restore copy (§13) | "Restored version from {date}" | plus " · merged with changes made since" when others are present | Decision 2: the UI must not imply an exact revert. |
+
+**Not done**
+
+- The open panel's list does not refetch after a restore, so the restore's own new version
+  appears only on reopening (the sync server writes updates on a 500 ms timer).
+- No connection band, offline pill or status popover (connection-states plan).
+
 ### Deferred, each needing its own plan
 
 - **Status popover, offline and syncing pills.** The status pill itself is built (see
@@ -1495,14 +1632,6 @@ Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.m
   forgotten. They need the Yjs provider, which lives in `DocumentClient` and is not
   reachable from the nav: the store publishes status and peers, not the provider.
   They belong to a plan that exposes provider controls, likely with the popover.
-- **History panel and version preview bar.** The backend is built (see "History and
-  authorship backend" above): the version list route `GET /api/documents/[id]/history`,
-  the state-at-a-version route `GET /api/documents/[id]/history/[version]`,
-  `apps/web/src/lib/document-history.ts`, authorship on `DocumentUpdate.userId`, and the
-  `restoreBoard` / `restoreEditor` primitives. Deferred on the UI alone: the panel's rows,
-  the preview bar, and the restore action wired to those primitives, including the line
-  that tells the user a restore with other people present is not an exact revert. The
-  History button is built (see "Shell routing and nav").
 - **Card detail sheet.** Blocked on `description` and an activity log on the
   card's `Y.Map`; neither exists in the CRDT shape today, and adding them is a
   schema change this work barred. Two things were left ready or left out on
@@ -1541,11 +1670,11 @@ Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.m
   updates on `router.refresh()` (which the local create, share and sign-out flows
   call) or a full load. A role change or a document created by someone else shows
   only then. UI only: APIs and pages enforce the real role.
-- **The History panel and the tab dropdown blur the nav, not the page.** Both are
-  descendants of the nav, whose `backdrop-filter` makes it a backdrop root, so their
-  own `backdrop-filter` samples the nav rather than the page behind it. They read as
-  more opaque glass (`--glass-sheet` .82, `--glass-menu` .88). It is the same issue
-  the toolbar's stylesheet documents.
+- **The tab dropdown blurs the nav, not the page.** It is a descendant of the nav, whose
+  `backdrop-filter` makes it a backdrop root, so its own `backdrop-filter` samples the
+  nav rather than the page behind it. It reads as more opaque glass (`--glass-menu`
+  .88). It is the same issue the toolbar's stylesheet documents. The History panel used
+  to be in this state and no longer is: it is portalled to `<body>`.
 - **Renames reach other people on their next data load, not live.** A new document or
   board title is saved to Postgres and the person renaming sees it at once, but others
   see it only after a navigation that refetches, `router.refresh()` or a reload (Decision
@@ -1555,7 +1684,33 @@ Design record: `docs/superpowers/specs/2026-10-02-history-and-telemetry-design.m
   a previously fetched version can be read again after the first user signs out.
 - **Fetching a version gets slower as a document's history grows.** It replays every
   update row up to that version. Starting from a snapshot would fix it, but needs exact
-  snapshots and a way to tell them from the legacy ones.
+  snapshots and a way to tell them from the legacy ones. The panel multiplies this: each
+  row's sentence needs two of these replays (its own state and its neighbour's).
+- **Scrubbing the slider over rows that have no sentence yet fetches a state for each
+  row it passes.** The preview itself is chosen once, when the thumb settles, but a row
+  that is highlighted is also described, and describing needs its state. Measured on a
+  50-row list with 13 rows already described: 25 fast ArrowLeft presses (247 ms) made 13
+  state requests, about 5.3 KB, all within 90 ms of the last press and none from the
+  settle. They go two at a time and are cached, so a second pass costs nothing. Fix, if
+  it matters: describe a row only once the thumb has rested on it.
+- **Two people typing together make a very noisy list.** Any change of author starts a
+  new version, so the grouping that works for one writer does not for two. Measured:
+  two browsers typing 40 characters each for 4.2 s wrote 80 update rows that became 66
+  versions, mostly "Added 1 character"; ten rounds of taking turns (20 turns, 60 rows)
+  made 19. The panel lists the newest 50, so after a minute of co-editing it shows only
+  the last couple of minutes of work, and the oldest listed row reads "1 change" because
+  nothing is known to precede it. The 5-minute window and the alternation rule are the
+  backend's, not the panel's. Left for the owner to decide (coalescing across authors
+  would give up per-author attribution).
+- **The CSS-module entrance animations do not run, here or elsewhere.** A name in an
+  `animation:` declaration inside a CSS module is localised to a hashed name that has no
+  keyframes, so `g-side` on the History panel, and every other `g-*` used from a module
+  (nav, toolbar, sheets, palette, board, user menu), does nothing. Measured on the open
+  panel: `getAnimations()` returns none and the computed name is
+  `history-panel_g-side__5r4_Z`. The panel therefore appears at once. The panel's `top`
+  transition does run, and the preview's fade and the pill's rise define their own
+  keyframes in their own modules, which are hashed with them and do run. This predates
+  the plan; the fix is app-wide and is its own task.
 - **The account button's initial has low contrast for some colours.** It is your colour
   on white, about 2.1 to 2.8:1 for amber, teal and sky, the same ratios the old filled
   avatar had. Not fixed.

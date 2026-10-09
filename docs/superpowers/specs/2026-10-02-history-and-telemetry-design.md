@@ -58,7 +58,24 @@ of which is real). Both rejected.
   "Dhanush restored to Sep 27, 14:20" rather than appearing as an anonymous change.
 - The UI must tell the truth about the merge: after a restore with other people present,
   say so rather than implying an exact revert. Exact copy is specifically what this
-  design does not promise.
+  design does not promise. **Implemented** in the restore message
+  (`restoreMessage` in `apps/web/src/lib/restore-version.ts`): "Restored version from
+  Sep 27, 14:20", plus " · merged with changes made since" when anyone else is present
+  (connected, and at least one peer).
+- **What the built merge does, measured (2026-10-09).** Restore is a diff from the
+  restorer's current copy to the old state (`restoreEditor`, `restoreBoard`), so it is
+  not "the old version plus everything since". Edits by others that had already reached
+  the restorer are undone along with the restorer's own; only edits in flight when the
+  update lands survive. Board with an idle peer: the peer's card, added after the chosen
+  version and already synced, was removed, and the toast still said "merged". Document
+  with a peer typing 70 characters: the 13 already sent were removed, the other 57
+  survived after the restored text, and both browsers converged. This is the concurrent
+  case the decision describes (both apply), but it is narrower than the wording suggests.
+- **Open question for the owner: does the toast overclaim?** "Merged with changes made
+  since" is accurate about the mechanism and misleading about the outcome, because it
+  reads as the other person's work being kept. Options are to leave it, to say what is
+  lost ("other people's recent edits were replaced"), or to change the mechanism. The
+  copy has not been changed.
 - Viewers cannot restore. The existing role check covers it, and it is the sync server's
   per-frame guard rather than a route: there is no restore route (see "Derived" below),
   so a viewer's restore update frame is rejected like any other edit from a viewer.
@@ -131,9 +148,9 @@ From the three decisions, the capabilities the UI plans need:
 
 | Capability | Shape | Serves |
 |---|---|---|
-| Snapshot list | **Built.** `GET /api/documents/[id]/history?limit=` (1 to 200, default 50) → `{ versions: [{ id, startedAt, endedAt, author: { id, name } \| null, updateCount }] }`, ids as strings. `listVersions` in `apps/web/src/lib/document-history.ts`. Not the `{ id, createdAt, ... description }` shape first drafted here: a version is a run of updates, so it has a start and an end, and no description. | History panel rows |
-| Snapshot content | **Built.** `GET /api/documents/[id]/history/[version]` → the document's state at that version as raw Yjs update bytes (`application/octet-stream`). `stateAtVersion` in `apps/web/src/lib/document-history.ts`. | Version preview bar |
-| Restore | **Not a route.** `restoreBoard(live, from)` in `@crdt/shared/board` and `restoreEditor(live, from)` in `apps/web/src/lib/restore-editor.ts`, applied on the client to the live doc, and sent through the existing socket like any edit. Originally `POST /api/documents/[id]/history/[snapshotId]/restore`; amended for three reasons below. | Restore action |
+| Snapshot list | **Built, UI built.** `GET /api/documents/[id]/history?limit=` (1 to 200, default 50) → `{ versions: [{ id, startedAt, endedAt, author: { id, name } \| null, updateCount }] }`, ids as strings. `listVersions` in `apps/web/src/lib/document-history.ts`. Not the `{ id, createdAt, ... description }` shape first drafted here: a version is a run of updates, so it has a start and an end, and no description. | History panel rows (built: the History panel, `HistoryPanel.tsx`; a row's sentence is derived on the client by diffing two states, since the backend supplies no description) |
+| Snapshot content | **Built, UI built.** `GET /api/documents/[id]/history/[version]` → the document's state at that version as raw Yjs update bytes (`application/octet-stream`). `stateAtVersion` in `apps/web/src/lib/document-history.ts`. | Version preview bar (built: a read-only preview from a throwaway `Y.Doc`, the pill, and the slider) |
+| Restore | **Not a route. UI built** (the pill's Restore button, with the merged-message above). `restoreBoard(live, from)` in `@crdt/shared/board` and `restoreEditor(live, from)` in `apps/web/src/lib/restore-editor.ts`, applied on the client to the live doc, and sent through the existing socket like any edit. Originally `POST /api/documents/[id]/history/[snapshotId]/restore`; amended for three reasons below. | Restore action (built, editors only, after the first sync) |
 | Version number | **No work needed.** The newest entry from `listVersions` is the current version, and `DocumentUpdate.id` was already a monotonic `BigInt` sequence. | Status popover "Version" |
 | Queued-edit count | count of unsynced updates held in the page | Offline pill "N changes" |
 | Latency | round-trip measurement against the sync server | Status popover "Response time" |
@@ -238,8 +255,8 @@ overruled.
   degrade to a primary-key scan with a filter on skewed data, as the last-activity query
   did (see "Last-activity query efficiency is planner-dependent" in the handoff).
 - **Restore is not an exact revert when anyone else is editing.** As Decision 2 says, the
-  result is the restored version plus any concurrent edit. The UI owes the user that
-  sentence when other people are present. The UI is not in this plan.
+  result is the restored version plus any concurrent edit. The UI now says so when other
+  people are present (see Decision 2, which also records what the merge really keeps).
 - **Updates written before the migration have no author** and render as unknown. This is
   permanent for those rows: backfilling would invent history. Updates by a deleted
   account also become unknown (`ON DELETE SET NULL`).
