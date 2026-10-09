@@ -85,6 +85,7 @@ export function HistoryPanel({
   onPreview,
   onLive,
   selectedVersionId,
+  takeOpenFocus,
   ref,
   style,
 }: {
@@ -96,6 +97,12 @@ export function HistoryPanel({
   /** The slider reached Now: leave the preview and show the live document. */
   onLive: () => void
   selectedVersionId: string | null
+  /**
+   * Asked once, when the panel mounts: true if the user just opened it and focus should
+   * move in. The panel also mounts when the page navigates to another document with it
+   * open (it is keyed on the document), and then focus is wherever the user left it.
+   */
+  takeOpenFocus: () => boolean
   ref?: Ref<HTMLElement>
   /** Carries --nav-bottom, which does not cascade into a portal. */
   style?: CSSProperties
@@ -112,8 +119,10 @@ export function HistoryPanel({
   // it. Focus goes to the heading, not a control, so a screen reader announces the panel
   // it has entered and the first Tab lands on the close button. Not a trap: Tab and
   // Escape leave it as usual (HistoryButton returns focus to its button on Escape).
+  // Only when it was opened, not each time it remounts for another document.
   useEffect(() => {
-    heading.current?.focus()
+    if (takeOpenFocus()) heading.current?.focus()
+    // Mount only: the answer is about how this panel came to exist.
   }, [])
 
   useEffect(() => {
@@ -203,6 +212,16 @@ export function HistoryPanel({
     unsettled.current = null
     setScrub(null)
   }, [clearSettleTimer])
+
+  // The selection changed under a slider that was still waiting to choose: Back to now,
+  // or the preview ending some other way. Whatever the thumb was heading for would have
+  // brought a preview back after the user had left it. The settle's own change reaches
+  // here too, and finds nothing left to abandon: settle clears the pending stop and the
+  // timer before it chooses, and a keypress cannot fall between that and this render,
+  // because the selection is an external store and React flushes it before the next event.
+  useEffect(() => {
+    abandonScrub()
+  }, [selectedVersionId, abandonScrub])
 
   /**
    * A drag ends with the pointer, which may be released away from the thumb, so the

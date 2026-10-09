@@ -38,6 +38,9 @@ export function HistoryButton({
   const [navBottom, setNavBottom] = useState(DEFAULT_NAV_BOTTOM)
   const button = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLElement>(null)
+  // Set by the open action, spent by the panel's mount. The panel is keyed on the document,
+  // so it also mounts when the page navigates with it open, and then must not take focus.
+  const focusPending = useRef(false)
 
   /**
    * --nav-bottom lives on the shell (68px, 52px once the nav condenses), and the panel
@@ -54,7 +57,10 @@ export function HistoryButton({
   function toggle() {
     // Read before opening, so the panel's first frame is already where the nav is: read
     // afterwards it would start at 68 and slide to 52 when opened on a scrolled page.
-    if (!open) setNavBottom(readNavBottom() ?? DEFAULT_NAV_BOTTOM)
+    if (!open) {
+      setNavBottom(readNavBottom() ?? DEFAULT_NAV_BOTTOM)
+      focusPending.current = true
+    }
     setOpen((was) => !was)
   }
 
@@ -130,6 +136,11 @@ export function HistoryButton({
             documentId={documentId}
             type={type}
             onClose={close}
+            takeOpenFocus={() => {
+              const pending = focusPending.current
+              focusPending.current = false
+              return pending
+            }}
             onPreview={(version) =>
               selectVersion(documentId, version.id, formatVersionLabel(version), {
                 author: version.author?.name || 'Unknown',

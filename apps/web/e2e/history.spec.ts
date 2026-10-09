@@ -236,6 +236,36 @@ test('opening with the mouse also lands focus in the panel, with no ring on the 
   expect(await heading.evaluate((el) => el.matches(':focus-visible'))).toBe(false)
 })
 
+test('navigating to another document with the panel open does not pull focus into it', async ({
+  page,
+}) => {
+  const label = labelFor('nav-focus')
+  const { owner, workspace, document } = await seedThree(label)
+  const other = await createDocument(workspace.id, 'doc')
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await expect(panel.getByRole('heading', { name: 'History' })).toBeFocused()
+
+  // A client-side navigation by keyboard (a click elsewhere would close the panel), so the
+  // nav and its open panel stay; the panel is keyed on the document and mounts again for
+  // the new one. The tab that was activated has focus.
+  await page.getByTestId(`tab-${other.id}`).focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`/documents/${other.id}$`))
+  // The new document has no versions: the panel has re-listed for it.
+  await expect(panel.getByTestId('history-empty')).toBeVisible()
+  await expect(page.getByTestId('history')).toHaveAttribute('aria-expanded', 'true')
+
+  const focusInPanel = () => panel.evaluate((el) => el.contains(document.activeElement))
+  expect(await focusInPanel()).toBe(false)
+  await expect(panel.getByRole('heading', { name: 'History' })).not.toBeFocused()
+  // And it stays out: nothing moves it in a beat later.
+  await page.waitForTimeout(300)
+  expect(await focusInPanel()).toBe(false)
+})
+
 test('a document with no updates shows an empty state, not a spinner forever', async ({ page }) => {
   const label = labelFor('empty')
   const { owner, workspace } = await seedWorkspace(label)
@@ -1328,6 +1358,35 @@ test('scrubbing across many versions describes only the rows it comes to rest on
   expect(fresh).toBeLessThanOrEqual(visible + 2)
   // The rows it rests on do get their sentences.
   await expect(rows.nth(35).getByTestId('history-row-description')).not.toHaveText('…')
+})
+
+test('Back to now within the pause cancels the slider\'s pending choice', async ({ page }) => {
+  const { owner, document } = await seedThree(labelFor('slider-back'))
+  await signIn(page, owner.id)
+  await page.clock.install()
+  await page.goto(documentPath(document))
+  const panel = await openPanel(page)
+  const rows = panel.getByTestId('history-row')
+  await expect(rows).toHaveCount(3)
+
+  // A version is previewed, so there is a Back to now to press.
+  await rows.nth(1).click()
+  await expect(editorText(page)).toHaveText('Hello world')
+  const elapse = await freezeClock(page)
+
+  await sliderOf(panel).focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect(rows.nth(2)).toHaveAttribute('aria-pressed', 'true')
+  await page.getByTestId('version-back').click()
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+
+  // The pause runs out on a choice nobody is waiting for any more.
+  await elapse(500)
+  await page.waitForTimeout(300)
+  await expect(page.getByTestId('version-preview')).toHaveCount(0)
+  await expect(pill(page)).toHaveCount(0)
+  await expect(panel.locator('[aria-pressed="true"]')).toHaveCount(0)
+  await expect(liveText(page)).toHaveText('Hello world!!')
 })
 
 test('the chosen row is drawn differently from the others, and eases over 0.35s', async ({ page }) => {
