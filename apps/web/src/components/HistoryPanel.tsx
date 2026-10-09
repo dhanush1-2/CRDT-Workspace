@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import * as Y from 'yjs'
 import { colorFor } from '@/lib/color'
-import { formatVersionLabel, formatVersionTime } from '@/lib/format'
+import { authorName, formatVersionLabel, formatVersionTime } from '@/lib/format'
 import {
   fetchVersions,
   fetchVersionState,
@@ -452,7 +452,7 @@ function Row({
     if (selected && !scrubbing) onSeen(version.id)
   }, [selected, scrubbing, onSeen, version.id])
 
-  const name = version.author?.name || 'Unknown'
+  const name = authorName(version)
   return (
     <button
       type="button"

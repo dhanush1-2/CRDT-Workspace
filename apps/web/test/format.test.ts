@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { formatCount, formatRelativeTime, formatVersionLabel, formatVersionTime } from '../src/lib/format.js'
+import {
+  authorName,
+  formatCount,
+  formatRelativeTime,
+  formatVersionLabel,
+  formatVersionTime,
+} from '../src/lib/format.js'
 
 describe('formatCount', () => {
   it('uses the singular for exactly one and the plural otherwise, including zero', () => {
@@ -92,5 +98,13 @@ describe('formatVersionLabel', () => {
   it('says Unknown when there is no author, or the name is blank', () => {
     expect(formatVersionLabel({ endedAt, author: null }, now)).toBe('Sep 30, 16:40, by Unknown')
     expect(formatVersionLabel({ endedAt, author: { name: '' } }, now)).toBe('Sep 30, 16:40, by Unknown')
+  })
+})
+
+describe('authorName', () => {
+  it('is the author\'s name, or Unknown when there is no author or the name is blank', () => {
+    expect(authorName({ author: { name: 'Grace' } })).toBe('Grace')
+    expect(authorName({ author: null })).toBe('Unknown')
+    expect(authorName({ author: { name: '' } })).toBe('Unknown')
   })
 })

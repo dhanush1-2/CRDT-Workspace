@@ -52,6 +52,11 @@ export function formatVersionTime(then: Date, now: Date = new Date()): string {
   return `${date}, ${time}`
 }
 
+/** Who wrote a version: "Unknown" when it has no author or the author has no name. */
+export function authorName(version: { author: { name: string } | null }): string {
+  return version.author?.name || 'Unknown'
+}
+
 /**
  * A version named for someone who cannot see it: "Sep 30, 16:40, by Grace". The author
  * is "Unknown" when there is none (a version written before authorship existed, or by an
@@ -61,5 +66,5 @@ export function formatVersionLabel(
   version: { endedAt: Date; author: { name: string } | null },
   now: Date = new Date(),
 ): string {
-  return `${formatVersionTime(version.endedAt, now)}, by ${version.author?.name || 'Unknown'}`
+  return `${formatVersionTime(version.endedAt, now)}, by ${authorName(version)}`
 }
