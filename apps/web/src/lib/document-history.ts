@@ -24,7 +24,9 @@ export const VERSION_GAP_MINUTES = 5
  * Grouping the whole log would scan the whole log on every request. This is a
  * backward scan of the (documentId, id) index, bounded, and covers far more rows
  * than the versions returned. The cost is that history older than this window is
- * not listed; the fix, if that ever matters, is a materialised version table
+ * not listed, and the oldest version listed is truncated if its run straddles the
+ * scan boundary: it shows a late `startedAt` and a low `updateCount`, though its id
+ * and author are still correct. The fix, if that ever matters, is a materialised version table
  * written as updates land, not a bigger number here.
  */
 export const VERSION_SCAN_ROWS = 5000
@@ -108,35 +110,29 @@ export async function listVersions(documentId: string, limit = 50): Promise<Docu
 /**
  * The document's state as of `versionId`, as one merged Yjs update.
  *
- * Deliberately a near-copy of `DocumentStore.load` in the sync server rather than a
- * shared helper: that one lives in another package the web app only depends on for
- * tests, it always loads the newest state, and it maintains in-memory bookkeeping
- * this must not touch. The shared part is three lines of merge.
+ * Built from the update rows alone: every row with `id <= versionId`, in id order.
+ * Snapshots are deliberately not used. The sync server writes a snapshot as the
+ * encoding of its live in-memory doc, which already holds edits still queued for
+ * persistence, while `throughUpdateId` is only the last row that reached the table.
+ * Those queued edits become rows with higher ids, so a snapshot may contain changes
+ * after the id it claims to cover, and using it here would show (and restore) edits
+ * made after the requested version. Update rows are never deleted by the app (only
+ * by the document's cascade), so the rows are always a complete, exact history.
+ *
+ * A later optimisation could start from a snapshot, but only with snapshots that are
+ * exact (state encoded at the recorded id) and a way to tell them from the legacy
+ * ones already written, which lag.
  */
 export async function stateAtVersion(
   documentId: string,
   versionId: bigint,
 ): Promise<Uint8Array | null> {
-  // The newest snapshot that does not already include changes after this version.
-  const snapshot = await prisma.documentSnapshot.findFirst({
-    where: { documentId, throughUpdateId: { lte: versionId } },
-    orderBy: { id: 'desc' },
-    select: { state: true, throughUpdateId: true },
-  })
-
   const updates = await prisma.documentUpdate.findMany({
-    where: {
-      documentId,
-      id: { lte: versionId, ...(snapshot ? { gt: snapshot.throughUpdateId } : {}) },
-    },
+    where: { documentId, id: { lte: versionId } },
     orderBy: { id: 'asc' },
     select: { update: true },
   })
 
-  const parts: Uint8Array[] = []
-  if (snapshot) parts.push(new Uint8Array(snapshot.state))
-  for (const row of updates) parts.push(new Uint8Array(row.update))
-
-  if (parts.length === 0) return null
-  return Y.mergeUpdates(parts)
+  if (updates.length === 0) return null
+  return Y.mergeUpdates(updates.map((row) => new Uint8Array(row.update)))
 }
