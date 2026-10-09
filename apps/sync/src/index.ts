@@ -4,11 +4,21 @@ import { createSyncServer } from './server.js'
 import { DocumentStore } from './store.js'
 import { UpdateQueue, type UpdateSink } from './update-queue.js'
 import { Metrics } from './metrics.js'
+import { assertSchemaReady } from './schema-ready.js'
 
 const config = loadConfig()
 
 const log = (level: string, msg: string, extra: Record<string, unknown> = {}) =>
   console.log(JSON.stringify({ level, msg, ...extra, at: new Date().toISOString() }))
+
+// Refuse to start against a database that has not been migrated. Done here, not in
+// createSyncServer, so tests that build a server directly are unaffected.
+try {
+  await assertSchemaReady(prisma)
+} catch (error) {
+  log('error', error instanceof Error ? error.message : String(error))
+  process.exit(1)
+}
 
 const metrics = new Metrics()
 

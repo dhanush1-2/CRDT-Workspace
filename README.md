@@ -244,6 +244,8 @@ even fail loudly, it just quietly breaks collaboration for whoever ends up on th
   slow down initial load, the fix is a bounded one: delete update rows older than
   the newest durable snapshot, which is safe precisely because a snapshot is
   self-contained.
+  Version history reads depend on those rows never being pruned, so pruning would also
+  have to retire the history feature or replace it with snapshots that are exact.
 - **Multi-instance fan-out.** See "How I'd scale this" above — this is the reason
   `apps/sync` is pinned to exactly one machine today.
 - **Live role changes for connected users.** If a workspace owner demotes an
@@ -466,6 +468,31 @@ deploy.** The build fails on purpose if the value isn't a `ws://` or `wss://` UR
 ```bash
 DATABASE_URL='<direct connection string>' DEMO_OWNER_EMAIL='you@example.com' pnpm exec tsx scripts/seed-demo.ts
 ```
+
+### Deploying a schema change
+
+Pushing to `main` deploys both services at once, but migrations are run by hand, so
+the order matters: **migrate first, then push.**
+
+1. Check the target, then apply the migrations to the production database with the
+   **direct** connection string, from a checkout that contains the new migration:
+
+   ```bash
+   DATABASE_URL='<direct connection string>' pnpm --filter @crdt/db exec prisma migrate status
+   DATABASE_URL='<direct connection string>' pnpm --filter @crdt/db exec prisma migrate deploy
+   ```
+
+2. Only then push to `main`.
+
+The sync server probes for `DocumentUpdate.userId` at startup and exits if the column
+is missing. A new instance that exits never passes Render's health check, so the old
+instance keeps serving. Before that probe existed, deploying ahead of the migration
+failed every insert, the write queue retried forever, `/healthz` stayed green, and
+edits lived only in memory until the free-tier service slept and they were lost.
+
+Never answer yes to a `migrate dev` reset prompt from a checkout that lacks the
+migration: it offers to reset the database to match the migrations it has, which is
+a destructive step against a database that is ahead of them.
 
 ### Fly.io
 
