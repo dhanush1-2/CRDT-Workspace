@@ -169,3 +169,52 @@ export function removeCard(doc: Y.Doc, cardId: string): void {
     cardsOf(doc).delete(cardId)
   })
 }
+
+/**
+ * Write `from`'s board state into `live` as ordinary edits.
+ *
+ * A CRDT has no overwrite primitive — it only merges — so a restore cannot stamp old
+ * state over current state. It is another edit, which is what makes it attributable,
+ * undoable by restoring again, and subject to the same role check as any other write.
+ *
+ * Field-level, never delete-and-recreate: see moveCard's comment. Replacing a card's
+ * map entry destroys a concurrent title edit and can leave a card in two columns.
+ *
+ * One transaction, so it leaves as one update: a restore that arrives in pieces is
+ * visible to everyone else as the board reassembling itself.
+ */
+export function restoreBoard(live: Y.Doc, from: Y.Doc): void {
+  live.transact(() => {
+    for (const name of ['columns', 'cards'] as const) {
+      const target = live.getMap<Y.Map<string>>(name)
+      const source = from.getMap<Y.Map<string>>(name)
+
+      // Anything the restored version did not have. Keys are collected first: the
+      // map is being mutated inside the loop.
+      for (const id of [...target.keys()]) {
+        if (!source.has(id)) target.delete(id)
+      }
+
+      for (const [id, entry] of source.entries()) {
+        const fields = Object.fromEntries(entry.entries())
+        const existing = target.get(id)
+
+        if (!existing) {
+          const fresh = new Y.Map<string>()
+          for (const [key, value] of Object.entries(fields)) fresh.set(key, value)
+          target.set(id, fresh)
+          continue
+        }
+
+        // Only the fields that actually differ, so a restore that changes nothing
+        // produces no operations at all.
+        for (const [key, value] of Object.entries(fields)) {
+          if (existing.get(key) !== value) existing.set(key, value)
+        }
+        for (const key of [...existing.keys()]) {
+          if (!(key in fields)) existing.delete(key)
+        }
+      }
+    }
+  })
+}
