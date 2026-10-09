@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { colorFor } from '@/lib/color'
 import type { SessionUser } from '@/lib/current-user'
+import { clearVersionStateCache } from '@/lib/history-client'
 import styles from './user-menu.module.css'
 
 export function UserMenu({ user }: { user: SessionUser }) {
@@ -85,6 +86,9 @@ export function UserMenu({ user }: { user: SessionUser }) {
                 setPending(false)
                 return
               }
+              // The next person to sign in on this browser must not be served a document
+              // state this one fetched: the cache is keyed by document and version only.
+              clearVersionStateCache()
               // refresh() drops the server tree rendered for the old session
               // before navigating, so no signed-in data stays on screen.
               router.refresh()
