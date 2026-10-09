@@ -1886,3 +1886,54 @@ test('restoring while another browser types keeps their edit, and says it merged
     await contextB.close()
   }
 })
+
+test('a peer typing during a preview leaves the preview alone and is in the live document afterwards', async ({
+  browser,
+}) => {
+  const label = labelFor('peer-during-preview')
+  const { owner, workspace } = await seedWorkspace(label)
+  const editor = await addMember(workspace.id, label, 'editor')
+  const document = await createDocument(workspace.id, 'doc')
+  const [created, ...rest] = paragraphUpdates(['Hello', ' world', '!!'])
+  await seedVersions(document.id, [
+    { userId: owner.id, update: created!, minutesAgo: 180 },
+    { userId: owner.id, update: rest[0]!, minutesAgo: 120 },
+    { userId: owner.id, update: rest[1]!, minutesAgo: 60 },
+  ])
+  const before = await prisma.documentUpdate.count({ where: { documentId: document.id } })
+
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  try {
+    const pageA = await openAsUser(contextA, owner.id, document)
+    const pageB = await openAsUser(contextB, editor.id, document)
+    await expect(pageA.getByTestId('presence').getByRole('img', { name: 'Eddie' })).toBeVisible()
+    await expect(liveText(pageB)).toHaveText('Hello world!!')
+
+    const panel = await openPanel(pageA)
+    await panel.getByTestId('history-row').nth(2).click()
+    await expect(editorText(pageA)).toHaveText('Hello')
+
+    await liveText(pageB).click()
+    await pageB.keyboard.press('Control+End')
+    await pageB.keyboard.type(' from B')
+    await expect(liveText(pageB)).toContainText('Hello world!! from B')
+    // B's edit has been written, so it has also been relayed to A.
+    await expect
+      .poll(() => prisma.documentUpdate.count({ where: { documentId: document.id } }))
+      .toBeGreaterThan(before)
+    await pageA.waitForTimeout(500)
+
+    // A is still looking at that moment.
+    await expect(editorText(pageA)).toHaveText('Hello')
+    await expect(pageA.getByTestId('version-preview')).toHaveCount(1)
+
+    await pageA.getByTestId('version-back').click()
+    await expect(pageA.getByTestId('version-preview')).toHaveCount(0)
+    // toContainText: B's caret label is drawn inside the text.
+    await expect(liveText(pageA)).toContainText('Hello world!! from B')
+  } finally {
+    await contextA.close()
+    await contextB.close()
+  }
+})
