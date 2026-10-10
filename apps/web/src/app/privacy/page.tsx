@@ -26,6 +26,11 @@ export default function PrivacyPage() {
             change made to them, and who made each change, so that version history can show it.
           </li>
           <li>
+            <strong>Invitations:</strong> when a workspace owner invites an email address that
+            has no account yet, that address, the role offered and who sent the invite.
+            Revoking an invite deletes it.
+          </li>
+          <li>
             <strong>A sign-in cookie</strong> that keeps you signed in. There are no analytics,
             advertising or tracking cookies.
           </li>

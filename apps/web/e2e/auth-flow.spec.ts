@@ -227,21 +227,6 @@ test('an owner sees the member list and can invite an existing user', async ({ p
   await cleanup(`${label}-outsider`)
 })
 
-test('inviting an email with no account explains the problem', async ({ page }) => {
-  const label = `${LABEL}-noaccount`
-  const { owner, workspace } = await seedWorkspace(label)
-  await signIn(page, owner.id)
-
-  await page.goto(`/workspaces/${workspace.id}`)
-  await page.getByTestId('share').click()
-  await page.getByTestId('member-email').fill('nobody-at-all@e2e.test')
-  await page.getByTestId('add-member').click()
-
-  await expect(page.getByTestId('member-error')).toContainText("We couldn't find nobody-at-all@e2e.test. Ask them to sign in once, then try again.")
-
-  await cleanup(label)
-})
-
 test('an unauthenticated visit to a document redirects to sign-in carrying the destination', async ({
   page,
 }) => {
