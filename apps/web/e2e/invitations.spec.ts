@@ -442,14 +442,17 @@ test('an expired invite is marked, and Copy link brings it back', async ({ page,
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await signIn(page, owner.id)
 
+  // The expired link first, before the owner's page is open: the dev server compiles the
+  // invite route on its first visit and reloads every open page when it does.
+  const stale = await visitSignedOut(browser, old.link)
+  await expect(stale.page.getByTestId('invite-invalid')).toHaveText(INVALID)
+  await stale.context.close()
+
   await page.goto(`/workspaces/${workspace.id}`)
   await page.getByTestId('share').click()
   const sheet = page.getByTestId('sheet')
   const row = sheet.getByTestId(`invited-${old.id}`)
   await expect(row).toContainText('link expired')
-  const stale = await visitSignedOut(browser, old.link)
-  await expect(stale.page.getByTestId('invite-invalid')).toHaveText(INVALID)
-  await stale.context.close()
 
   await row.getByTestId(`invited-copy-${old.id}`).click()
   await expect(page.getByTestId('toast').filter({ hasText: `New link copied for ${email}` })).toBeVisible()
