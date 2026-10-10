@@ -67,7 +67,9 @@ export function availableProviders(): ProviderId[] {
   return PROVIDER_IDS.filter((id) => oauthClient(id) !== null)
 }
 
-function normalizeEmail(raw: string): string | null {
+// Not invite-token's normalizeEmail: that one always returns a string, this one returns
+// null for anything without an '@' so a provider profile with no usable email is refused.
+function normalizeProviderEmail(raw: string): string | null {
   const email = raw.trim().toLowerCase()
   return email.includes('@') ? email : null
 }
@@ -99,7 +101,7 @@ export function githubProfile(user: unknown, emails: unknown): OAuthProfile {
   const primary = emails
     .filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null)
     .find((entry) => entry.primary === true && entry.verified === true && typeof entry.email === 'string')
-  const email = primary ? normalizeEmail(primary.email as string) : null
+  const email = primary ? normalizeProviderEmail(primary.email as string) : null
   if (!email) throw new OAuthError('no_verified_email', 'GitHub account has no verified primary email')
 
   return { providerAccountId: String(u.id), email, name: displayName(u.name, u.login) }
@@ -112,7 +114,7 @@ export function googleProfile(info: unknown): OAuthProfile {
   }
 
   // Strictly the boolean true: a string "true" or a missing field is not proof.
-  const email = i.email_verified === true && typeof i.email === 'string' ? normalizeEmail(i.email) : null
+  const email = i.email_verified === true && typeof i.email === 'string' ? normalizeProviderEmail(i.email) : null
   if (!email) throw new OAuthError('no_verified_email', 'Google account email is not verified')
 
   return { providerAccountId: i.sub, email, name: displayName(i.name, email.split('@')[0]!) }

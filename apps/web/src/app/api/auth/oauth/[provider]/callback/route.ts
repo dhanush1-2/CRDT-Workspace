@@ -49,8 +49,11 @@ export async function GET(
     return redirectResponse(new URL(next, appUrl), [spent, sessionCookie(token)])
   } catch (error) {
     if (error instanceof OAuthError) return fail(error.code)
-    // Logged without the code, token, verifier or any secret.
-    console.error(JSON.stringify({ level: 'error', msg: 'oauth callback failed', provider, error: String(error) }))
+    // The error's name and code only, never its message: a Prisma message can quote the
+    // query, and ours carry the person's email. Nor the code, token, verifier or any secret.
+    console.error(
+      JSON.stringify({ level: 'error', msg: 'oauth callback failed', provider, ...errorSummary(error) }),
+    )
     return fail('provider_error')
   }
 }
@@ -66,15 +69,15 @@ async function acceptInvitationsQuietly(userId: string): Promise<void> {
   try {
     await acceptPendingInvitations(userId)
   } catch (error) {
-    const code =
-      typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        msg: 'invitation sweep failed',
-        error: error instanceof Error ? error.name : 'unknown',
-        code: typeof code === 'string' ? code : null,
-      }),
-    )
+    console.error(JSON.stringify({ level: 'error', msg: 'invitation sweep failed', ...errorSummary(error) }))
+  }
+}
+
+/** What is safe to log about an error: its name and a string code, never its message. */
+function errorSummary(error: unknown): { error: string; code: string | null } {
+  const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
+  return {
+    error: error instanceof Error ? error.name : 'unknown',
+    code: typeof code === 'string' ? code : null,
   }
 }

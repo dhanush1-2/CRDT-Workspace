@@ -18,6 +18,8 @@ export const metadata: Metadata = {
 // Public, like /login and /privacy: the person opening this usually has no account yet.
 // It does its own check instead: a link is accepted only for a signed-in user whose
 // email is the invitation's (resolveInvite).
+// Never link to /invite/... with next/link: it prefetches, which would run this page, and
+// this page accepts the invitation on a GET.
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   // The session first. Reading the cookie makes this render dynamic before anything
   // else runs, so no outcome for any token is ever prerendered or served from a cache.

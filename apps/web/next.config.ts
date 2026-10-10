@@ -39,6 +39,18 @@ const config: NextConfig = {
           { key: 'Cache-Control', value: 'no-store' },
         ],
       },
+      {
+        // A cancelled or failed sign-in that began on an invite link comes back here as
+        // /login?error=...&next=/invite/<token>, so this URL can carry the token too, and
+        // the page's sign-in links repeat it. Same two headers as the invite page: no
+        // Referer, and no cache keeps it. no-store is harmless here: the page is dynamic
+        // (it reads the session and the query) and is not worth caching anyway.
+        source: '/login',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
     ]
   },
 }
