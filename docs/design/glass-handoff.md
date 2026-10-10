@@ -1685,6 +1685,37 @@ routes and one public page. Decisions 1-3 of 2026-10-09 (Precedence, above).
     `prefers-reduced-motion: no-preference`.
 - **Signing in accepts pending invitations** for the user's stored email, in the OAuth
   callback, without the link. An existing member's role never changes.
+- **Share sheet.** Inviting an email with no account (owner only) shows the link in a
+  tinted panel under the invite bar, a read-only field with **Copy link**, and a toast.
+  Owners see an **Invited** list under the members: email, role, "link expired" when it
+  is, **Copy link** and **Revoke**. Non-owners see neither, and the sheet does not ask
+  the API for them.
+- **Copy link re-issues** (the plan's Copy-link decision). Only a hash of each token is
+  stored, so the Invited list's Copy link makes a new link, resets its 14 days, and the
+  old link stops working. The toast and a note under the list say so. The panel's Copy
+  link, right after inviting, copies the link just made and re-issues nothing.
+
+| Where | §14 / §16 says | Built | Why |
+|---|---|---|---|
+| §14 errors | "We couldn't find {email}. Ask them to sign in once, then try again." | Retired: an unknown email now gets an invitation | Decision 2 of 2026-10-09. |
+| §14 footnote | "People need to have signed in once before you can add them. Role changes apply the next time they connect." | "Someone without an account gets an invite link to send them. Role changes apply the next time they connect." | The first sentence is no longer true. |
+| §14 link panel | Not in §14 | `--accent-tint` panel, `--r-card`, 12px padding; white 36px pill field with the invite bar's border and the `--accent-ring` focus halo; an accent **Copy link** | Nothing in the design shows a link; built from the sheet's own parts. |
+| §14 Invited list | Not in §14 | Below the members, a 1px `--line` rule, "Invited" at 13/600 `--text-muted`; rows as member rows, the avatar a dashed `--dash` outline (the create tiles' "not yet" language); 30px ghost **Copy link** and danger **Revoke**; a 12.5px `--text-faint` note | Not in the design. |
+| §16 toasts | "{name} added", "{name} can edit now", ... | Adds "Invite link created for {email}", "New invite link for {email}. The old link no longer works.", "Link copied", "New link copied for {email}. The old link no longer works.", "Invite for {email} revoked" | New actions. |
+
+Known limitations, specific to this work:
+
+- **An earlier copy of a link dies when Copy link is used again.** The cost of storing
+  only a hash. Softened: signing in with the invited email accepts the invitation
+  without any link.
+- **Copying can fail in Safari after Copy link's round trip**, which can drop the user
+  gesture a clipboard write needs. The sheet says so and the link stays in the field,
+  selected on focus.
+- **The invite path is in the host's request logs.** The app never logs a token, and no
+  token goes into any other URL; Render's own HTTP logs record request paths, the
+  invite page's included.
+- **Used and expired invitations are kept.** Used ones are marked and hidden; expired
+  ones stay listed until re-issued or revoked. Nothing purges them.
 
 ### Deferred, each needing its own plan
 

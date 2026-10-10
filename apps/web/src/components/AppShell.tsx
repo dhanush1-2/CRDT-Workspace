@@ -414,6 +414,7 @@ export function AppShell({
             workspaceName={workspace.name}
             members={members}
             canManage={canManage}
+            documentId={activeDocumentId}
             onClose={closeOverlay}
           />
         )}

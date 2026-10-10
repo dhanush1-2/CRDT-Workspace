@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Browser, type Page } from '@playwright/test'
 import { prisma } from '@crdt/db'
 import { revokeInvitation } from '../src/lib/invitations.js'
 import {
@@ -8,6 +8,7 @@ import {
   documentPath,
   invite,
   seedWorkspace,
+  sessionCookieFor,
   signIn,
 } from './fixtures.js'
 
@@ -200,6 +201,218 @@ test('a member invited again lands there and keeps their role', async ({ page })
   })
   expect(membership?.role).toBe('editor')
   expect((await prisma.invitation.findUniqueOrThrow({ where: { id } })).acceptedAt).not.toBeNull()
+
+  await cleanup(label)
+})
+
+/**
+ * On `path`, already signed in as an owner: opens the share sheet and invites `email`
+ * with `role`. Returns the absolute link the sheet shows.
+ */
+async function inviteFromSheet(
+  page: Page,
+  path: string,
+  email: string,
+  role: 'viewer' | 'editor' | 'owner',
+) {
+  await page.goto(path)
+  await page.getByTestId('share').click()
+  const sheet = page.getByTestId('sheet')
+  await sheet.getByTestId('member-email').fill(email)
+  await sheet.getByTestId('member-role').selectOption(role)
+  await sheet.getByTestId('add-member').click()
+  const field = sheet.getByTestId('invite-link')
+  await expect(field).toHaveValue(/\/invite\/[A-Za-z0-9_-]{43}$/)
+  return field.inputValue()
+}
+
+/** A signed-out browser of its own, for opening a link as a stranger would. */
+async function visitSignedOut(browser: Browser, url: string) {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  await page.goto(url)
+  return { context, page }
+}
+
+test('an owner invites someone new from a document, copies the link, and it opens that document', async ({
+  page,
+  browser,
+}) => {
+  const label = `${LABEL}-sheet`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
+  const email = `${label}-new@e2e.test`
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await signIn(page, owner.id)
+
+  // Typed in capitals: it is stored, listed and matched lowercased.
+  const url = await inviteFromSheet(page, documentPath(document), email.toUpperCase(), 'viewer')
+  const sheet = page.getByTestId('sheet')
+  expect(new URL(url).origin).toBe('http://localhost:3000')
+  await expect(page.getByTestId('toast').filter({ hasText: `Invite link created for ${email}` })).toBeVisible()
+  await expect(sheet.getByTestId('member-error')).toHaveCount(0)
+
+  await sheet.getByTestId('invite-link-copy').click()
+  await expect(page.getByTestId('toast').filter({ hasText: 'Link copied' })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(url)
+
+  // The invitation remembers the document the sheet was opened from.
+  const row = await prisma.invitation.findUniqueOrThrow({
+    where: { workspaceId_email: { workspaceId: workspace.id, email } },
+  })
+  expect(row.documentId).toBe(document.id)
+  await expect(sheet.getByTestId(`invited-${row.id}`)).toContainText(email)
+  await expect(sheet.getByTestId(`invited-${row.id}`)).toContainText('Can view')
+
+  // The person it was for opens it in a browser of their own.
+  const invitee = await prisma.user.create({ data: { email, name: 'Newcomer' } })
+  const context = await browser.newContext()
+  await context.addCookies([await sessionCookieFor(invitee.id)])
+  const theirs = await context.newPage()
+  await theirs.goto(url)
+  await expect(theirs).toHaveURL(documentPath(document))
+  await expect(theirs.getByTestId('view-only')).toBeVisible()
+  await context.close()
+
+  await cleanup(label)
+})
+
+test('inviting the same email again kills the old link', async ({ page, browser }) => {
+  const label = `${LABEL}-reinvite`
+  const { owner, workspace } = await seedWorkspace(label)
+  const email = `${label}-new@e2e.test`
+  await signIn(page, owner.id)
+
+  const first = await inviteFromSheet(page, `/workspaces/${workspace.id}`, email, 'viewer')
+  const sheet = page.getByTestId('sheet')
+  await sheet.getByTestId('member-email').fill(email)
+  await sheet.getByTestId('member-role').selectOption('editor')
+  await sheet.getByTestId('add-member').click()
+  await expect(sheet.getByTestId('invite-link')).not.toHaveValue(first)
+  const second = await sheet.getByTestId('invite-link').inputValue()
+  await expect(
+    page.getByTestId('toast').filter({ hasText: `New invite link for ${email}. The old link no longer works.` }),
+  ).toBeVisible()
+  // One invitation, replaced in place, now Can edit.
+  expect(await prisma.invitation.count({ where: { workspaceId: workspace.id, email } })).toBe(1)
+  const row = await prisma.invitation.findUniqueOrThrow({
+    where: { workspaceId_email: { workspaceId: workspace.id, email } },
+  })
+  await expect(sheet.getByTestId(`invited-${row.id}`)).toContainText('Can edit')
+
+  const old = await visitSignedOut(browser, first)
+  await expect(old.page.getByTestId('invite-invalid')).toHaveText(INVALID)
+  await old.page.goto(second)
+  await expect(old.page.getByTestId('invite-summary')).toContainText('invited you to edit')
+  await old.context.close()
+
+  await cleanup(label)
+})
+
+test('Copy link in the Invited list makes a new link and retires the old one', async ({ page, browser }) => {
+  const label = `${LABEL}-recopy`
+  const { owner, workspace } = await seedWorkspace(label)
+  const email = `${label}-new@e2e.test`
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await signIn(page, owner.id)
+
+  const first = await inviteFromSheet(page, `/workspaces/${workspace.id}`, email, 'editor')
+  const sheet = page.getByTestId('sheet')
+  const row = await prisma.invitation.findUniqueOrThrow({
+    where: { workspaceId_email: { workspaceId: workspace.id, email } },
+  })
+  // Said before anyone clicks, not only after.
+  await expect(sheet.getByTestId('invited-list')).toContainText('earlier links for them stop working')
+
+  await sheet.getByTestId(`invited-copy-${row.id}`).click()
+  await expect(sheet.getByTestId('invite-link')).not.toHaveValue(first)
+  const second = await sheet.getByTestId('invite-link').inputValue()
+  await expect(
+    page.getByTestId('toast').filter({ hasText: `New link copied for ${email}. The old link no longer works.` }),
+  ).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(second)
+
+  const visitor = await visitSignedOut(browser, first)
+  await expect(visitor.page.getByTestId('invite-invalid')).toHaveText(INVALID)
+  await visitor.page.goto(second)
+  await expect(visitor.page.getByTestId('invite-summary')).toBeVisible()
+  await visitor.context.close()
+
+  await cleanup(label)
+})
+
+test('revoking an invite removes it and kills its link', async ({ page, browser }) => {
+  const label = `${LABEL}-revoke`
+  const { owner, workspace } = await seedWorkspace(label)
+  const email = `${label}-new@e2e.test`
+  await signIn(page, owner.id)
+
+  const url = await inviteFromSheet(page, `/workspaces/${workspace.id}`, email, 'viewer')
+  const sheet = page.getByTestId('sheet')
+  const row = await prisma.invitation.findUniqueOrThrow({
+    where: { workspaceId_email: { workspaceId: workspace.id, email } },
+  })
+
+  await sheet.getByTestId(`invited-revoke-${row.id}`).click()
+  await expect(page.getByTestId('toast').filter({ hasText: `Invite for ${email} revoked` })).toBeVisible()
+  await expect(sheet.getByTestId(`invited-${row.id}`)).toHaveCount(0)
+  // The link on screen was that invitation's, so it goes too.
+  await expect(sheet.getByTestId('invite-link-panel')).toHaveCount(0)
+  expect(await prisma.invitation.findUnique({ where: { id: row.id } })).toBeNull()
+
+  const visitor = await visitSignedOut(browser, url)
+  await expect(visitor.page.getByTestId('invite-invalid')).toHaveText(INVALID)
+  await visitor.context.close()
+
+  await cleanup(label)
+})
+
+test('non-owners see no invite controls or pending invites, and the API refuses them', async ({ page }) => {
+  const label = `${LABEL}-nonowner`
+  const { owner, workspace } = await seedWorkspace(label)
+  const editor = await addMember(workspace.id, label, 'editor')
+  const viewer = await addMember(workspace.id, label, 'viewer')
+  const pendingEmail = `${label}-pending@e2e.test`
+  const pending = await invite({ workspaceId: workspace.id, invitedById: owner.id, email: pendingEmail, role: 'editor' })
+
+  const asked: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.endsWith('/invitations')) asked.push(request.url())
+  })
+
+  // Positive control: an owner's sheet does ask, and does list it. Without this, a sheet
+  // that never fetched would pass every check below.
+  await signIn(page, owner.id)
+  await page.goto(`/workspaces/${workspace.id}`)
+  await page.getByTestId('share').click()
+  await expect(page.getByTestId('invited-list')).toContainText(pendingEmail)
+  expect(asked.length).toBeGreaterThan(0)
+
+  for (const member of [editor, viewer]) {
+    await page.context().clearCookies()
+    await signIn(page, member.id)
+    asked.length = 0
+    await page.goto(`/workspaces/${workspace.id}`)
+    await page.getByTestId('share').click()
+    await expect(page.getByTestId('sheet')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByTestId('member-email')).toHaveCount(0)
+    await expect(page.getByTestId('invited-list')).toHaveCount(0)
+    await expect(page.getByTestId('sheet')).not.toContainText(pendingEmail)
+    expect(asked, member.email).toEqual([])
+
+    // And the API refuses them directly.
+    const api = `/api/workspaces/${workspace.id}`
+    expect((await page.request.get(`${api}/invitations`)).status(), member.email).toBe(403)
+    expect(
+      (await page.request.post(`${api}/members`, { data: { email: `${label}-sneaky@e2e.test`, role: 'owner' } })).status(),
+      member.email,
+    ).toBe(403)
+    expect((await page.request.post(`${api}/invitations/${pending.id}/link`)).status(), member.email).toBe(403)
+    expect((await page.request.delete(`${api}/invitations/${pending.id}`)).status(), member.email).toBe(403)
+  }
+  expect(await prisma.invitation.count({ where: { workspaceId: workspace.id } })).toBe(1)
 
   await cleanup(label)
 })

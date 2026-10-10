@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { prisma } from '@crdt/db'
 import {
   addMember,
   cleanup,
@@ -221,6 +222,10 @@ test('an owner sees the member list and can invite an existing user', async ({ p
   await page.getByTestId('member-role').selectOption('editor')
   await expect(page.getByTestId('member-role')).toHaveValue('editor')
   await page.getByTestId('add-member').click()
+  // Exactly as before invite links: added at once, no link shown, nothing pending.
+  await expect(page.getByTestId('toast').filter({ hasText: `${outsider.owner.email} added` })).toBeVisible()
+  await expect(page.getByTestId('invite-link-panel')).toHaveCount(0)
+  expect(await prisma.invitation.count({ where: { workspaceId: workspace.id } })).toBe(0)
   await expect(page.getByTestId(`member-${outsider.owner.id}`)).toContainText('Can edit')
 
   await cleanup(label)
