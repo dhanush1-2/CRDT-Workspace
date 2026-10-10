@@ -26,6 +26,19 @@ test('the login page offers GitHub and Google sign-in, carrying the destination'
   )
 })
 
+test('the privacy policy is public and linked from the login page', async ({ page }) => {
+  // Google will not publish the consent screen without a privacy policy URL it can load
+  // signed out, so this page must never sit behind sign-in.
+  await page.goto('/login')
+  await page.getByTestId('privacy-link').click()
+  await expect(page).toHaveURL(/\/privacy$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'dhanush12232002@gmail.com' }).first()).toHaveAttribute(
+    'href',
+    'mailto:dhanush12232002@gmail.com',
+  )
+})
+
 test('a hostile next param never reaches the sign-in buttons', async ({ page }) => {
   await page.goto('/login?next=//evil.example')
   await expect(page.getByTestId('signin-github')).toHaveAttribute('href', '/api/auth/oauth/github?next=%2F')

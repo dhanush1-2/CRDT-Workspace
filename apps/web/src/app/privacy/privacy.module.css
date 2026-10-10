@@ -1,0 +1,51 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+/* The sign-in card's glass, widened for reading and left-aligned. */
+.card {
+  width: 100%;
+  max-width: 640px;
+  display: grid;
+  gap: 14px;
+  padding: 40px;
+  border-radius: var(--r-panel);
+  background: var(--glass-light);
+  backdrop-filter: var(--blur-2);
+  -webkit-backdrop-filter: var(--blur-2);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-hl), 0 24px 60px rgba(30, 45, 40, 0.12);
+}
+
+.card h2 {
+  margin-top: 12px;
+  font-size: 18px;
+}
+
+.card ul {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+}
+
+.heading {
+  font-size: 30px;
+}
+
+.lede {
+  color: var(--text-muted);
+}
+
+.back {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 28px 22px;
+  }
+}

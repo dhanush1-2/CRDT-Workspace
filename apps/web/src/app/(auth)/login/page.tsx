@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/current-user'
 import { safeNext } from '@/lib/safe-next'
@@ -52,7 +53,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           ))}
         </div>
       )}
-      <p className={styles.alt}>New here? Signing in creates your account and a workspace of your own.</p>
+      <p className={styles.alt}>
+        New here? Signing in creates your account and a workspace of your own.{' '}
+        <Link href="/privacy" data-testid="privacy-link">Privacy</Link>
+      </p>
     </>
   )
 }
