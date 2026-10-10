@@ -27,8 +27,10 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Invitations:</strong> when a workspace owner invites an email address that
-            has no account yet, that address, the role offered and who sent the invite.
-            Revoking an invite deletes it.
+            has no account yet, that address, the role offered, the document the invite points
+            to if there is one, who sent it, and a one-way scrambled copy of the invite link
+            (not the link itself). Revoking a pending invite deletes it. Accepted and expired
+            invites are kept with the workspace.
           </li>
           <li>
             <strong>A sign-in cookie</strong> that keeps you signed in. There are no analytics,
@@ -53,7 +55,9 @@ export default function PrivacyPage() {
         <p>
           To have your account and its data deleted, email{' '}
           <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. Documents you edited in someone else&apos;s
-          workspace stay with that workspace, with your changes no longer attributed to you.
+          workspace stay with that workspace, with your changes no longer attributed to you. If
+          you ask for your account to be deleted, invitations sent to your email address are
+          deleted too.
         </p>
 
         <h2>Contact</h2>

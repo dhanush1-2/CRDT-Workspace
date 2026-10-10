@@ -125,6 +125,39 @@ describe('POST /api/workspaces/[id]/members', () => {
     expect(await prisma.invitation.count({ where: { email: email('crossdoc') } })).toBe(0)
   })
 
+  it('refuses an address longer than 254 characters and stores nothing', async () => {
+    const tooLong = `${'a'.repeat(255 - '@example.com'.length)}@example.com`
+    expect(tooLong).toHaveLength(255)
+    await as(owner.id)
+    const response = await postMember(
+      request('POST', { email: tooLong, role: 'viewer' }),
+      inWorkspace(workspaceId),
+    )
+    expect(response.status).toBe(400)
+    expect(await prisma.invitation.count({ where: { email: tooLong } })).toBe(0)
+  })
+
+  it('refuses a document that does not exist and stores nothing', async () => {
+    await as(owner.id)
+    const response = await postMember(
+      request('POST', { email: email('nodoc'), role: 'viewer', documentId: 'no-such-document' }),
+      inWorkspace(workspaceId),
+    )
+    expect(response.status).toBe(400)
+    expect(await prisma.invitation.count({ where: { email: email('nodoc') } })).toBe(0)
+  })
+
+  it('re-inviting an existing member takes the member path and creates no invitation', async () => {
+    await as(owner.id)
+    const response = await postMember(
+      request('POST', { email: email('editor'), role: 'editor', documentId }),
+      inWorkspace(workspaceId),
+    )
+    expect(response.status).toBe(201)
+    expect(await response.json()).toEqual({ kind: 'member', userId: editor.id, role: 'editor' })
+    expect(await prisma.invitation.count({ where: { email: email('editor') } })).toBe(0)
+  })
+
   it('adds an existing user at once, exactly as before, and stores no invitation', async () => {
     const existing = await prisma.user.create({ data: { email: email('existing'), name: 'Existing' } })
     await as(owner.id)
@@ -185,6 +218,12 @@ describe('POST /api/workspaces/[id]/invitations/[invitationId]/link', () => {
     expect((await resolveInvite(tokenOf(fresh.link), null)).kind).toBe('sign-in')
   })
 
+  it('answers 404 for an invitation that does not exist', async () => {
+    await as(owner.id)
+    const response = await linkRoute(request('POST'), onInvitation(workspaceId, 'no-such-invitation'))
+    expect(response.status).toBe(404)
+  })
+
   it('refuses non-owners, and an owner of another workspace naming this invitation', async () => {
     const created = await inviteAsOwner('reissue-refused')
     for (const [who, userId, status] of NON_OWNERS()) {
@@ -208,6 +247,12 @@ describe('DELETE /api/workspaces/[id]/invitations/[invitationId]', () => {
     expect(response.status).toBe(204)
     expect(await prisma.invitation.findUnique({ where: { id: created.invitation.id } })).toBeNull()
     expect(await resolveInvite(tokenOf(created.link), null)).toEqual({ kind: 'invalid' })
+  })
+
+  it('answers 404 for an invitation that does not exist', async () => {
+    await as(owner.id)
+    const response = await revokeRoute(request('DELETE'), onInvitation(workspaceId, 'no-such-invitation'))
+    expect(response.status).toBe(404)
   })
 
   it('refuses non-owners, and an owner of another workspace naming this invitation', async () => {

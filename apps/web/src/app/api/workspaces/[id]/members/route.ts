@@ -8,7 +8,8 @@ import type { MemberPostResult } from '@/lib/members'
 const Body = z.object({
   // Sign-in stores emails trimmed and lowercased, so the lookup must match that,
   // or inviting "Ada@Example.com" would never find ada@example.com.
-  email: z.string().trim().toLowerCase().email(),
+  // 254 is the longest address email allows; the email is written to two indexed columns.
+  email: z.string().trim().max(254).toLowerCase().email(),
   role: z.enum(['owner', 'editor', 'viewer']),
   // The document the share sheet was opened from, if any. Only an invitation uses it:
   // accepting one lands there. Ignored when the email already has an account.
