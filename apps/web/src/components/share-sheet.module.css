@@ -77,6 +77,8 @@
 
 .name {
   font-weight: 500;
+  /* A long address or name wraps inside the row instead of pushing the buttons out. */
+  overflow-wrap: anywhere;
 }
 
 .email {

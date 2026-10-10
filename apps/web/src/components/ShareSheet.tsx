@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useId, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import type { Role } from '@crdt/shared/types'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
@@ -45,6 +45,10 @@ export function ShareSheet({
   const [invitations, setInvitations] = useState<InvitationView[]>([])
   const [invitationsFailed, setInvitationsFailed] = useState(false)
   const [shown, setShown] = useState<ShownLink | null>(null)
+  // Where focus goes once a revoked row has left the list (see onRevoke).
+  const [refocus, setRefocus] = useState<{ revokeId: string | null } | null>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const invitedRef = useRef<HTMLElement>(null)
 
   // Fetched here rather than passed down from the layout: the layout renders for every
   // member, and who has been invited is for owners only. The API enforces that as well.
@@ -58,6 +62,18 @@ export function ShareSheet({
   useEffect(() => {
     void loadInvitations()
   }, [loadInvitations])
+
+  // Deleting the row the keyboard was on would drop focus to the page. Once the list has
+  // re-rendered without it, focus lands on a neighbour's Revoke button, or on the email
+  // field when the list is gone. An effect, so the target exists in the DOM by then.
+  useEffect(() => {
+    if (!refocus) return
+    const target = refocus.revokeId
+      ? invitedRef.current?.querySelector<HTMLElement>(`[data-testid="invited-revoke-${refocus.revokeId}"]`)
+      : null
+    ;(target ?? emailRef.current)?.focus()
+    setRefocus(null)
+  }, [refocus, invitations])
 
   async function postMember(body: {
     email: string
@@ -95,6 +111,8 @@ export function ShareSheet({
   }
 
   async function copy(url: string, announce: string) {
+    // A failure from an earlier copy must not stay on screen beside a success.
+    setError(null)
     try {
       await navigator.clipboard.writeText(url)
       toast(announce)
@@ -148,7 +166,14 @@ export function ShareSheet({
   }
 
   async function onRoleChange(member: WorkspaceMemberView, role: Role) {
-    if (!(await postMember({ email: member.email, role }))) return
+    const result = await postMember({ email: member.email, role })
+    // postMember has shown its own error when it returns null. Anything but a member
+    // here (an invitation, if the account vanished) did not change this person's role.
+    if (!result) return
+    if (result.kind !== 'member') {
+      setError('Could not update that member')
+      return
+    }
     toast(role === 'editor' ? `${member.name} can edit now` : `${member.name} is now ${ROLE_LABEL[role]}`)
     router.refresh()
   }
@@ -182,6 +207,11 @@ export function ShareSheet({
     }
     if (shown?.invitationId === invitation.id) setShown(null)
     toast(`Invite for ${invitation.email} revoked`)
+    // The next row, else the previous one, else the email field (no revokeId).
+    const at = invitations.findIndex((i) => i.id === invitation.id)
+    const neighbour = invitations[at + 1] ?? invitations[at - 1]
+    setInvitations((list) => list.filter((i) => i.id !== invitation.id))
+    setRefocus({ revokeId: neighbour?.id ?? null })
     void loadInvitations()
   }
 
@@ -191,6 +221,7 @@ export function ShareSheet({
         <form className={styles.invite} onSubmit={onInvite}>
           <input
             className={styles.inviteInput}
+            ref={emailRef}
             name="email"
             type="email"
             required
@@ -277,7 +308,7 @@ export function ShareSheet({
       </div>
 
       {canManage && invitations.length > 0 && (
-        <section className={styles.invited} aria-labelledby={invitedHeadingId} data-testid="invited-list">
+        <section className={styles.invited} ref={invitedRef} aria-labelledby={invitedHeadingId} data-testid="invited-list">
           <h3 className={styles.invitedHeading} id={invitedHeadingId}>
             Invited
           </h3>
@@ -287,7 +318,9 @@ export function ShareSheet({
                 {invitation.email.slice(0, 1).toUpperCase()}
               </span>
               <span className={styles.text}>
-                <span className={styles.name}>{invitation.email}</span>
+                <span className={styles.name} title={invitation.email}>
+                  {invitation.email}
+                </span>
                 <span className={styles.email}>
                   {ROLE_LABEL[invitation.role]}
                   {invitation.expired ? ' · link expired' : ''}
