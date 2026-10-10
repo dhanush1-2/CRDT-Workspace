@@ -27,7 +27,7 @@ All screens, built in this order:
 
 Everything goes on one branch (`gallery-redesign`), with one plan, and is merged once all of
 it is done. The "material and motion fidelity" plan
-(`docs/superpowers/plans/2026-10-05-material-and-motion-fidelity.md` or its current name) is
+(`docs/superpowers/plans/2026-10-04-material-and-motion-fidelity.md`) is
 set aside: do not execute it. Keep any existing motion except the hover lifts.
 
 Not in scope:
