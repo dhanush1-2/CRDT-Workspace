@@ -23,7 +23,10 @@ afterAll(async () => {
   await prisma.workspace.deleteMany({
     where: { name: { startsWith: 'invitation-schema-', endsWith: RUN } },
   })
-  await prisma.user.deleteMany({ where: { email: { endsWith: `-${RUN}@example.com` } } })
+  await prisma.user.deleteMany({
+    // The prefix keeps a same-millisecond RUN in account.test.ts from matching these rows.
+    where: { email: { startsWith: 'invitation-schema-', endsWith: `-${RUN}@example.com` } },
+  })
   await prisma.$disconnect()
 })
 
