@@ -91,7 +91,8 @@ export async function POST(
     }
 
     // One transaction: the role change and the withdrawal of what an ex-owner sent land
-    // together, so there is no moment where a demoted owner's invitation is still live.
+    // together. An invite the ex-owner already has in flight (past its own owner check but
+    // not yet written) can still land after this; see the handoff's known limitations.
     const member = await prisma.$transaction(async (tx) => {
       const before = await tx.workspaceMember.findUnique({
         where: { workspaceId_userId: { workspaceId, userId: invitee.id } },

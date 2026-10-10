@@ -1745,7 +1745,10 @@ Known limitations, specific to this work:
   route does it in the same transaction as the role change, for every pending invitation
   with `invitedById` equal to the demoted owner in that workspace. Accepted invitations
   are history and stay; other owners' invitations are untouched. Their links then find
-  nothing and show the invalid page.
+  nothing and show the invalid page. One gap remains: an invite request the owner already
+  has in flight (past its owner check, not yet written) when the demotion commits can still
+  land and live for its 14 days. Closing it needs the invite write to share-lock the
+  inviter's membership row; the window is a few milliseconds, so it is left open.
 - **Error strings the share sheet can show**, verbatim, in the red `member-error` line
   unless noted:
   - "Could not reach the server. Check your connection and try again."
