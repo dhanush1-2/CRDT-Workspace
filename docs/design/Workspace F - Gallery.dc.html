@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;background:#f1f1ef;color:#1c1d1b;font-family:'Schibsted Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));text-decoration:none}
+a:hover{text-decoration:underline}
+[contenteditable]:focus{outline:none}
+::selection{background:oklch(0.9 calc(var(--acc-c) * 0.16) var(--acc-h) / .6)}
+@keyframes g-in{from{opacity:0;transform:translateY(14px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes g-pop{from{opacity:0;transform:translateY(-6px) scale(.96);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@keyframes g-sheet{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes g-side{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes g-fade{from{opacity:0}to{opacity:1}}
+@keyframes g-up{from{opacity:0;transform:translate(-50%,16px) scale(.96)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes g-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+@keyframes g-paint{0%,100%{transform:translate(0,0) rotate(0) scale(1);border-radius:42% 58% 63% 37% / 41% 44% 56% 59%}33%{transform:translate(50px,-30px) rotate(12deg) scale(1.08);border-radius:63% 37% 44% 56% / 55% 62% 38% 45%}66%{transform:translate(-30px,40px) rotate(-8deg) scale(.95);border-radius:38% 62% 56% 44% / 48% 36% 64% 52%}}
+</style>
+</helmet>
+<div style="height:100vh;overflow:auto;position:relative;font-size:15px;line-height:1.47;letter-spacing:-0.01em">
+  <div style="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;background:var(--p0,#f1f1ef);transition:background 1.2s ease">
+    <div style="position:absolute;width:620px;height:520px;left:-140px;top:-160px;background:var(--p1,oklch(0.86 0.012 260));filter:blur(90px);opacity:.55;transition:background 1.2s ease;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;animation:g-paint 52s ease-in-out infinite"></div>
+    <div style="position:absolute;width:520px;height:460px;right:-120px;top:-60px;background:var(--p2,oklch(0.9 0.015 80));filter:blur(90px);opacity:.55;transition:background 1.2s ease;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;animation:g-paint 60s ease-in-out infinite reverse"></div>
+    <div style="position:absolute;width:480px;height:420px;right:18%;bottom:-180px;background:var(--p3,oklch(0.83 0.01 240));filter:blur(90px);opacity:.55;transition:background 1.2s ease;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;animation:g-paint 68s ease-in-out infinite"></div>
+    <div style="position:absolute;width:520px;height:440px;left:12%;bottom:-200px;background:var(--p4,oklch(0.92 0.012 60));filter:blur(90px);opacity:.55;transition:background 1.2s ease;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;animation:g-paint 76s ease-in-out infinite reverse"></div>
+    <div style="position:absolute;width:360px;height:320px;left:44%;top:22%;background:var(--p5,oklch(0.88 0.008 200));filter:blur(90px);opacity:.55;transition:background 1.2s ease;border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;animation:g-paint 84s ease-in-out infinite"></div>
+    <canvas ref="{{ splashRef }}" style="position:absolute;inset:0;width:100%;height:100%;display:var(--splash-d,block);opacity:var(--splash-o,.55);transition:opacity .8s ease"></canvas>
+    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(60,50,30,.018) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(60,50,30,.015) 0 1px,transparent 1px 4px);mix-blend-mode:multiply"></div>
+    
+  </div>
+
+<sc-if value="{{ onLogin }}" hint-placeholder-val="{{ false }}">
+  <div style="position:relative;z-index:1;min-height:100%;display:grid;place-items:center;padding:24px">
+    <div style="width:100%;max-width:400px;padding:44px 40px;border-radius:2px;background:#fbfbf9;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:28px;text-align:center;animation:g-sheet .7s cubic-bezier(.32,.72,0,1)">
+      <span style="align-self:center;width:52px;height:52px;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:none"></span>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h1 style="margin:0;font-size:30px;font-weight:600;letter-spacing:-0.025em">Sign in</h1>
+        <p style="margin:0;color:#5f625d">Sign in to your workspaces.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onClick="{{ signIn }}" style="height:50px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;cursor:pointer;font-weight:500;box-shadow:none;transition:transform .4s cubic-bezier(.32,.72,0,1),box-shadow .4s" style-hover="transform:translateY(-1px);box-shadow:0 24px 48px -28px rgba(0,0,0,.25)" style-active="transform:scale(.97)">Continue with GitHub</button>
+        <button onClick="{{ signIn }}" style="height:50px;border:1px solid #e4e4e0;border-radius:2px;background:#ffffff;cursor:pointer;font-weight:500;transition:transform .4s cubic-bezier(.32,.72,0,1),background .3s" style-hover="background:#ffffff" style-active="transform:scale(.97)">Continue with Google</button>
+      </div>
+      <p style="margin:0;font-size:13px;color:#6c6f6a;text-wrap:pretty">New here? Signing in creates your account and a workspace of your own.</p>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ inApp }}" hint-placeholder-val="{{ true }}">
+  <div style="position:sticky;top:0;z-index:30;padding:12px 16px 0;display:flex;flex-direction:column;align-items:center">
+    <nav style="display:flex;align-items:center;gap:10px;height:56px;width:fit-content;max-width:100%;min-width:0;interpolate-size:allow-keywords;transition:width .55s cubic-bezier(.32,.72,0,1);padding:0 8px 0 10px;border-radius:2px;background:#ffffff;border:1px solid rgba(40,40,60,.1);box-shadow:0 24px 48px -28px rgba(0,0,0,.25);animation:g-pop .6s cubic-bezier(.32,.72,0,1)">
+      <button onClick="{{ goDashboard }}" title="All workspaces" aria-label="All workspaces" style="width:36px;height:36px;flex:none;border:none;border-radius:50%;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:none;cursor:pointer;transition:transform .4s cubic-bezier(.32,.72,0,1)" style-hover="transform:rotate(-8deg) scale(1.05)" style-active="transform:scale(.92)"></button>
+      <sc-if value="{{ showTabs }}">
+        <button onClick="{{ goWorkspace }}" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:none;border-radius:2px;background:transparent;cursor:pointer;font-weight:600;white-space:nowrap;transition:background .3s" style-hover="background:#ffffff">{{ wsName }}</button>
+        <span style="width:1px;height:22px;background:rgba(0,0,0,.08);flex:none"></span>
+        <div ref="{{ tabsRef }}" style="position:relative;display:flex;align-items:center;gap:2px;flex:0 1 auto;min-width:120px;overflow-x:auto;scrollbar-width:none;padding:3px;border-radius:2px;-webkit-mask-image:{{ tabsMask }};mask-image:{{ tabsMask }}">
+          <span style="position:absolute;top:3px;bottom:3px;left:0;width:{{ indW }};transform:translateX({{ indX }});opacity:{{ indOpacity }};top:auto;bottom:0;height:2px;border-radius:0;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:none;pointer-events:none;transition:transform .55s cubic-bezier(.32,.72,0,1),width .55s cubic-bezier(.32,.72,0,1),opacity .3s"></span>
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+            <button data-active="{{ t.activeStr }}" onClick="{{ t.open }}" style="position:relative;display:flex;align-items:center;gap:7px;height:32px;padding:0 14px;border:none;border-radius:2px;background:transparent;cursor:pointer;font-size:14px;font-weight:{{ t.weight }};color:{{ t.fg }};white-space:nowrap;transition:color .3s" style-hover="color:#1c1d1b">
+              {{ t.label }}
+              <sc-if value="{{ t.live }}"><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.62 0.13 150)"></span></sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ onDashboard }}"><span style="font-weight:600;padding:0 6px">Workspaces</span></sc-if>
+      
+      <button onClick="{{ openPalette }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 14px;border:1px solid rgba(40,40,60,.12);border-radius:2px;background:rgba(240,240,244,.9);cursor:pointer;font-size:14px;color:#55585f;white-space:nowrap;flex:none;min-width:{{ searchMinW }};justify-content:space-between;box-shadow:none;transition:background .3s,border-color .3s" style-hover="background:#ffffff;border-color:rgba(40,40,60,.22)"><sc-if value="{{ wide }}">Search</sc-if><span style="font-size:11.5px;padding:1px 7px;border-radius:2px;background:#ffffff;border:1px solid rgba(40,40,60,.12);color:#6b6e75">⌘K</span></button>
+      <sc-if value="{{ onDoc }}">
+        <div style="display:{{ presenceDisplay }};align-items:center;padding-left:6px;flex:none">
+          <sc-for list="{{ presence }}" as="p" hint-placeholder-count="3">
+            <span title="{{ p.name }}" style="width:28px;height:28px;margin-left:-7px;border-radius:50%;background:{{ p.color }};color:#fff;display:grid;place-items:center;font-size:12px;font-weight:600;box-shadow:0 0 0 2px rgba(255,255,255,.95);opacity:{{ p.opacity }};transition:transform .4s cubic-bezier(.32,.72,0,1),opacity .4s" style-hover="border-color:#1c1d1b; scale(1.06)">{{ p.initial }}</span>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleHistory }}" style="height:36px;padding:0 14px;border:none;border-radius:2px;background:{{ historyBtnBg }};cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap;transition:background .3s,transform .4s cubic-bezier(.32,.72,0,1)" style-hover="background:#ffffff" style-active="transform:scale(.95)">History</button>
+      </sc-if>
+      <div style="position:relative">
+        <button onClick="{{ toggleStatus }}" style="display:flex;align-items:center;gap:7px;height:36px;padding:0 12px;border:1px solid rgba(40,40,60,.12);border-radius:2px;background:rgba(240,240,244,.9);cursor:pointer;font-size:13.5px;color:#3d403b;white-space:nowrap;transition:background .3s" style-hover="background:#ffffff">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ connColor }};animation:{{ connAnim }};transition:background .4s"></span><sc-if value="{{ wide }}">{{ statusShort }}</sc-if>
+        </button>
+        <sc-if value="{{ statusOpen }}">
+          <div style="position:absolute;right:0;top:48px;width:270px;padding:16px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px;transform-origin:top right;animation:g-pop .45s cubic-bezier(.32,.72,0,1)">
+            <div style="display:flex;align-items:center;gap:8px;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:{{ connColor }}"></span>{{ connTitle }}</div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13.5px">
+              <span style="color:#5f625d">People here</span><span>{{ peersCount }}</span>
+              <span style="color:#5f625d">Response time</span><span>{{ latencyLabel }}</span>
+              <span style="color:#5f625d">Waiting to sync</span><span>{{ pendingShort }}</span>
+              <span style="color:#5f625d">Version</span><span>{{ versionLabel }}</span>
+            </div>
+            <sc-if value="{{ hasConnAction }}"><button onClick="{{ toggleConn }}" style="height:36px;border:none;border-radius:2px;background:rgba(0,0,0,.05);cursor:pointer;font-size:14px;font-weight:500;transition:background .3s" style-hover="background:rgba(0,0,0,.09)">{{ connActionNice }}</button></sc-if>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ showShare }}">
+        <button onClick="{{ openShare }}" style="height:36px;padding:0 18px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap;box-shadow:none;transition:transform .4s cubic-bezier(.32,.72,0,1),background .3s" style-hover="background:oklch(calc(var(--acc-l) + -0.05) var(--acc-c) var(--acc-h))" style-active="transform:scale(.95)">Share</button>
+      </sc-if>
+      <div style="position:relative">
+        <button onClick="{{ toggleUserMenu }}" style="width:36px;height:36px;border:none;border-radius:50%;background:#8b5cf6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,.9);transition:transform .4s cubic-bezier(.32,.72,0,1)" style-active="transform:scale(.92)">A</button>
+        <sc-if value="{{ userMenu }}">
+          <div style="position:absolute;right:0;top:48px;width:220px;padding:6px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);display:flex;flex-direction:column;transform-origin:top right;animation:g-pop .45s cubic-bezier(.32,.72,0,1)">
+            <div style="padding:10px 12px;display:flex;flex-direction:column;line-height:1.3"><span style="font-weight:600">Ada</span><span style="font-size:13px;color:#6c6f6a">ada@example.com</span></div>
+            <button onClick="{{ goDashboard }}" style="height:38px;padding:0 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;transition:background .25s" style-hover="background:rgba(0,0,0,.05)">All workspaces</button>
+            <button onClick="{{ signOut }}" style="height:38px;padding:0 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#c4372b;transition:background .25s" style-hover="background:rgba(0,0,0,.05)">Sign out</button>
+          </div>
+        </sc-if>
+      </div>
+    </nav>
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+      <sc-if value="{{ showConnBand }}">
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px;max-width:100%;padding:6px 6px 6px 16px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);font-size:14px;animation:g-pop .5s cubic-bezier(.32,.72,0,1)">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ connColor }};animation:{{ connAnim }}"></span>
+          <span style="min-width:0;color:#3d403b;text-wrap:pretty">{{ connBandNice }}</span>
+          <sc-if value="{{ isOffline }}"><button onClick="{{ toggleConn }}" style="height:30px;padding:0 14px;border:none;border-radius:2px;background:#1c1d1b;color:#ffffff;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap">Reconnect</button></sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isPreview }}">
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;max-width:100%;min-width:0;padding:6px 6px 6px 16px;border-radius:2px;background:#161616;color:#ffffff;font-size:13.5px;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);animation:g-pop .5s cubic-bezier(.32,.72,0,1)">
+          <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ previewNice }}</span>
+          <sc-if value="{{ canEdit }}"><button onClick="{{ restore }}" style="height:30px;padding:0 14px;border:none;border-radius:2px;background:#ffffff;color:#1c1d1b;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap">Restore</button></sc-if>
+          <button onClick="{{ backToLive }}" style="height:30px;padding:0 14px;border:none;border-radius:2px;background:rgba(255,255,255,.16);color:#ffffff;cursor:pointer;font-size:13px;white-space:nowrap">Back to now</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <main style="position:relative;z-index:1;padding:{{ mainPad }};transition:padding .55s cubic-bezier(.32,.72,0,1)">
+    <sc-if value="{{ onDashboard }}">
+      <div style="max-width:960px;margin:0 auto;padding:40px 16px 64px;display:flex;flex-direction:column;gap:28px;animation:g-in .7s cubic-bezier(.32,.72,0,1)">
+        <h1 style="margin:0;font-size:52px;font-weight:600;letter-spacing:-0.04em;line-height:1.02">Workspaces</h1>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px">
+          <sc-for list="{{ workspaceRows }}" as="w" hint-placeholder-count="2">
+            <button onClick="{{ w.open }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:32px;padding:22px;border:1px solid #e4e4e0;border-radius:2px;background:#fbfbf9;box-shadow:none;text-align:left;cursor:pointer;transition:transform .55s cubic-bezier(.32,.72,0,1),box-shadow .55s cubic-bezier(.32,.72,0,1),background .3s" style-hover="border-color:#1c1d1b;background:#ffffff;box-shadow:0 24px 48px -28px rgba(0,0,0,.25)" style-active="transform:scale(.98)">
+              <span style="width:44px;height:44px;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;display:grid;place-items:center;font-size:18px;font-weight:600;box-shadow:none">{{ w.initial }}</span>
+              <span style="display:flex;flex-direction:column;gap:4px;width:100%;min-width:0"><span style="display:block;font-weight:600;font-size:18px;line-height:1.3">{{ w.name }}</span><span style="font-size:13.5px;color:#5f625d">{{ w.docs }} documents · {{ w.members }} people</span></span>
+            </button>
+          </sc-for>
+          <div style="display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:22px;border-radius:2px;border:1.5px dashed rgba(40,40,60,.22);background:#ffffff;box-shadow:none">
+            <span style="font-weight:600;font-size:18px">New workspace</span>
+            <input value="{{ newWsName }}" onChange="{{ onNewWsName }}" onKeyDown="{{ onWsKey }}" placeholder="Name it, then press Enter" style="height:42px;padding:0 16px;border:1px solid rgba(40,40,60,.14);border-radius:2px;background:#ffffff;transition:box-shadow .3s,border-color .3s" style-focus="outline:none;border-color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:0 0 0 4px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .1)">
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ onWorkspace }}">
+      <div style="max-width:960px;margin:0 auto;padding:40px 16px 64px;display:flex;flex-direction:column;gap:44px;animation:g-in .7s cubic-bezier(.32,.72,0,1)">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h1 style="margin:0;font-size:52px;font-weight:600;letter-spacing:-0.04em;line-height:1.02">{{ wsName }}</h1>
+          <p style="margin:0;align-self:flex-start;padding:5px 14px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:none;color:#3d403b;font-size:14px;font-weight:500">{{ wsMetaNice }}</p>
+        </div>
+        <section style="display:flex;flex-direction:column;gap:14px">
+          <h2 style="margin:0;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding-top:10px;border-top:1px solid #1c1d1b;flex:1">Documents</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px">
+            <sc-for list="{{ docRows }}" as="d" hint-placeholder-count="2">
+              <button onClick="{{ d.open }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:40px;padding:22px;border:1px solid #e4e4e0;border-radius:2px;background:#fbfbf9;box-shadow:none;text-align:left;cursor:pointer;transition:transform .55s cubic-bezier(.32,.72,0,1),box-shadow .55s cubic-bezier(.32,.72,0,1),background .3s" style-hover="border-color:#1c1d1b;background:#ffffff;box-shadow:0 24px 48px -28px rgba(0,0,0,.25)" style-active="transform:scale(.98)">
+                <span style="font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:2px;background:oklch(0.95 calc(var(--acc-c) * 0.16) var(--acc-h));color:oklch(calc(var(--acc-l) + -0.04) var(--acc-c) var(--acc-h))">{{ d.kind }}</span>
+                <span style="display:flex;flex-direction:column;gap:4px;width:100%;min-width:0"><span style="display:block;font-weight:600;font-size:18px;line-height:1.3;text-wrap:pretty">{{ d.title }}</span><span style="display:block;font-size:13.5px;line-height:1.35;color:#6c6f6a">{{ d.updated }}</span></span>
+              </button>
+            </sc-for>
+            <sc-if value="{{ canEdit }}">
+              <div style="display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:22px;border-radius:2px;border:1.5px dashed rgba(40,40,60,.22);background:#ffffff;box-shadow:none">
+                <input value="{{ newDocTitle }}" onChange="{{ onNewDocTitle }}" onKeyDown="{{ onDocKey }}" placeholder="New document name" maxLength="200" style="height:42px;padding:0 16px;border:1px solid rgba(40,40,60,.14);border-radius:2px;background:#ffffff;transition:box-shadow .3s,border-color .3s" style-focus="outline:none;border-color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:0 0 0 4px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .1)">
+                <div style="display:flex;gap:8px">
+                  <div style="flex:1;display:flex;padding:3px;border-radius:2px;background:rgba(40,40,60,.08)">
+                    <button onClick="{{ setTypeDoc }}" style="flex:1;height:32px;color:#1c1d1b;border:none;border-radius:2px;background:{{ typeDocBg }};box-shadow:{{ typeDocShadow }};cursor:pointer;font-size:13.5px;font-weight:500;transition:background .4s,box-shadow .4s">Page</button>
+                    <button onClick="{{ setTypeBoard }}" style="flex:1;height:32px;border:none;border-radius:2px;background:{{ typeBoardBg }};box-shadow:{{ typeBoardShadow }};cursor:pointer;font-size:13.5px;font-weight:500;transition:background .4s,box-shadow .4s">Board</button>
+                  </div>
+                  <button onClick="{{ createDoc }}" style="height:38px;padding:0 18px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;font-weight:500;font-size:14px;cursor:pointer;transition:transform .4s cubic-bezier(.32,.72,0,1)" style-active="transform:scale(.95)">Create</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ noDocs }}"><p style="margin:0;color:#6c6f6a">Nothing here yet.</p></sc-if>
+        </section>
+        <section style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h2 style="margin:0;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding-top:10px;border-top:1px solid #1c1d1b;flex:1">People</h2>
+            <button onClick="{{ openShare }}" style="border:none;background:none;padding:0;color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));font-weight:500;cursor:pointer;font-size:15px">{{ manageLabel }}</button>
+          </div>
+          <div style="border-radius:2px;background:#fbfbf9;border:1px solid #e4e4e0;overflow:hidden">
+            <sc-for list="{{ memberRows }}" as="m" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(0,0,0,.05)">
+                <span style="width:34px;height:34px;border-radius:50%;background:{{ m.color }};color:#fff;display:grid;place-items:center;font-size:13px;font-weight:600;flex:none">{{ m.initial }}</span>
+                <span style="display:flex;flex-direction:column;line-height:1.3;flex:1;min-width:0"><span style="font-weight:500">{{ m.name }}</span><span style="color:#6c6f6a;font-size:13px">{{ m.email }}</span></span>
+                <span style="font-size:13px;color:#5f625d">{{ m.roleNice }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBoard }}">
+      <div style="overflow-x:auto;padding:44px 0 48px;animation:g-in .7s cubic-bezier(.32,.72,0,1)">
+        <div style="display:flex;gap:16px;align-items:flex-start;width:max-content;margin:0 auto;padding:0 16px">
+          <sc-for list="{{ columns }}" as="col" hint-placeholder-count="3">
+            <section onDragOver="{{ col.onDragOver }}" onDrop="{{ col.onDrop }}" style="width:290px;flex:none;border-radius:2px;background:{{ col.bg }};border:1px solid #e4e4e0;box-shadow:{{ col.ring }};display:flex;flex-direction:column;transition:background .4s,box-shadow .4s cubic-bezier(.32,.72,0,1)">
+              <header style="display:flex;align-items:center;gap:8px;padding:16px 18px 10px">
+                <span style="font-weight:600;font-size:15px">{{ col.title }}</span>
+                <span style="font-size:12.5px;min-width:22px;height:22px;padding:0 7px;border-radius:2px;background:rgba(0,0,0,.05);color:#5f625d;display:grid;place-items:center">{{ col.count }}</span>
+              </header>
+              <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ col.cards }}" as="card" hint-placeholder-count="2">
+                  <article draggable="{{ boardEditable }}" onDragStart="{{ card.onDragStart }}" onDragEnd="{{ card.onDragEnd }}" onDrop="{{ card.onDrop }}" onClick="{{ card.open }}" style="background:#ffffff;border-radius:2px;padding:14px 16px;cursor:pointer;opacity:{{ card.opacity }};box-shadow:{{ card.shadow }};display:flex;flex-direction:column;gap:8px;animation:g-in .5s cubic-bezier(.32,.72,0,1);transition:transform .5s cubic-bezier(.32,.72,0,1),box-shadow .5s cubic-bezier(.32,.72,0,1),opacity .3s" style-hover="border-color:#1c1d1b;box-shadow:0 0 0 1px rgba(255,255,255,1), 0 24px 48px -28px rgba(0,0,0,.25)" style-active="transform:scale(.98)">
+                    <div style="display:flex;gap:8px;align-items:flex-start">
+                      <span style="flex:1;text-wrap:pretty;line-height:1.4;font-size:14.5px">{{ card.title }}</span>
+                      <sc-if value="{{ boardEditable }}"><button onClick="{{ card.remove }}" aria-label="Delete card" style="width:24px;height:24px;flex:none;border:none;border-radius:50%;background:transparent;color:#a3a6a0;cursor:pointer;line-height:1;display:grid;place-items:center;transition:background .3s,color .3s" style-hover="background:rgba(0,0,0,.05);color:#1c1d1b">×</button></sc-if>
+                    </div>
+                    <sc-if value="{{ card.metaRow }}">
+                      <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#6c6f6a">
+                        <sc-if value="{{ card.hasDesc }}"><span style="white-space:nowrap;flex:none">Has notes</span></sc-if>
+                        <sc-if value="{{ card.peer }}"><span style="margin-left:auto;flex:none;white-space:nowrap;display:flex;align-items:center;gap:6px;padding:2px 8px 2px 2px;border-radius:2px;background:rgba(14,165,233,.1);color:#0b6e99;animation:g-pop .4s cubic-bezier(.32,.72,0,1)"><span style="width:18px;height:18px;border-radius:50%;background:{{ card.peerColor }};color:#fff;display:grid;place-items:center;font-size:10px;font-weight:600">G</span>{{ card.peerName }}</span></sc-if>
+                      </div>
+                    </sc-if>
+                  </article>
+                </sc-for>
+                <sc-if value="{{ boardEditable }}">
+                  <button onClick="{{ col.add }}" style="height:40px;border:none;border-radius:2px;background:#fbfbf9;color:#3d403b;font-weight:500;cursor:pointer;font-size:14px;text-align:left;padding:0 14px;box-shadow:none;transition:background .3s,color .3s" style-hover="background:#ffffff;color:#1c1d1b">+ Add a card</button>
+                </sc-if>
+              </div>
+            </section>
+          </sc-for>
+          <sc-if value="{{ boardEditable }}">
+            <button onClick="{{ addColumn }}" style="width:230px;flex:none;height:54px;border:1.5px dashed rgba(40,40,60,.22);border-radius:2px;background:#ffffff;box-shadow:none;color:#3d403b;font-weight:500;cursor:pointer;font-size:14px;transition:background .3s,color .3s,transform .4s cubic-bezier(.32,.72,0,1)" style-hover="background:#ffffff;color:#1c1d1b" style-active="transform:scale(.97)">+ Add a list</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isText }}">
+      <sc-if value="{{ showFloatingTb }}">
+        <div ref="{{ tbRef }}" style="position:sticky;top:80px;z-index:20;max-width:1000px;margin:24px auto 0;padding:0 16px;animation:g-pop .6s cubic-bezier(.32,.72,0,1)">
+          <div style="border-radius:2px;background:#ffffff;border:1px solid rgba(40,40,60,.1);box-shadow:0 24px 48px -28px rgba(0,0,0,.25)">
+            <div style="display:flex;align-items:center;gap:4px;padding:7px 10px 0">
+              <sc-if value="{{ tbCanEdit }}"><button onMouseDown="{{ tbKeep }}" onClick="{{ tbTabs.home.run }}" style="height:28px;padding:0 13px;border:none;border-radius:2px;background:{{ tbTabs.home.bg }};color:{{ tbTabs.home.fg }};box-shadow:{{ tbTabs.home.sh }};font-size:13px;font-weight:{{ tbTabs.home.w }};cursor:pointer;transition:background .3s,color .3s,box-shadow .3s" style-hover="color:#1c1d1b">Home</button><button onMouseDown="{{ tbKeep }}" onClick="{{ tbTabs.insert.run }}" style="height:28px;padding:0 13px;border:none;border-radius:2px;background:{{ tbTabs.insert.bg }};color:{{ tbTabs.insert.fg }};box-shadow:{{ tbTabs.insert.sh }};font-size:13px;font-weight:{{ tbTabs.insert.w }};cursor:pointer;transition:background .3s,color .3s,box-shadow .3s" style-hover="color:#1c1d1b">Insert</button></sc-if>
+              <button onMouseDown="{{ tbKeep }}" onClick="{{ tbTabs.view.run }}" style="height:28px;padding:0 13px;border:none;border-radius:2px;background:{{ tbTabs.view.bg }};color:{{ tbTabs.view.fg }};box-shadow:{{ tbTabs.view.sh }};font-size:13px;font-weight:{{ tbTabs.view.w }};cursor:pointer;transition:background .3s,color .3s,box-shadow .3s" style-hover="color:#1c1d1b">View</button>
+              <span style="flex:1"></span>
+              <sc-if value="{{ isViewer }}"><span style="font-size:12.5px;color:#5f625d;padding:2px 10px;border-radius:2px;background:rgba(40,40,60,.06)">View only</span></sc-if>
+              <span style="font-size:12.5px;color:#6c6f6a;padding:0 8px;white-space:nowrap;font-variant-numeric:tabular-nums">{{ wordsLabel }}</span>
+            </div>
+            <div style="height:1px;background:rgba(40,40,60,.07);margin:7px 12px 0"></div>
+            <div style="display:flex;align-items:center;min-height:48px;padding:7px 8px">
+              <sc-if value="{{ tbHome }}"><div style="display:flex;align-items:center;flex-wrap:nowrap;gap:2px;animation:g-fade .3s ease"><button title="Undo (⌘Z)" aria-label="Undo (⌘Z)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.undo.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.undo.bg }};color:{{ tb.undo.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M6 4 3 7l3 3"></path><path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H8"></path></svg></button><button title="Redo (⌘⇧Z)" aria-label="Redo (⌘⇧Z)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.redo.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.redo.bg }};color:{{ tb.redo.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="m10 4 3 3-3 3"></path><path d="M13 7H6.5a3.5 3.5 0 0 0 0 7H8"></path></svg></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><div style="position:relative"><button onMouseDown="{{ tbKeep }}" onClick="{{ toggleStyle }}" title="Text style" style="height:32px;width:150px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px 0 12px;border:1px solid rgba(40,40,60,.12);border-radius:2px;background:#ffffff;cursor:pointer;font-size:13.5px;color:#1c1d1b;transition:background .25s" style-hover="background:#ffffff"><span style="flex:1;min-width:0;text-align:left;white-space:nowrap">{{ tbStyleName }}</span><span style="flex:none;font-size:9px;color:#6c6f6a">▼</span></button>
+ <sc-if value="{{ styleOpen }}"><div style="position:absolute;left:0;top:40px;width:240px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;display:flex;flex-direction:column;gap:1px;padding:6px"><button onMouseDown="{{ tbKeep }}" onClick="{{ setH1 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:22px;font-weight:600;letter-spacing:-0.02em">Title</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥1</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setH2 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:17px;font-weight:600">Heading</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥2</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setH3 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:15px;font-weight:600">Subheading</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥3</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setP }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:14.5px">Normal text</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥0</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setQuote }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:14.5px;color:#5f625d;padding-left:10px;border-left:2px solid oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .4)">Quote</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap"></span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setCode }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px">Code</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap"></span></button></div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Bold (⌘B)" aria-label="Bold (⌘B)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.bold.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.bold.bg }};color:{{ tb.bold.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-weight:700;font-size:15px;width:16px;text-align:center">B</span></button><button title="Italic (⌘I)" aria-label="Italic (⌘I)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.italic.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.italic.bg }};color:{{ tb.italic.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-style:italic;font-family:Georgia,serif;font-size:16px;width:16px;text-align:center">I</span></button><button title="Underline (⌘U)" aria-label="Underline (⌘U)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.underline.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.underline.bg }};color:{{ tb.underline.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="text-decoration:underline;text-underline-offset:2px;font-size:15px;width:16px;text-align:center">U</span></button><button title="Strikethrough" aria-label="Strikethrough" onMouseDown="{{ tbKeep }}" onClick="{{ tb.strike.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.strike.bg }};color:{{ tb.strike.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="text-decoration:line-through;font-size:15px;width:16px;text-align:center">S</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><div style="position:relative"><button title="Text color" aria-label="Text color" onMouseDown="{{ tbKeep }}" onClick="{{ tb.color.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.color.bg }};color:{{ tb.color.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1"><span style="font-weight:600;font-size:14px">A</span><span style="width:15px;height:3px;border-radius:2px;background:{{ tbColor }}"></span></span></button><sc-if value="{{ colorOpen }}"><div style="position:absolute;left:0;top:40px;width:170px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;"><div style="font-size:12px;font-weight:600;color:#6c6f6a;padding:2px 4px 8px">Text color</div><div style="display:grid;grid-template-columns:repeat(4,28px);gap:8px;padding:0 4px 4px"><sc-for list="{{ colors }}" as="c" hint-placeholder-count="8"><button onMouseDown="{{ tbKeep }}" onClick="{{ c.run }}" title="{{ c.name }}" aria-label="{{ c.name }}" style="width:28px;height:28px;border-radius:50%;border:none;background:{{ c.v }};box-shadow:{{ c.ring }};cursor:pointer;transition:transform .3s cubic-bezier(.32,.72,0,1)" style-hover="transform:scale(1.12)"></button></sc-for></div></div></sc-if></div><div style="position:relative"><button title="Highlight" aria-label="Highlight" onMouseDown="{{ tbKeep }}" onClick="{{ tb.hilite.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.hilite.bg }};color:{{ tb.hilite.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="m9.5 2.5 3.5 3.5-5.5 5.5H4V8z"></path><path d="M2.5 14.5h11" style="stroke:{{ tbHilite }};stroke-width:2.6"></path></svg></button><sc-if value="{{ hiliteOpen }}"><div style="position:absolute;left:0;top:40px;width:170px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;"><div style="font-size:12px;font-weight:600;color:#6c6f6a;padding:2px 4px 8px">Highlight</div><div style="display:grid;grid-template-columns:repeat(4,28px);gap:8px;padding:0 4px 4px"><sc-for list="{{ hilites }}" as="c" hint-placeholder-count="8"><button onMouseDown="{{ tbKeep }}" onClick="{{ c.run }}" title="{{ c.name }}" aria-label="{{ c.name }}" style="width:28px;height:28px;border-radius:50%;border:none;background:{{ c.v }};box-shadow:{{ c.ring }};cursor:pointer;transition:transform .3s cubic-bezier(.32,.72,0,1)" style-hover="transform:scale(1.12)"></button></sc-for></div></div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Bulleted list" aria-label="Bulleted list" onMouseDown="{{ tbKeep }}" onClick="{{ tb.ul.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.ul.bg }};color:{{ tb.ul.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><circle cx="3" cy="4" r="1.1" style="fill:currentColor;stroke:none"></circle><circle cx="3" cy="8" r="1.1" style="fill:currentColor;stroke:none"></circle><circle cx="3" cy="12" r="1.1" style="fill:currentColor;stroke:none"></circle><path d="M6 4h8M6 8h8M6 12h8"></path></svg></button><button title="Numbered list" aria-label="Numbered list" onMouseDown="{{ tbKeep }}" onClick="{{ tb.ol.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.ol.bg }};color:{{ tb.ol.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><text x="1" y="5.8" style="font-size:5.5px;font-weight:700;fill:currentColor;stroke:none;font-family:system-ui">1</text><text x="1" y="9.8" style="font-size:5.5px;font-weight:700;fill:currentColor;stroke:none;font-family:system-ui">2</text><text x="1" y="13.8" style="font-size:5.5px;font-weight:700;fill:currentColor;stroke:none;font-family:system-ui">3</text><path d="M6 4h8M6 8h8M6 12h8"></path></svg></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><div style="position:relative"><button title="Alignment" aria-label="Alignment" onMouseDown="{{ tbKeep }}" onClick="{{ tb.align.run }}" style="height:32px;min-width:32px;padding:0 6px 0 7px;display:flex;align-items:center;justify-content:center;gap:4px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.align.bg }};color:{{ tb.align.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><sc-if value="{{ alignIs.left }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h8"></path></svg></sc-if><sc-if value="{{ alignIs.center }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M4 6.5h8M2 9.5h12M4 12.5h8"></path></svg></sc-if><sc-if value="{{ alignIs.right }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M6 6.5h8M2 9.5h12M6 12.5h8"></path></svg></sc-if><sc-if value="{{ alignIs.justify }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12"></path></svg></sc-if><span style="font-size:8px;opacity:.6">▼</span></button><sc-if value="{{ alignOpen }}"><div style="position:absolute;left:0;top:40px;width:170px;padding:6px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;display:flex;flex-direction:column;gap:1px"><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.left }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.left.bg }};color:{{ tb.left.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h8"></path></svg><span>Left</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.center }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.center.bg }};color:{{ tb.center.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M4 6.5h8M2 9.5h12M4 12.5h8"></path></svg><span>Center</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.right }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.right.bg }};color:{{ tb.right.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M6 6.5h8M2 9.5h12M6 12.5h8"></path></svg><span>Right</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.justify }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.justify.bg }};color:{{ tb.justify.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12"></path></svg><span>Justify</span></button></div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Clear formatting" aria-label="Clear formatting" onMouseDown="{{ tbKeep }}" onClick="{{ tb.clear.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.clear.bg }};color:{{ tb.clear.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3 3.5h8M7 3.5v9"></path><path d="m10 9.5 3.5 3.5M13.5 9.5 10 13"></path></svg></button></div></sc-if>
+              <sc-if value="{{ tbInsert }}"><div style="display:flex;align-items:center;flex-wrap:nowrap;gap:2px;animation:g-fade .3s ease"><div style="position:relative"><button title="Link" aria-label="Link" onMouseDown="{{ tbKeep }}" onClick="{{ tb.link.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.link.bg }};color:{{ tb.link.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M6.5 9.5l3-3"></path><path d="M7 4.5l1.2-1.2a2.8 2.8 0 0 1 4 4L11 8.5"></path><path d="M9 11.5l-1.2 1.2a2.8 2.8 0 0 1-4-4L5 7.5"></path></svg><span>Link</span></button><sc-if value="{{ linkOpen }}"><div style="position:absolute;left:0;top:40px;width:330px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;display:flex;align-items:center;gap:6px;padding:6px">
+ <input ref="{{ linkRef }}" value="{{ linkUrl }}" onChange="{{ onLinkUrl }}" onKeyDown="{{ onLinkKey }}" placeholder="Paste a link" style="flex:1;min-width:0;height:34px;padding:0 12px;border:1px solid rgba(40,40,60,.14);border-radius:2px;background:#ffffff" style-focus="outline:none;border-color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:0 0 0 4px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .12)">
+ <button onClick="{{ applyLink }}" style="height:34px;padding:0 14px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">Add</button>
+ <button onMouseDown="{{ tbKeep }}" onClick="{{ removeLink }}" style="height:34px;padding:0 12px;border:none;border-radius:2px;background:rgba(40,40,60,.06);font-size:13px;cursor:pointer;white-space:nowrap">Remove</button>
+</div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Insert table (3 × 3)" aria-label="Insert table (3 × 3)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.table.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.table.bg }};color:{{ tb.table.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M2 6.5h12M2 10h12M6 3v10M10 3v10"></path></svg><span>Table</span></button><button title="Divider" aria-label="Divider" onMouseDown="{{ tbKeep }}" onClick="{{ tb.hr.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.hr.bg }};color:{{ tb.hr.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 8h12"></path><path d="M5 4.5h6M5 11.5h6" style="opacity:.4"></path></svg><span>Divider</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Code block" aria-label="Code block" onMouseDown="{{ tbKeep }}" onClick="{{ tb.code.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.code.bg }};color:{{ tb.code.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="m5.5 5-3 3 3 3M10.5 5l3 3-3 3"></path></svg><span>Code block</span></button><button title="Quote" aria-label="Quote" onMouseDown="{{ tbKeep }}" onClick="{{ tb.quote.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.quote.bg }};color:{{ tb.quote.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3.5 11.5c0-3 .8-5 3-6.5M9 11.5c0-3 .8-5 3-6.5"></path></svg><span>Quote</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Insert today's date" aria-label="Insert today's date" onMouseDown="{{ tbKeep }}" onClick="{{ tb.date.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.date.bg }};color:{{ tb.date.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg><span>Date</span></button></div></sc-if>
+              <sc-if value="{{ tbView }}"><div style="display:flex;align-items:center;flex-wrap:nowrap;gap:2px;animation:g-fade .3s ease"><span style="font-size:12.5px;color:#6c6f6a;padding:0 8px 0 6px">Zoom</span><button title="Zoom out" aria-label="Zoom out" onMouseDown="{{ tbKeep }}" onClick="{{ tb.zoomOut.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.zoomOut.bg }};color:{{ tb.zoomOut.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-size:17px;line-height:1;width:16px;text-align:center">−</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ tb.zoomReset.run }}" title="Reset zoom" style="height:32px;min-width:58px;padding:0 8px;border:1px solid rgba(40,40,60,.12);border-radius:2px;background:#ffffff;cursor:pointer;font-size:13px;font-variant-numeric:tabular-nums;color:#1c1d1b">{{ zoomLabel }}</button><button title="Zoom in" aria-label="Zoom in" onMouseDown="{{ tbKeep }}" onClick="{{ tb.zoomIn.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.zoomIn.bg }};color:{{ tb.zoomIn.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-size:17px;line-height:1;width:16px;text-align:center">+</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><span style="font-size:12.5px;color:#6c6f6a;padding:0 8px 0 2px">Page width</span><div style="display:flex;padding:3px;border-radius:2px;background:rgba(40,40,60,.08)"><button onMouseDown="{{ tbKeep }}" onClick="{{ tb.narrow.run }}" style="height:26px;padding:0 12px;border:none;border-radius:2px;background:{{ tb.narrow.bg }};box-shadow:{{ tb.narrow.sh }};color:#1c1d1b;font-size:13px;font-weight:500;cursor:pointer;transition:background .35s,box-shadow .35s">Narrow</button><button onMouseDown="{{ tbKeep }}" onClick="{{ tb.wide.run }}" style="height:26px;padding:0 12px;border:none;border-radius:2px;background:{{ tb.wide.bg }};box-shadow:{{ tb.wide.sh }};color:#1c1d1b;font-size:13px;font-weight:500;cursor:pointer;transition:background .35s,box-shadow .35s">Wide</button></div></div></sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <div style="max-width:{{ pageMax }};margin:16px auto 64px;padding:0 16px;animation:g-in .7s cubic-bezier(.32,.72,0,1);transition:max-width .55s cubic-bezier(.32,.72,0,1)">
+        <div style="padding:0;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25)">
+          <sc-if value="{{ showSheetTb }}"><div ref="{{ tbRef }}" style="position:sticky;top:80px;z-index:5;padding:10px 10px 0;animation:g-fade .4s ease">
+          <div style="border-radius:2px;background:#ffffff;border:1px solid rgba(40,40,60,.08);box-shadow:inset 0 1px 0 #ffffff,0 1px 2px rgba(30,30,50,.05),0 8px 22px rgba(30,30,50,{{ sheetTbShadow }})">
+            <div style="display:flex;align-items:center;gap:4px;padding:7px 10px 0">
+              <sc-if value="{{ tbCanEdit }}"><button onMouseDown="{{ tbKeep }}" onClick="{{ tbTabs.home.run }}" style="height:28px;padding:0 13px;border:none;border-radius:2px;background:{{ tbTabs.home.bg }};color:{{ tbTabs.home.fg }};box-shadow:{{ tbTabs.home.sh }};font-size:13px;font-weight:{{ tbTabs.home.w }};cursor:pointer;transition:background .3s,color .3s,box-shadow .3s" style-hover="color:#1c1d1b">Home</button><button onMouseDown="{{ tbKeep }}" onClick="{{ tbTabs.insert.run }}" style="height:28px;padding:0 13px;border:none;border-radius:2px;background:{{ tbTabs.insert.bg }};color:{{ tbTabs.insert.fg }};box-shadow:{{ tbTabs.insert.sh }};font-size:13px;font-weight:{{ tbTabs.insert.w }};cursor:pointer;transition:background .3s,color .3s,box-shadow .3s" style-hover="color:#1c1d1b">Insert</button></sc-if>
+              <button onMouseDown="{{ tbKeep }}" onClick="{{ tbTabs.view.run }}" style="height:28px;padding:0 13px;border:none;border-radius:2px;background:{{ tbTabs.view.bg }};color:{{ tbTabs.view.fg }};box-shadow:{{ tbTabs.view.sh }};font-size:13px;font-weight:{{ tbTabs.view.w }};cursor:pointer;transition:background .3s,color .3s,box-shadow .3s" style-hover="color:#1c1d1b">View</button>
+              <span style="flex:1"></span>
+              <sc-if value="{{ isViewer }}"><span style="font-size:12.5px;color:#5f625d;padding:2px 10px;border-radius:2px;background:rgba(40,40,60,.06)">View only</span></sc-if>
+              <span style="font-size:12.5px;color:#6c6f6a;padding:0 8px;white-space:nowrap;font-variant-numeric:tabular-nums">{{ wordsLabel }}</span>
+            </div>
+            <div style="height:1px;background:rgba(40,40,60,.07);margin:7px 12px 0"></div>
+            <div style="display:flex;align-items:center;min-height:48px;padding:7px 8px">
+              <sc-if value="{{ tbHome }}"><div style="display:flex;align-items:center;flex-wrap:nowrap;gap:2px;animation:g-fade .3s ease"><button title="Undo (⌘Z)" aria-label="Undo (⌘Z)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.undo.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.undo.bg }};color:{{ tb.undo.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M6 4 3 7l3 3"></path><path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H8"></path></svg></button><button title="Redo (⌘⇧Z)" aria-label="Redo (⌘⇧Z)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.redo.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.redo.bg }};color:{{ tb.redo.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="m10 4 3 3-3 3"></path><path d="M13 7H6.5a3.5 3.5 0 0 0 0 7H8"></path></svg></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><div style="position:relative"><button onMouseDown="{{ tbKeep }}" onClick="{{ toggleStyle }}" title="Text style" style="height:32px;width:150px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px 0 12px;border:1px solid rgba(40,40,60,.12);border-radius:2px;background:#ffffff;cursor:pointer;font-size:13.5px;color:#1c1d1b;transition:background .25s" style-hover="background:#ffffff"><span style="flex:1;min-width:0;text-align:left;white-space:nowrap">{{ tbStyleName }}</span><span style="flex:none;font-size:9px;color:#6c6f6a">▼</span></button>
+ <sc-if value="{{ styleOpen }}"><div style="position:absolute;left:0;top:40px;width:240px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;display:flex;flex-direction:column;gap:1px;padding:6px"><button onMouseDown="{{ tbKeep }}" onClick="{{ setH1 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:22px;font-weight:600;letter-spacing:-0.02em">Title</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥1</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setH2 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:17px;font-weight:600">Heading</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥2</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setH3 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:15px;font-weight:600">Subheading</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥3</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setP }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:14.5px">Normal text</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap">⌘⌥0</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setQuote }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-size:14.5px;color:#5f625d;padding-left:10px;border-left:2px solid oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .4)">Quote</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap"></span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ setCode }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:4px 12px;border:none;border-radius:2px;background:transparent;text-align:left;cursor:pointer;color:#1c1d1b;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px">Code</span><span style="font-size:11.5px;color:#6c6f6a;white-space:nowrap"></span></button></div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Bold (⌘B)" aria-label="Bold (⌘B)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.bold.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.bold.bg }};color:{{ tb.bold.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-weight:700;font-size:15px;width:16px;text-align:center">B</span></button><button title="Italic (⌘I)" aria-label="Italic (⌘I)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.italic.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.italic.bg }};color:{{ tb.italic.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-style:italic;font-family:Georgia,serif;font-size:16px;width:16px;text-align:center">I</span></button><button title="Underline (⌘U)" aria-label="Underline (⌘U)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.underline.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.underline.bg }};color:{{ tb.underline.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="text-decoration:underline;text-underline-offset:2px;font-size:15px;width:16px;text-align:center">U</span></button><button title="Strikethrough" aria-label="Strikethrough" onMouseDown="{{ tbKeep }}" onClick="{{ tb.strike.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.strike.bg }};color:{{ tb.strike.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="text-decoration:line-through;font-size:15px;width:16px;text-align:center">S</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><div style="position:relative"><button title="Text color" aria-label="Text color" onMouseDown="{{ tbKeep }}" onClick="{{ tb.color.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.color.bg }};color:{{ tb.color.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1"><span style="font-weight:600;font-size:14px">A</span><span style="width:15px;height:3px;border-radius:2px;background:{{ tbColor }}"></span></span></button><sc-if value="{{ colorOpen }}"><div style="position:absolute;left:0;top:40px;width:170px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;"><div style="font-size:12px;font-weight:600;color:#6c6f6a;padding:2px 4px 8px">Text color</div><div style="display:grid;grid-template-columns:repeat(4,28px);gap:8px;padding:0 4px 4px"><sc-for list="{{ colors }}" as="c" hint-placeholder-count="8"><button onMouseDown="{{ tbKeep }}" onClick="{{ c.run }}" title="{{ c.name }}" aria-label="{{ c.name }}" style="width:28px;height:28px;border-radius:50%;border:none;background:{{ c.v }};box-shadow:{{ c.ring }};cursor:pointer;transition:transform .3s cubic-bezier(.32,.72,0,1)" style-hover="transform:scale(1.12)"></button></sc-for></div></div></sc-if></div><div style="position:relative"><button title="Highlight" aria-label="Highlight" onMouseDown="{{ tbKeep }}" onClick="{{ tb.hilite.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.hilite.bg }};color:{{ tb.hilite.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="m9.5 2.5 3.5 3.5-5.5 5.5H4V8z"></path><path d="M2.5 14.5h11" style="stroke:{{ tbHilite }};stroke-width:2.6"></path></svg></button><sc-if value="{{ hiliteOpen }}"><div style="position:absolute;left:0;top:40px;width:170px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;"><div style="font-size:12px;font-weight:600;color:#6c6f6a;padding:2px 4px 8px">Highlight</div><div style="display:grid;grid-template-columns:repeat(4,28px);gap:8px;padding:0 4px 4px"><sc-for list="{{ hilites }}" as="c" hint-placeholder-count="8"><button onMouseDown="{{ tbKeep }}" onClick="{{ c.run }}" title="{{ c.name }}" aria-label="{{ c.name }}" style="width:28px;height:28px;border-radius:50%;border:none;background:{{ c.v }};box-shadow:{{ c.ring }};cursor:pointer;transition:transform .3s cubic-bezier(.32,.72,0,1)" style-hover="transform:scale(1.12)"></button></sc-for></div></div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Bulleted list" aria-label="Bulleted list" onMouseDown="{{ tbKeep }}" onClick="{{ tb.ul.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.ul.bg }};color:{{ tb.ul.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><circle cx="3" cy="4" r="1.1" style="fill:currentColor;stroke:none"></circle><circle cx="3" cy="8" r="1.1" style="fill:currentColor;stroke:none"></circle><circle cx="3" cy="12" r="1.1" style="fill:currentColor;stroke:none"></circle><path d="M6 4h8M6 8h8M6 12h8"></path></svg></button><button title="Numbered list" aria-label="Numbered list" onMouseDown="{{ tbKeep }}" onClick="{{ tb.ol.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.ol.bg }};color:{{ tb.ol.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><text x="1" y="5.8" style="font-size:5.5px;font-weight:700;fill:currentColor;stroke:none;font-family:system-ui">1</text><text x="1" y="9.8" style="font-size:5.5px;font-weight:700;fill:currentColor;stroke:none;font-family:system-ui">2</text><text x="1" y="13.8" style="font-size:5.5px;font-weight:700;fill:currentColor;stroke:none;font-family:system-ui">3</text><path d="M6 4h8M6 8h8M6 12h8"></path></svg></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><div style="position:relative"><button title="Alignment" aria-label="Alignment" onMouseDown="{{ tbKeep }}" onClick="{{ tb.align.run }}" style="height:32px;min-width:32px;padding:0 6px 0 7px;display:flex;align-items:center;justify-content:center;gap:4px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.align.bg }};color:{{ tb.align.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><sc-if value="{{ alignIs.left }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h8"></path></svg></sc-if><sc-if value="{{ alignIs.center }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M4 6.5h8M2 9.5h12M4 12.5h8"></path></svg></sc-if><sc-if value="{{ alignIs.right }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M6 6.5h8M2 9.5h12M6 12.5h8"></path></svg></sc-if><sc-if value="{{ alignIs.justify }}"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12"></path></svg></sc-if><span style="font-size:8px;opacity:.6">▼</span></button><sc-if value="{{ alignOpen }}"><div style="position:absolute;left:0;top:40px;width:170px;padding:6px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;display:flex;flex-direction:column;gap:1px"><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.left }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.left.bg }};color:{{ tb.left.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h8"></path></svg><span>Left</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.center }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.center.bg }};color:{{ tb.center.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M4 6.5h8M2 9.5h12M4 12.5h8"></path></svg><span>Center</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.right }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.right.bg }};color:{{ tb.right.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M6 6.5h8M2 9.5h12M6 12.5h8"></path></svg><span>Right</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ alignSet.justify }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:none;border-radius:2px;background:{{ tb.justify.bg }};color:{{ tb.justify.fg }};cursor:pointer;font-size:13.5px;text-align:left;transition:background .2s" style-hover="background:rgba(40,40,60,.06)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12"></path></svg><span>Justify</span></button></div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Clear formatting" aria-label="Clear formatting" onMouseDown="{{ tbKeep }}" onClick="{{ tb.clear.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.clear.bg }};color:{{ tb.clear.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3 3.5h8M7 3.5v9"></path><path d="m10 9.5 3.5 3.5M13.5 9.5 10 13"></path></svg></button></div></sc-if>
+              <sc-if value="{{ tbInsert }}"><div style="display:flex;align-items:center;flex-wrap:nowrap;gap:2px;animation:g-fade .3s ease"><div style="position:relative"><button title="Link" aria-label="Link" onMouseDown="{{ tbKeep }}" onClick="{{ tb.link.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.link.bg }};color:{{ tb.link.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M6.5 9.5l3-3"></path><path d="M7 4.5l1.2-1.2a2.8 2.8 0 0 1 4 4L11 8.5"></path><path d="M9 11.5l-1.2 1.2a2.8 2.8 0 0 1-4-4L5 7.5"></path></svg><span>Link</span></button><sc-if value="{{ linkOpen }}"><div style="position:absolute;left:0;top:40px;width:330px;padding:8px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);transform-origin:top left;animation:g-pop .4s cubic-bezier(.32,.72,0,1);z-index:5;display:flex;align-items:center;gap:6px;padding:6px">
+ <input ref="{{ linkRef }}" value="{{ linkUrl }}" onChange="{{ onLinkUrl }}" onKeyDown="{{ onLinkKey }}" placeholder="Paste a link" style="flex:1;min-width:0;height:34px;padding:0 12px;border:1px solid rgba(40,40,60,.14);border-radius:2px;background:#ffffff" style-focus="outline:none;border-color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));box-shadow:0 0 0 4px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .12)">
+ <button onClick="{{ applyLink }}" style="height:34px;padding:0 14px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">Add</button>
+ <button onMouseDown="{{ tbKeep }}" onClick="{{ removeLink }}" style="height:34px;padding:0 12px;border:none;border-radius:2px;background:rgba(40,40,60,.06);font-size:13px;cursor:pointer;white-space:nowrap">Remove</button>
+</div></sc-if></div><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Insert table (3 × 3)" aria-label="Insert table (3 × 3)" onMouseDown="{{ tbKeep }}" onClick="{{ tb.table.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.table.bg }};color:{{ tb.table.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M2 6.5h12M2 10h12M6 3v10M10 3v10"></path></svg><span>Table</span></button><button title="Divider" aria-label="Divider" onMouseDown="{{ tbKeep }}" onClick="{{ tb.hr.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.hr.bg }};color:{{ tb.hr.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M2 8h12"></path><path d="M5 4.5h6M5 11.5h6" style="opacity:.4"></path></svg><span>Divider</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Code block" aria-label="Code block" onMouseDown="{{ tbKeep }}" onClick="{{ tb.code.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.code.bg }};color:{{ tb.code.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="m5.5 5-3 3 3 3M10.5 5l3 3-3 3"></path></svg><span>Code block</span></button><button title="Quote" aria-label="Quote" onMouseDown="{{ tbKeep }}" onClick="{{ tb.quote.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.quote.bg }};color:{{ tb.quote.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M3.5 11.5c0-3 .8-5 3-6.5M9 11.5c0-3 .8-5 3-6.5"></path></svg><span>Quote</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><button title="Insert today's date" aria-label="Insert today's date" onMouseDown="{{ tbKeep }}" onClick="{{ tb.date.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);padding:0 11px 0 9px;background:{{ tb.date.bg }};color:{{ tb.date.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><svg viewBox="0 0 16 16" width="16" height="16" style="display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg><span>Date</span></button></div></sc-if>
+              <sc-if value="{{ tbView }}"><div style="display:flex;align-items:center;flex-wrap:nowrap;gap:2px;animation:g-fade .3s ease"><span style="font-size:12.5px;color:#6c6f6a;padding:0 8px 0 6px">Zoom</span><button title="Zoom out" aria-label="Zoom out" onMouseDown="{{ tbKeep }}" onClick="{{ tb.zoomOut.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.zoomOut.bg }};color:{{ tb.zoomOut.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-size:17px;line-height:1;width:16px;text-align:center">−</span></button><button onMouseDown="{{ tbKeep }}" onClick="{{ tb.zoomReset.run }}" title="Reset zoom" style="height:32px;min-width:58px;padding:0 8px;border:1px solid rgba(40,40,60,.12);border-radius:2px;background:#ffffff;cursor:pointer;font-size:13px;font-variant-numeric:tabular-nums;color:#1c1d1b">{{ zoomLabel }}</button><button title="Zoom in" aria-label="Zoom in" onMouseDown="{{ tbKeep }}" onClick="{{ tb.zoomIn.run }}" style="height:32px;min-width:32px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:2px;cursor:pointer;font-size:13.5px;white-space:nowrap;transition:background .25s,color .25s,transform .3s cubic-bezier(.32,.72,0,1);background:{{ tb.zoomIn.bg }};color:{{ tb.zoomIn.fg }}" style-hover="background:#ffffff" style-active="transform:scale(.92)"><span style="font-size:17px;line-height:1;width:16px;text-align:center">+</span></button><span style="width:1px;height:20px;background:rgba(40,40,60,.12);margin:0 3px;flex:none"></span><span style="font-size:12.5px;color:#6c6f6a;padding:0 8px 0 2px">Page width</span><div style="display:flex;padding:3px;border-radius:2px;background:rgba(40,40,60,.08)"><button onMouseDown="{{ tbKeep }}" onClick="{{ tb.narrow.run }}" style="height:26px;padding:0 12px;border:none;border-radius:2px;background:{{ tb.narrow.bg }};box-shadow:{{ tb.narrow.sh }};color:#1c1d1b;font-size:13px;font-weight:500;cursor:pointer;transition:background .35s,box-shadow .35s">Narrow</button><button onMouseDown="{{ tbKeep }}" onClick="{{ tb.wide.run }}" style="height:26px;padding:0 12px;border:none;border-radius:2px;background:{{ tb.wide.bg }};box-shadow:{{ tb.wide.sh }};color:#1c1d1b;font-size:13px;font-weight:500;cursor:pointer;transition:background .35s,box-shadow .35s">Wide</button></div></div></sc-if>
+            </div>
+          </div></div></sc-if>
+          <div style="padding:{{ sheetPad }}">
+          <sc-if value="{{ isPreview }}">
+            <div style="font-size:17px;line-height:1.65;color:#3d403b;animation:g-fade .4s ease">
+              <sc-for list="{{ previewBlocks }}" as="b">
+                <sc-if value="{{ b.isH1 }}"><h1 style="font-size:32px;line-height:1.2;font-weight:600;letter-spacing:-0.025em;margin:0 0 24px;color:#1c1d1b">{{ b.text }}</h1></sc-if>
+                <sc-if value="{{ b.isH2 }}"><h2 style="font-size:21px;font-weight:600;letter-spacing:-0.02em;margin:32px 0 10px;color:#1c1d1b">{{ b.text }}</h2></sc-if>
+                <sc-if value="{{ b.isP }}"><p style="margin:0 0 14px">{{ b.text }}</p></sc-if>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showEditor }}">
+            <div style="position:relative;zoom:{{ docZoom }}">
+              <div ref="{{ editorRef }}" contentEditable="{{ docEditable }}" suppressContentEditableWarning="{{ true }}" onInput="{{ onDocInput }}" onKeyDown="{{ onDocKey }}" style="font-size:17px;line-height:1.65;color:#3d403b;min-height:50vh;caret-color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))"></div>
+              <sc-if value="{{ showCaret }}">
+                <div style="position:absolute;left:{{ caretLeft }};top:{{ caretTop }};height:{{ caretHeight }};width:2px;border-radius:1px;background:#0ea5e9;pointer-events:none;transition:left .7s cubic-bezier(.32,.72,0,1),top .7s cubic-bezier(.32,.72,0,1)">
+                  <span style="position:absolute;bottom:calc(100% + 3px);left:-1px;background:#0ea5e9;color:#fff;font-size:11px;font-weight:500;line-height:1;padding:4px 8px;border-radius:2px;white-space:nowrap;box-shadow:none">Grace</span>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ showHistory }}">
+    <aside style="position:fixed;top:84px;right:16px;bottom:16px;width:330px;z-index:25;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;animation:g-side .6s cubic-bezier(.32,.72,0,1)">
+      <div style="padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-weight:600;font-size:18px;letter-spacing:-0.02em">History</span>
+        <button onClick="{{ toggleHistory }}" aria-label="Close history" style="width:30px;height:30px;border:none;border-radius:50%;background:rgba(0,0,0,.06);color:#5f625d;cursor:pointer;font-size:15px;line-height:1;transition:background .3s" style-hover="background:rgba(0,0,0,.1)">×</button>
+      </div>
+      <div style="padding:4px 20px 14px;display:flex;flex-direction:column;gap:6px">
+        <input type="range" min="0" max="{{ historyMax }}" step="1" value="{{ historyIdx }}" onChange="{{ onScrub }}" style="width:100%;accent-color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#6c6f6a"><span>Earliest</span><span>Now</span></div>
+      </div>
+      <div style="flex:1;overflow:auto;padding:0 10px 12px;display:flex;flex-direction:column;gap:2px">
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+          <button onClick="{{ h.select }}" style="width:100%;display:flex;gap:12px;align-items:center;padding:10px 12px;border:none;border-radius:2px;background:{{ h.bgC }};text-align:left;cursor:pointer;transition:background .35s" style-hover="background:#ffffff">
+            <span style="width:32px;height:32px;border-radius:50%;background:{{ h.color }};color:#fff;display:grid;place-items:center;font-size:12px;font-weight:600;flex:none">{{ h.initial }}</span>
+            <span style="display:flex;flex-direction:column;min-width:0;line-height:1.35"><span style="font-size:14px;font-weight:500;text-wrap:pretty">{{ h.what }}</span><span style="font-size:12.5px;color:#6c6f6a">{{ h.metaNice }}</span></span>
+          </button>
+        </sc-for>
+      </div>
+    </aside>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{ hasDrawer }}">
+  <div onClick="{{ closeDrawer }}" style="position:fixed;inset:0;background:rgba(30,40,35,.16);display:grid;place-items:center;padding:24px;z-index:40;animation:g-fade .35s ease">
+    <div onClick="{{ stop }}" style="width:100%;max-width:580px;max-height:100%;overflow:auto;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);display:flex;flex-direction:column;animation:g-sheet .6s cubic-bezier(.32,.72,0,1)">
+      
+
+      <div style="display:flex;align-items:center;gap:10px;padding:22px 26px 0">
+        <select value="{{ drawerCol }}" onChange="{{ onDrawerCol }}" disabled="{{ isViewer }}" style="height:32px;padding:0 12px;border:none;border-radius:2px;background:rgba(0,0,0,.05);font-size:13.5px;font-weight:500;cursor:pointer">
+          <sc-for list="{{ columnOptions }}" as="o"><option value="{{ o.id }}">{{ o.title }}</option></sc-for>
+        </select>
+        <sc-if value="{{ drawerPeer }}"><span style="display:flex;align-items:center;gap:6px;font-size:13.5px;color:#3d403b;animation:g-pop .4s cubic-bezier(.32,.72,0,1)"><span style="width:8px;height:8px;border-radius:50%;background:#0ea5e9;animation:g-pulse 1.8s infinite"></span>Grace is here too</span></sc-if>
+        <span style="flex:1"></span>
+        <button onClick="{{ closeDrawer }}" aria-label="Close" style="width:30px;height:30px;border:none;border-radius:50%;background:rgba(0,0,0,.06);color:#5f625d;cursor:pointer;font-size:15px;line-height:1">×</button>
+      </div>
+      <div style="padding:16px 26px 26px;display:flex;flex-direction:column;gap:20px">
+        <textarea value="{{ drawerTitle }}" onChange="{{ onDrawerTitle }}" readOnly="{{ isViewer }}" rows="2" style="width:100%;border:none;resize:none;background:transparent;font-size:26px;font-weight:600;line-height:1.22;padding:0;letter-spacing:-0.025em" style-focus="outline:none"></textarea>
+        <textarea value="{{ drawerDesc }}" onChange="{{ onDrawerDesc }}" readOnly="{{ isViewer }}" rows="5" placeholder="Add notes" style="width:100%;padding:16px 18px;border:1px solid #e4e4e0;border-radius:2px;background:#ffffff;resize:vertical;line-height:1.55;font-size:15px;transition:box-shadow .4s cubic-bezier(.32,.72,0,1),background .3s" style-focus="outline:none;background:#ffffff;box-shadow:0 0 0 1px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h)), 0 0 0 5px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .1)"></textarea>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:13px;font-weight:600;color:#6c6f6a">Activity</span>
+          <sc-for list="{{ drawerActivity }}" as="a">
+            <div style="display:flex;gap:10px;align-items:center;font-size:14px">
+              <span style="width:24px;height:24px;border-radius:50%;background:{{ a.color }};color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:600;flex:none">{{ a.initial }}</span>
+              <span style="flex:1"><span style="font-weight:500">{{ a.who }}</span> <span style="color:#5f625d">{{ a.what }}</span></span>
+              <span style="font-size:12.5px;color:#6c6f6a">{{ a.t }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ boardEditable }}">
+        <div style="padding:14px 26px 20px;display:flex;justify-content:space-between;align-items:center">
+          <button onClick="{{ drawerRemove }}" style="border:none;background:none;padding:0;color:#c4372b;cursor:pointer;font-size:14px">Delete card</button>
+          <button onClick="{{ closeDrawer }}" style="height:38px;padding:0 22px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;cursor:pointer;font-size:14px;font-weight:500;box-shadow:none;transition:transform .4s cubic-bezier(.32,.72,0,1)" style-active="transform:scale(.95)">Done</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isShare }}">
+  <div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(30,40,35,.16);display:grid;place-items:center;padding:24px;z-index:40;animation:g-fade .35s ease">
+    <div onClick="{{ stop }}" style="width:100%;max-width:510px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);display:flex;flex-direction:column;animation:g-sheet .6s cubic-bezier(.32,.72,0,1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:24px 26px 6px">
+        <span style="font-weight:600;font-size:21px;letter-spacing:-0.02em">Share “{{ wsName }}”</span>
+        <button onClick="{{ closeModal }}" aria-label="Close" style="width:30px;height:30px;border:none;border-radius:50%;background:rgba(0,0,0,.06);color:#5f625d;cursor:pointer;font-size:15px;line-height:1">×</button>
+      </div>
+      <div style="padding:14px 26px 20px;display:flex;flex-direction:column;gap:18px">
+        <sc-if value="{{ isOwner }}">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:6px;padding:5px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:none">
+              <input value="{{ inviteEmail }}" onChange="{{ onInviteEmail }}" onKeyDown="{{ onInviteKey }}" placeholder="Add people by email" style="flex:1;min-width:0;height:36px;padding:0 12px;border:none;background:transparent" style-focus="outline:none">
+              <select value="{{ inviteRole }}" onChange="{{ onInviteRole }}" style="height:36px;padding:0 10px;border:none;border-radius:2px;background:rgba(0,0,0,.05);font-size:13.5px;font-weight:500;cursor:pointer">
+                <option value="viewer">Can view</option><option value="editor">Can edit</option><option value="owner">Owner</option>
+              </select>
+              <button onClick="{{ invite }}" style="height:36px;padding:0 18px;border:none;border-radius:2px;background:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));color:#ffffff;font-weight:500;cursor:pointer;transition:transform .4s cubic-bezier(.32,.72,0,1)" style-active="transform:scale(.95)">Add</button>
+            </div>
+            <sc-if value="{{ hasInviteError }}"><p style="margin:0;padding:0 14px;color:#c4372b;font-size:13px;text-wrap:pretty;animation:g-pop .4s cubic-bezier(.32,.72,0,1)">{{ inviteError }}</p></sc-if>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ memberRows }}" as="m" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+              <span style="width:36px;height:36px;border-radius:50%;background:{{ m.color }};color:#fff;display:grid;place-items:center;font-size:13px;font-weight:600;flex:none">{{ m.initial }}</span>
+              <span style="display:flex;flex-direction:column;line-height:1.3;flex:1;min-width:0"><span style="font-weight:500">{{ m.name }}</span><span style="color:#6c6f6a;font-size:13px">{{ m.email }}</span></span>
+              <sc-if value="{{ m.editable }}">
+                <select value="{{ m.role }}" onChange="{{ m.onRole }}" style="height:32px;padding:0 10px;border:none;border-radius:2px;background:rgba(0,0,0,.05);font-size:13.5px;font-weight:500;cursor:pointer">
+                  <option value="viewer">Can view</option><option value="editor">Can edit</option><option value="owner">Owner</option>
+                </select>
+              </sc-if>
+              <sc-if value="{{ m.fixed }}"><span style="font-size:13px;color:#5f625d">{{ m.roleNice }}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <p style="margin:0;padding:4px 26px 24px;font-size:12.5px;color:#6c6f6a;text-wrap:pretty">People need to have signed in once before you can add them. Role changes apply the next time they connect.</p>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isPalette }}">
+  <div onClick="{{ closePalette }}" style="position:fixed;inset:0;background:rgba(30,40,35,.1);display:flex;justify-content:center;align-items:flex-start;padding:110px 24px 24px;z-index:45;animation:g-fade .3s ease">
+    <div onClick="{{ stop }}" style="width:100%;max-width:580px;border-radius:2px;background:#ffffff;border:1px solid #e4e4e0;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);overflow:hidden;animation:g-pop .5s cubic-bezier(.32,.72,0,1)">
+      <input ref="{{ paletteRef }}" value="{{ paletteQ }}" onChange="{{ onPaletteQ }}" onKeyDown="{{ onPaletteKey }}" placeholder="Search documents and actions" style="width:100%;height:60px;padding:0 24px;border:none;border-bottom:1px solid rgba(0,0,0,.06);background:transparent;font-size:18px" style-focus="outline:none">
+      <div style="max-height:340px;overflow:auto;padding:8px">
+        <sc-for list="{{ paletteItems }}" as="it" hint-placeholder-count="4">
+          <button onClick="{{ it.run }}" onMouseEnter="{{ it.hover }}" style="width:100%;display:flex;align-items:center;gap:12px;height:46px;padding:0 16px;border:none;border-radius:2px;background:{{ it.bg }};color:{{ it.fg }};text-align:left;cursor:pointer;transition:background .25s,color .25s">
+            <span style="flex:1;font-size:15px">{{ it.label }}</span>
+            <span style="font-size:12.5px;opacity:.7">{{ it.hint }}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ paletteEmpty }}"><p style="margin:0;padding:16px;color:#6c6f6a;font-size:14px">No matches.</p></sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}">
+  <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:2px;background:#161616;color:#ffffff;font-size:14px;box-shadow:0 24px 48px -28px rgba(0,0,0,.25);z-index:50;white-space:nowrap;animation:g-up .55s cubic-bezier(.32,.72,0,1)">
+    <span style="width:8px;height:8px;border-radius:50%;background:oklch(calc(var(--acc-l) + 0.14) var(--acc-c) var(--acc-h))"></span>{{ toastNice }}
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;violet&quot;,&quot;ink&quot;,&quot;cobalt&quot;,&quot;teal&quot;],&quot;default&quot;:&quot;violet&quot;,&quot;tsType&quot;:&quot;'violet'|'ink'|'cobalt'|'teal'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;toolbarPlacement&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sheet&quot;,&quot;floating&quot;],&quot;default&quot;:&quot;sheet&quot;,&quot;tsType&quot;:&quot;'sheet'|'floating'&quot;,&quot;section&quot;:&quot;Document&quot;},&quot;canvas&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;gallery&quot;,&quot;neutral&quot;,&quot;dusk&quot;,&quot;ocean&quot;,&quot;meadow&quot;,&quot;sunset&quot;,&quot;stone&quot;],&quot;default&quot;:&quot;gallery&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;splashes&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;off&quot;,&quot;subtle&quot;,&quot;bold&quot;],&quot;default&quot;:&quot;subtle&quot;,&quot;tsType&quot;:&quot;'off'|'subtle'|'bold'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;splashColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;gallery&quot;,&quot;purple&quot;,&quot;orange&quot;],&quot;default&quot;:&quot;gallery&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;splashMotion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;still&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;'live'|'still'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;owner&quot;,&quot;editor&quot;,&quot;viewer&quot;],&quot;default&quot;:&quot;owner&quot;,&quot;tsType&quot;:&quot;'owner'|'editor'|'viewer'&quot;,&quot;section&quot;:&quot;Session&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;dashboard&quot;,&quot;workspace&quot;,&quot;board&quot;,&quot;doc&quot;],&quot;default&quot;:&quot;board&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Session&quot;},&quot;peers&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Simulation&quot;}}">
+class Component extends DCLogic {
+  T = { colBg:'#fbfbf9', colOver:'#ffffff', border:'rgba(0,0,0,.06)', navActive:'#ffffff', listActive:'#ffffff', contentBg:'transparent', boardBg:'transparent', segOnBg:'#ffffff', segOnFg:'#1c1d1b', segOffFg:'#5f625d', btnActive:'#ffffff', green:'oklch(0.62 0.13 150)', amber:'oklch(0.72 0.15 65)', blue:'oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))' };
+  PAL = { Ada:'#8b5cf6', Grace:'#0ea5e9', Vera:'#16a34a', Linus:'#f59e0b', Margaret:'#e11d48' };
+  ACCOUNTS = { 'linus@example.com':'Linus', 'margaret@example.com':'Margaret', 'grace@example.com':'Grace', 'vera@example.com':'Vera' };
+  CARDS0 = [
+    { id:'k1', doc:'d1', title:'Rate-limit the token endpoint', col:'c1', desc:'', by:'Ada' },
+    { id:'k2', doc:'d1', title:'Prune the update log past the snapshot', col:'c1', desc:'Delete update rows older than the newest durable snapshot. Safe because a snapshot is self-contained.', by:'Ada' },
+    { id:'k3', doc:'d1', title:'Offline merge: 5-minute disconnect', col:'c2', desc:'Disconnect one client for five minutes while both sides keep editing. Both windows should converge without losing either side\u2019s edits.', by:'Grace' },
+    { id:'k4', doc:'d1', title:'Enforce roles inside the sync protocol', col:'c3', desc:'Viewers may send sync-step1 and awareness frames, never sync-step2 or update.', by:'Ada' },
+  ];
+  B = {
+    h1:{k:'h1',text:'Architecture notes'},
+    p0:{k:'p',text:'Two processes, deliberately. The web app handles everything request-shaped: sessions, authorization, workspaces, documents. The sync server handles everything connection-shaped: it holds each open document in memory, decides per frame whether the sender may write, and broadcasts to the other clients.'},
+    h2a:{k:'h2',text:'The only contract between them'},
+    pa:{k:'p',text:'A short-lived JWT, signed by the web app and verified by the sync server, naming the document and the caller\u2019s role. That lets the sync server authorize a connection without a database round trip.'},
+    h2b:{k:'h2',text:'Persistence'},
+    pb:{k:'p',text:'Accepted updates go to an in-memory queue that flushes to Postgres every 500 ms or after 64 pending updates. A slow database degrades durability, never collaboration latency.'},
+    h2c:{k:'h2',text:'Open questions'},
+    pc:{k:'p',text:'Live role changes for connected users. A demoted editor keeps write access on an open connection until they reconnect.'},
+  };
+  ACTIVITY = {
+    k1:[{who:'Ada',what:'created this card',t:'Sep 29'}],
+    k2:[{who:'Ada',what:'added notes',t:'Sep 29'},{who:'Ada',what:'created this card',t:'Sep 29'}],
+    k3:[{who:'Grace',what:'edited the title',t:'09:14'},{who:'Grace',what:'moved to In progress',t:'09:04'},{who:'Grace',what:'created this card',t:'09:02'}],
+    k4:[{who:'Grace',what:'moved to Done',t:'Sep 30'},{who:'Ada',what:'created this card',t:'Sep 29'}],
+  };
+  state = {
+    screen:'login', wsId:'w1', docId:'d1', conn:'online', pending:0, latency:38, version:128,
+    workspaces:[{id:'w1',name:'Product',role:'owner'},{id:'w2',name:'Ada\u2019s workspace',role:'owner'}],
+    docs:[{id:'d1',ws:'w1',title:'Launch board',type:'board',updated:'Grace \u00b7 2 min ago'},{id:'d2',ws:'w1',title:'Architecture notes',type:'doc',updated:'Ada \u00b7 yesterday'}],
+    columns:[{id:'c1',doc:'d1',title:'Backlog'},{id:'c2',doc:'d1',title:'In progress'},{id:'c3',doc:'d1',title:'Done'}],
+    cards:this.CARDS0.map(c => ({...c})),
+    members:[{name:'Ada',email:'ada@example.com',role:'owner'},{name:'Grace',email:'grace@example.com',role:'editor'},{name:'Vera',email:'vera@example.com',role:'viewer'}],
+    drawer:null, modal:null, historyOpen:false, historyIdx:null, dragId:null, dragOver:null,
+    inviteEmail:'', inviteRole:'editor', inviteError:null, newDocTitle:'', newDocType:'doc', newWsName:'',
+    statusOpen:false, userMenu:false, ind:{ x:0, w:0, on:false }, tbTab:'home', fmt:{}, tbMenu:null, zoom:100, wideDoc:false, words:0, linkUrl:'', lastColor:'#1c1d1b', lastHilite:'#fde68a', palette:false, paletteQ:'', paletteSel:0, peerCard:'k3', peerLine:1, caret:null, toast:null,
+  };
+  docHtml = {};
+  editorEl = null;
+
+  html(blocks) {
+    return blocks.map(b => b.k === 'h1'
+      ? `<h1 style="font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-0.01em;margin:0 0 20px">${b.text}</h1>`
+      : b.k === 'h2' ? `<h2 style="font-size:17px;font-weight:600;margin:28px 0 8px">${b.text}</h2>`
+      : `<p style="margin:0 0 12px">${b.text}</p>`).join('');
+  }
+  componentDidMount() {
+    const B = this.B;
+    this.docHtml.d2 = this.html([B.h1,B.p0,B.h2a,B.pa,B.h2b,B.pb,B.h2c,B.pc]);
+    this.applyStart();
+    this.applyCanvas();
+    document.addEventListener('selectionchange', this.onSel);
+    document.addEventListener('scroll', this.onAnyScroll, true);
+    document.addEventListener('mousedown', this.onDocDown);
+    this.onResizeNav = () => { const n = window.innerWidth < 1100; if (n !== this.state.narrowNav) this.setState({ narrowNav:n }); this.measureTabs(); };
+    this.onResizeNav(); window.addEventListener('resize', this.onResizeNav);
+    this.timer = setInterval(() => this.tick(), 2600);
+    this.onKey = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && this.state.screen !== 'login') { e.preventDefault(); this.openPalette(); }
+      if (e.key === 'Escape') this.setState({ modal:null, drawer:null, palette:false, statusOpen:false, userMenu:false, tbMenu:null });
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if ((prevProps && prevProps.startScreen) !== this.props.startScreen) this.applyStart();
+    const id = this.state && this.state.docId;
+    if (this.lastDocId !== undefined && this.lastDocId !== id && this.editorEl) { this.editorEl.innerHTML = this.docHtml[id] || ''; this.normalize(); this.countWords(); }
+    this.lastDocId = id;
+    this.measureTabs();
+    if ((prevProps && prevProps.canvas) !== this.props.canvas || (prevProps && prevProps.splashes) !== this.props.splashes || (prevProps && prevProps.splashColor) !== this.props.splashColor || (prevProps && prevProps.splashMotion) !== this.props.splashMotion || (prevProps && prevProps.accent) !== this.props.accent) this.applyCanvas();
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.toastT); window.removeEventListener('keydown', this.onKey); document.removeEventListener('selectionchange', this.onSel); document.removeEventListener('scroll', this.onAnyScroll, true); document.removeEventListener('mousedown', this.onDocDown); window.removeEventListener('resize', this.onResizeNav); if (this.onSplashResize) window.removeEventListener('resize', this.onSplashResize); cancelAnimationFrame(this.splRaf); }
+  applyStart() {
+    const s = this.props.startScreen ?? 'board';
+    if (s === 'board') this.go('doc', 'd1'); else if (s === 'doc') this.go('doc', 'd2'); else this.go(s);
+  }
+  go(screen, docId) {
+    this.setState(st => ({ userMenu:false, statusOpen:false, screen, docId: docId ?? st.docId, drawer:null, historyOpen:false, historyIdx:null, modal:null }), () => setTimeout(() => this.measureCaret(), 60));
+  }
+  editorRef = el => {
+    this.editorEl = el;
+    if (el) { el.innerHTML = this.docHtml[this.state.docId] || ''; this.normalize(); setTimeout(() => { this.countWords(); this.measureCaret(); }, 60); }
+  };
+  tick() {
+    if (this.props.peers === false) return;
+    const s = this.state; if (s.conn !== 'online') return;
+    const ids = s.cards.filter(c => c.doc === 'd1').map(c => c.id);
+    this.setState({ peerCard: ids[Math.floor(Math.random() * ids.length)] ?? null, peerLine: (s.peerLine + 1) % 8, latency: 26 + Math.round(Math.random() * 30) }, () => this.measureCaret());
+  }
+  measureCaret() {
+    const el = this.editorEl; if (!el || !el.isConnected || !el.children.length) return this.state.caret && this.setState({ caret:null });
+    const kids = el.children, child = kids[this.state.peerLine % kids.length];
+    const r = document.createRange(); r.selectNodeContents(child);
+    const rects = r.getClientRects(), last = rects[rects.length - 1]; if (!last) return;
+    const base = el.parentElement.getBoundingClientRect();
+    const k = base.width / el.parentElement.offsetWidth || 1;
+    this.setState({ caret:{ x:(last.right - base.left) / k, y:(last.top - base.top) / k, h:last.height / k } });
+  }
+  CANVAS = {
+    gallery:['#f6f6f4','oklch(0.93 0.004 90)','oklch(0.94 0.004 250)','oklch(0.92 0.003 60)','oklch(0.95 0.003 200)','oklch(0.93 0.004 120)'],
+    neutral:['#f1f1ef','oklch(0.86 0.012 260)','oklch(0.9 0.015 80)','oklch(0.83 0.01 240)','oklch(0.92 0.012 60)','oklch(0.88 0.008 200)'],
+    dusk:   ['#f4f1f8','oklch(0.82 0.09 300)','oklch(0.87 0.07 335)','oklch(0.84 0.07 272)','oklch(0.89 0.06 355)','oklch(0.92 0.04 310)'],
+    ocean:  ['#eef3f4','oklch(0.84 0.07 200)','oklch(0.92 0.05 90)','oklch(0.8 0.07 230)','oklch(0.88 0.06 175)','oklch(0.93 0.03 60)'],
+    meadow: ['#f2efe8','oklch(0.84 0.07 170)','oklch(0.9 0.07 80)','oklch(0.85 0.07 35)','oklch(0.87 0.05 230)','oklch(0.91 0.04 130)'],
+    sunset: ['#f6efe9','oklch(0.86 0.09 60)','oklch(0.83 0.09 25)','oklch(0.88 0.07 90)','oklch(0.82 0.07 340)','oklch(0.9 0.05 300)'],
+    stone:  ['#f1f0ee','oklch(0.88 0.015 80)','oklch(0.84 0.02 250)','oklch(0.9 0.02 40)','oklch(0.86 0.015 170)','oklch(0.92 0.01 0)'],
+  };
+  SPLASH = {
+    gallery:['#e0402a','#1c1c1c','#e0402a','#454545','#e9a21f','#9a9a9a','#c7331f','#1c1c1c'],
+    purple:['#7b3fe4','#5b4ee8','#9d5cf0','#c13ea6','#e8559b','#3d8fdc','#22b8c9','#f0b429','#f2843a','#4cc38a','#b794f6','#7b3fe4'],
+    orange:['#f2762e','#f0b429','#e2453c','#f59e0b','#2e8bd6','#2aa58a','#e8559b','#7b3fe4','#22b8c9','#f2762e'],
+  };
+  splashRef = el => {
+    this.splashEl = el;
+    if (el) {
+      this.drawSplash();
+      if (!this.onSplashResize) { this.onSplashResize = () => { clearTimeout(this.splT); this.splT = setTimeout(() => this.drawSplash(), 150); }; window.addEventListener('resize', this.onSplashResize); }
+    }
+  };
+  makeSplat(size, col, R) {
+    const box = Math.ceil(size * 11), c = document.createElement('canvas'), dpr = this.splDpr;
+    c.width = box * dpr; c.height = box * dpr;
+    const g = c.getContext('2d'); g.scale(dpr, dpr);
+    const cx = box / 2, cy = box / 2.6;
+    const dot = (x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+    g.fillStyle = col; g.strokeStyle = col; g.lineCap = 'round';
+    for (let i = 0; i < 9; i++) dot(cx + (R() - .5) * size * .7, cy + (R() - .5) * size * .7, size * (.12 + R() * .22));
+    const rays = 10 + Math.floor(R() * 14);
+    for (let i = 0; i < rays; i++) {
+      const a = R() * Math.PI * 2, len = size * (.6 + R() * 2.4), w0 = size * (.05 + R() * .07);
+      const ex = cx + Math.cos(a) * len, ey = cy + Math.sin(a) * len;
+      for (let s = 0; s <= 14; s++) { const k = s / 14; dot(cx + (ex - cx) * k, cy + (ey - cy) * k, Math.max(.4, w0 * (1 - k * .85))); }
+      dot(ex, ey, w0 * (.5 + R() * .9));
+      if (R() < .35) { const dl = size * (.4 + R() * 1.6); g.lineWidth = Math.max(.8, w0 * .45); g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex + (R() - .5) * 3, ey + dl); g.stroke(); dot(ex, ey + dl, g.lineWidth * .9); }
+    }
+    const drops = 40 + Math.floor(R() * 50);
+    for (let i = 0; i < drops; i++) { const a = R() * Math.PI * 2, d = size * (.5 + Math.pow(R(), 1.8) * 4.3); dot(cx + Math.cos(a) * d, cy + Math.sin(a) * d, Math.max(.5, size * .09 * Math.pow(R(), 2.2) + .5)); }
+    for (let i = Math.floor(R() * 4); i > 0; i--) { const x = cx + (R() - .5) * size * .8, l = size * (1 + R() * 3.5); g.lineWidth = 1 + R() * size * .05; g.beginPath(); g.moveTo(x, cy); g.lineTo(x + (R() - .5) * 4, cy + l); g.stroke(); dot(x, cy + l, g.lineWidth * .9); }
+    return { img:c, box, ox:cx, oy:cy };
+  }
+  spawnSplat(now, age) {
+    const R = this.splR, W = this.splW, H = this.splH, pal = this.splPal;
+    const size = (14 + R() * 26) * Math.max(.7, this.splScale);
+    const col = pal[Math.floor(R() * pal.length)];
+    return { ...this.makeSplat(size, col, R), x:R() * W, y:R() * H, alpha:.7 + R() * .3,
+      born: now - age, life: 16000 + R() * 16000, rot:(R() - .5) * .5, dx:(R() - .5) * 6, dy:(R() - .5) * 6 };
+  }
+  drawSplash() {
+    const cv = this.splashEl; if (!cv || !cv.isConnected) return;
+    const W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = W * dpr; cv.height = H * dpr;
+    let seed = 20261001; this.splR = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    Object.assign(this, { splW:W, splH:H, splDpr:dpr, splScale:Math.sqrt(W * H) / 1100, splPal:(this.SPLASH[this.props.splashColor ?? 'gallery'] || this.SPLASH.purple).map(c => c === '#e0402a' || c === '#c7331f' ? this.accent().hex : c) });
+    const R = this.splR, now = performance.now();
+    this.splDust = Array.from({ length: Math.round(320 * Math.max(.6, this.splScale)) }, () => ({ x:R() * W, y:R() * H, r:.5 + Math.pow(R(), 3) * 3, c:this.splPal[Math.floor(R() * this.splPal.length)], p:R() * 6.28 }));
+    const n = Math.round(16 + this.splScale * 12);
+    this.splats = Array.from({ length:n }, (_, i) => { const s = this.spawnSplat(now, 0); s.born = now - R() * s.life * .85; return s; });
+    for (let i = 0; i < 3; i++) this.splats[i].born = now + 300 + i * 700;
+    cancelAnimationFrame(this.splRaf);
+    const still = (this.props.splashMotion ?? 'live') === 'still' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ctx = cv.getContext('2d');
+    const frame = ts => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      for (const d of this.splDust) { ctx.globalAlpha = still ? .85 : .55 + .35 * Math.sin(ts / 1400 + d.p); ctx.fillStyle = d.c; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.283); ctx.fill(); }
+      for (let i = 0; i < this.splats.length; i++) {
+        let s = this.splats[i], age = (still ? s.born + 2000 : ts) - s.born;
+        if (!still && age > s.life) { s = this.splats[i] = this.spawnSplat(ts, 0); age = 0; }
+        if (age < 0) continue;
+        const land = Math.min(1, age / 650), e = 1 + 2.2 * Math.pow(land - 1, 3) + 1.2 * Math.pow(land - 1, 2);
+        const fadeOut = still ? 1 : Math.min(1, (s.life - age) / 2400);
+        const k = age / s.life;
+        ctx.globalAlpha = s.alpha * Math.min(1, land * 1.6) * Math.max(0, fadeOut);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.translate(s.x + s.dx * k, s.y + s.dy * k); ctx.rotate(s.rot); const sc = .35 + .65 * e; ctx.scale(sc, sc);
+        ctx.drawImage(s.img, -s.ox, -s.oy, s.box, s.box);
+      }
+      ctx.globalAlpha = 1;
+      if (!still) this.splRaf = requestAnimationFrame(frame);
+    };
+    frame(now);
+  }
+  ACCENTS = {
+    violet:{ l:.5, c:.17, h:290, hex:'#6d3fd6' },
+    ink:{ l:.27, c:.012, h:260, hex:'#22252c' },
+    cobalt:{ l:.5, c:.19, h:262, hex:'#2b55d9' },
+    teal:{ l:.5, c:.1, h:195, hex:'#0f7c8c' },
+  };
+  accent() { return this.ACCENTS[this.props.accent ?? 'violet'] || this.ACCENTS.violet; }
+  applyCanvas() {
+    { const a = this.accent(), r0 = document.documentElement.style; r0.setProperty('--acc-l', a.l); r0.setProperty('--acc-c', a.c); r0.setProperty('--acc-h', a.h); }
+    const p = this.CANVAS[this.props.canvas ?? 'gallery'] || this.CANVAS.neutral, r = document.documentElement.style;
+    p.forEach((c, i) => r.setProperty('--p' + i, c));
+    const sp = this.props.splashes ?? 'subtle';
+    r.setProperty('--splash-d', sp === 'off' ? 'none' : 'block');
+    r.setProperty('--splash-o', sp === 'bold' ? '.9' : '.38');
+    this.drawSplash();
+  }
+  NORM = {
+    h1:'font-size:32px;line-height:1.2;font-weight:600;letter-spacing:-0.025em;margin:0 0 20px;color:#1c1d1b',
+    h2:'font-size:21px;line-height:1.3;font-weight:600;letter-spacing:-0.02em;margin:30px 0 10px;color:#1c1d1b',
+    h3:'font-size:17px;line-height:1.35;font-weight:600;margin:22px 0 8px;color:#1c1d1b',
+    p:'margin:0 0 14px',
+    blockquote:'margin:18px 0;padding:2px 0 2px 18px;border-left:3px solid oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .35);color:#5f625d',
+    pre:'margin:0 0 14px;padding:14px 16px;border-radius:2px;background:rgba(40,40,60,.05);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;line-height:1.55;white-space:pre-wrap',
+    ul:'margin:0 0 14px;padding-left:24px', ol:'margin:0 0 14px;padding-left:24px', li:'margin:0 0 4px',
+    hr:'border:none;height:1px;background:rgba(40,40,60,.14);margin:28px 0',
+    table:'width:100%;border-collapse:separate;border-spacing:0;margin:0 0 16px;border:1px solid rgba(40,40,60,.14);border-radius:2px;overflow:hidden;font-size:15px',
+    td:'border-right:1px solid rgba(40,40,60,.1);border-bottom:1px solid rgba(40,40,60,.1);padding:8px 12px;min-width:60px;vertical-align:top',
+    a:'color:oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h));text-decoration:underline;text-underline-offset:2px',
+  };
+  normalize() {
+    const el = this.editorEl; if (!el) return;
+    el.querySelectorAll('h1,h2,h3,p,blockquote,pre,ul,ol,li,hr,table,td,a').forEach(n => {
+      const ta = n.style.textAlign; n.setAttribute('style', this.NORM[n.tagName.toLowerCase()]); if (ta) n.style.textAlign = ta;
+    });
+  }
+  countWords() { const n = ((this.editorEl && this.editorEl.innerText) || '').trim().split(/\s+/).filter(Boolean).length; if (n !== this.state.words) this.setState({ words:n }); }
+  readFmt() {
+    const el = this.editorEl, sel = document.getSelection();
+    if (!el || !sel || !sel.rangeCount || !el.contains(sel.anchorNode)) return;
+    const q = c => { try { return document.queryCommandState(c); } catch (e) { return false; } };
+    let block = 'p'; try { block = (document.queryCommandValue('formatBlock') || 'p').toLowerCase().replace(/[<>]/g, '') || 'p'; } catch (e) {}
+    const f = { bold:q('bold'), italic:q('italic'), underline:q('underline'), strike:q('strikeThrough'), ul:q('insertUnorderedList'), ol:q('insertOrderedList'), left:q('justifyLeft'), center:q('justifyCenter'), right:q('justifyRight'), justify:q('justifyFull'), block };
+    if (JSON.stringify(f) !== JSON.stringify(this.state.fmt)) this.setState({ fmt:f });
+  }
+  saveRange() { const sel = document.getSelection(); if (sel && sel.rangeCount && this.editorEl && this.editorEl.contains(sel.anchorNode)) this.savedRange = sel.getRangeAt(0).cloneRange(); }
+  exec(cmd, val) {
+    const el = this.editorEl; if (!el || !this.canEdit()) return;
+    el.focus();
+    if (this.savedRange) { const s = document.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); this.savedRange = null; }
+    try { document.execCommand('styleWithCSS', false, true); document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+    document.execCommand(cmd, false, val);
+    this.normalize();
+    this.docHtml[this.state.docId] = el.innerHTML;
+    this.countWords(); this.readFmt(); this.edit(() => ({}));
+    setTimeout(() => this.measureCaret(), 30);
+  }
+  onSel = () => this.readFmt();
+  onAnyScroll = () => { const el = this.tbEl; if (!el || !el.parentElement) return; const stuck = el.getBoundingClientRect().top - el.parentElement.getBoundingClientRect().top > 2; if (stuck !== !!this.state.tbStuck) this.setState({ tbStuck:stuck }); };
+  onDocDown = e => { if (this.state.tbMenu && this.tbEl && !this.tbEl.contains(e.target)) this.setState({ tbMenu:null }); };
+  tbRef = el => { this.tbEl = el; };
+  linkRef = el => { if (el) setTimeout(() => el.focus(), 30); };
+  onDocKey = e => {
+    if ((e.metaKey || e.ctrlKey) && e.altKey) {
+      const tag = { Digit0:'p', Digit1:'h1', Digit2:'h2', Digit3:'h3' }[e.code];
+      if (tag) { e.preventDefault(); this.exec('formatBlock', '<' + tag + '>'); }
+    }
+  };
+  applyLinkNow() {
+    let u = this.state.linkUrl.trim(); this.setState({ tbMenu:null });
+    if (!u) return; if (!/^[a-z]+:/i.test(u)) u = 'https://' + u;
+    this.exec('createLink', u);
+  }
+  tbVals() {
+    const s = this.state, f = s.fmt || {}, can = this.canEdit(), A = 'oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))';
+    const ON = 'oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h) / .12)', INK = '#3d403b';
+    const tab = can ? s.tbTab : 'view', blk = f.block || 'p';
+    const st = (active, run) => ({ bg: active ? ON : 'transparent', fg: active ? A : INK, run });
+    const k = (key, cmd) => st(!!f[key], () => this.exec(cmd));
+    const menu = m => () => this.setState(x => ({ tbMenu: x.tbMenu === m ? null : m }));
+    const setBlock = tag => () => { this.setState({ tbMenu:null }); this.exec('formatBlock', '<' + tag + '>'); };
+    const seg = on => ({ bg: on ? '#ffffff' : 'transparent', sh: on ? '0 1px 3px rgba(30,30,50,.14)' : 'none' });
+    const zoom = z => () => this.setState({ zoom: Math.min(150, Math.max(70, z)) }, () => setTimeout(() => this.measureCaret(), 40));
+    const tabOf = id => { const on = tab === id; return { bg: on ? '#ffffff' : 'transparent', fg: on ? A : '#5f625d', sh: on ? '0 1px 3px rgba(30,30,50,.12)' : 'none', w: on ? 600 : 500, run: () => this.setState({ tbTab:id, tbMenu:null }) }; };
+    const NAMES = { h1:'Title', h2:'Heading', h3:'Subheading', p:'Normal text', blockquote:'Quote', pre:'Code', div:'Normal text' };
+    const COLORS = [['Default','#1c1d1b'],['Grey','#6c6f6a'],['Violet',A],['Red','#c4372b'],['Orange','#c9661a'],['Green','#2f8a4f'],['Blue','#2f6fd0'],['Pink','#c2417f']];
+    const HILITES = [['None','transparent'],['Yellow','#fde68a'],['Green','#c9f0d3'],['Blue','#d3e4ff'],['Pink','#ffd6e8'],['Violet','#e4d8fb'],['Orange','#ffe0c2'],['Grey','#e6e6ea']];
+    return {
+      tbCanEdit: can, tbHome: tab === 'home', tbInsert: tab === 'insert', tbView: tab === 'view',
+      tbTabs: { home:tabOf('home'), insert:tabOf('insert'), view:tabOf('view') },
+      tbKeep: e => e.preventDefault(), tbRef: this.tbRef, linkRef: this.linkRef, onDocKey: this.onDocKey,
+      tb: {
+        undo: st(false, () => this.exec('undo')), redo: st(false, () => this.exec('redo')),
+        bold: k('bold','bold'), italic: k('italic','italic'), underline: k('underline','underline'), strike: k('strike','strikeThrough'),
+        ul: k('ul','insertUnorderedList'), ol: k('ol','insertOrderedList'),
+        left: k('left','justifyLeft'), center: k('center','justifyCenter'), right: k('right','justifyRight'), justify: k('justify','justifyFull'),
+        align: st(s.tbMenu === 'align' || (blk && false), menu('align')),
+        clear: st(false, () => { this.exec('removeFormat'); if (blk !== 'p') this.exec('formatBlock', '<p>'); }),
+        color: st(s.tbMenu === 'color', menu('color')), hilite: st(s.tbMenu === 'hilite', menu('hilite')),
+        link: st(s.tbMenu === 'link', () => { this.saveRange(); this.setState(x => ({ tbMenu: x.tbMenu === 'link' ? null : 'link', linkUrl:'' })); }),
+        table: st(false, () => { const c = '<td><br></td>', r = '<tr>' + c + c + c + '</tr>'; this.exec('insertHTML', '<table><tbody>' + r + r + r + '</tbody></table><p><br></p>'); }),
+        hr: st(false, () => this.exec('insertHorizontalRule')),
+        code: st(blk === 'pre', () => this.exec('formatBlock', blk === 'pre' ? '<p>' : '<pre>')),
+        quote: st(blk === 'blockquote', () => this.exec('formatBlock', blk === 'blockquote' ? '<p>' : '<blockquote>')),
+        date: st(false, () => this.exec('insertText', new Date().toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' }))),
+        zoomOut: st(false, zoom(s.zoom - 10)), zoomIn: st(false, zoom(s.zoom + 10)), zoomReset: st(false, zoom(100)),
+        narrow: { ...seg(!s.wideDoc), run: () => this.setState({ wideDoc:false }, () => setTimeout(() => this.measureCaret(), 600)) },
+        wide: { ...seg(s.wideDoc), run: () => this.setState({ wideDoc:true }, () => setTimeout(() => this.measureCaret(), 600)) },
+      },
+      tbStyleName: NAMES[blk] || 'Normal text', styleOpen: s.tbMenu === 'style', toggleStyle: menu('style'),
+      setH1: setBlock('h1'), setH2: setBlock('h2'), setH3: setBlock('h3'), setP: setBlock('p'), setQuote: setBlock('blockquote'), setCode: setBlock('pre'),
+      alignOpen: s.tbMenu === 'align',
+      alignIs: { left: !f.center && !f.right && !f.justify, center: !!f.center, right: !!f.right, justify: !!f.justify },
+      alignSet: Object.fromEntries([['left','justifyLeft'],['center','justifyCenter'],['right','justifyRight'],['justify','justifyFull']].map(([k2, c]) => [k2, () => { this.setState({ tbMenu:null }); this.exec(c); }])),
+      colorOpen: s.tbMenu === 'color', hiliteOpen: s.tbMenu === 'hilite', linkOpen: s.tbMenu === 'link',
+      tbColor: s.lastColor, tbHilite: s.lastHilite,
+      colors: COLORS.map(([n, v]) => ({ name:n, v, ring: v === s.lastColor ? '0 0 0 2px #fff, 0 0 0 4px ' + v : 'inset 0 0 0 1px rgba(0,0,0,.1)', run: () => { this.setState({ tbMenu:null, lastColor:v }); this.exec('foreColor', v); } })),
+      hilites: HILITES.map(([n, v]) => ({ name:n, v: v === 'transparent' ? 'linear-gradient(135deg,#fff 44%,#c4372b 44% 56%,#fff 56%)' : v, ring: v === s.lastHilite ? '0 0 0 2px #fff, 0 0 0 4px rgba(40,40,60,.35)' : 'inset 0 0 0 1px rgba(0,0,0,.1)', run: () => { this.setState({ tbMenu:null, lastHilite: v === 'transparent' ? s.lastHilite : v }); this.exec('hiliteColor', v); } })),
+      linkUrl: s.linkUrl, onLinkUrl: e => this.setState({ linkUrl:e.target.value }),
+      onLinkKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.applyLinkNow(); } if (e.key === 'Escape') this.setState({ tbMenu:null }); },
+      applyLink: () => this.applyLinkNow(), removeLink: () => { this.setState({ tbMenu:null }); this.exec('unlink'); },
+      wordsLabel: s.words + (s.words === 1 ? ' word' : ' words'), zoomLabel: s.zoom + '%', docZoom: String(s.zoom / 100), pageMax: s.wideDoc ? '1040px' : '780px',
+    };
+  }
+  tabsRef = el => { if (this.tabsEl && this.tabsEl !== el) this.tabsEl.removeEventListener('scroll', this.onTabsScroll); this.tabsEl = el; if (el) { el.addEventListener('scroll', this.onTabsScroll, { passive:true }); setTimeout(() => this.measureTabs(), 30); } };
+  onTabsScroll = () => this.measureTabs();
+  measureTabs() {
+    const el = this.tabsEl; const cur = this.state.ind;
+    const a = el && el.isConnected ? el.querySelector('[data-active="true"]') : null;
+    if (a && el) { const l = a.offsetLeft, r = l + a.offsetWidth; if (l < el.scrollLeft) el.scrollTo({ left: l - 12, behavior:'smooth' }); else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth + 24, behavior:'smooth' }); }
+    const ov = !!el && el.scrollWidth > el.clientWidth + 2 && el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    if (ov !== this.state.tabsOverflow) this.setState({ tabsOverflow: ov });
+    const n = a ? { x:a.offsetLeft, w:a.offsetWidth, on:true } : { x:cur.x, w:cur.w, on:false };
+    if (n.x !== cur.x || n.w !== cur.w || n.on !== cur.on) this.setState({ ind:n });
+  }
+  openPalette = () => { this.setState({ palette:true, paletteQ:'', paletteSel:0, statusOpen:false }); setTimeout(() => this.palEl && this.palEl.focus(), 30); };
+  paletteRef = el => { this.palEl = el; };
+  paletteList() {
+    const s = this.state, q = s.paletteQ.trim().toLowerCase();
+    const items = [
+      ...s.docs.filter(d => d.ws === s.wsId).map(d => ({ label:d.title, hint: d.type === 'board' ? 'Board' : 'Page', run: () => this.go('doc', d.id) })),
+      { label:'Go to workspace overview', hint:'Workspace', run: () => this.go('workspace') },
+      { label:'All workspaces', hint:'Navigate', run: () => this.go('dashboard') },
+      { label:'Share and invite people', hint:'Action', run: () => this.setState({ modal:'share', inviteError:null }) },
+      { label: s.conn === 'online' ? 'Go offline (simulate)' : 'Reconnect', hint:'Sync', run: () => this.toggleConn() },
+    ];
+    return q ? items.filter(i => i.label.toLowerCase().includes(q)) : items;
+  }
+  toast(msg) { clearTimeout(this.toastT); this.setState({ toast:msg }); this.toastT = setTimeout(() => this.setState({ toast:null }), 3200); }
+  role() { return this.props.role ?? 'owner'; }
+  canEdit() { return this.role() !== 'viewer'; }
+  edit(fn) {
+    if (!this.canEdit()) return;
+    this.setState(s => ({ ...fn(s), pending: s.conn === 'online' ? 0 : s.pending + 1, version: s.conn === 'online' ? s.version + 1 : s.version }));
+  }
+  toggleConn = () => {
+    const s = this.state;
+    if (s.conn === 'online') return this.setState({ conn:'offline' });
+    if (s.conn === 'offline') {
+      this.setState({ conn:'syncing' });
+      setTimeout(() => {
+        const n = this.state.pending;
+        this.setState(st => ({ conn:'online', version: st.version + st.pending, pending:0 }), () => this.measureCaret());
+        this.toast(n ? `Back online \u00b7 ${n} change${n > 1 ? 's' : ''} synced` : 'Back online');
+      }, 1500);
+    }
+  };
+  moveCard(s, id, col, beforeId) {
+    const card = s.cards.find(c => c.id === id); if (!card) return {};
+    const cards = s.cards.filter(c => c.id !== id);
+    let idx = beforeId ? cards.findIndex(c => c.id === beforeId) : -1;
+    if (idx < 0) { let last = -1; cards.forEach((c, i) => { if (c.col === col) last = i; }); idx = last + 1 || cards.length; }
+    cards.splice(idx, 0, { ...card, col });
+    return { cards };
+  }
+  versions(doc, s) {
+    const live = { v:s.version, who:'Live', t:'now', what:'Current state' };
+    const B = this.B;
+    if (doc.id === 'd1') return [
+      { v:124, who:'Ada', t:'Sep 29, 10:14', what:'Created board', cards:[{id:'k4',col:'c1'}] },
+      { v:125, who:'Ada', t:'Sep 29, 10:16', what:'Added 2 cards', cards:[{id:'k1',col:'c1'},{id:'k2',col:'c1'},{id:'k4',col:'c2'}] },
+      { v:126, who:'Grace', t:'Sep 30, 16:40', what:'Moved \u201cEnforce roles\u201d to Done', cards:[{id:'k1',col:'c1'},{id:'k2',col:'c1'},{id:'k4',col:'c3'}] },
+      { v:127, who:'Grace', t:'Oct 1, 09:02', what:'Added \u201cOffline merge\u201d', cards:[{id:'k1',col:'c1'},{id:'k2',col:'c1'},{id:'k3',col:'c2'},{id:'k4',col:'c3'}] },
+      live];
+    if (doc.id === 'd2') return [
+      { v:118, who:'Ada', t:'Sep 27, 14:20', what:'Created document', blocks:[B.h1,B.p0] },
+      { v:121, who:'Ada', t:'Sep 28, 11:05', what:'Added \u201cThe only contract\u201d', blocks:[B.h1,B.p0,B.h2a,B.pa] },
+      { v:125, who:'Grace', t:'Sep 30, 17:31', what:'Added \u201cPersistence\u201d', blocks:[B.h1,B.p0,B.h2a,B.pa,B.h2b,B.pb] },
+      live];
+    return [live];
+  }
+
+  renderVals() {
+    const s = this.state, T = this.T, role = this.role();
+    const canEdit = role !== 'viewer', isOwner = role === 'owner', isViewer = !canEdit;
+    const ws = s.workspaces.find(w => w.id === s.wsId) || s.workspaces[0];
+    const doc = s.docs.find(d => d.id === s.docId);
+    const onDoc = s.screen === 'doc' && !!doc;
+    const isBoard = onDoc && doc.type === 'board', isText = onDoc && doc.type === 'doc';
+    const versions = onDoc ? this.versions(doc, s) : [];
+    const max = Math.max(0, versions.length - 1);
+    const idx = s.historyIdx ?? max;
+    const isPreview = onDoc && s.historyOpen && idx < max;
+    const ver = versions[idx];
+    const boardEditable = canEdit && !isPreview;
+    const peersOn = this.props.peers !== false && (doc?.id === 'd1' || doc?.id === 'd2');
+    const online = s.conn === 'online';
+    const wsDocs = s.docs.filter(d => d.ws === ws.id);
+    const memberCount = ws.id === 'w1' ? s.members.length : 1;
+
+    let cards = s.cards.filter(c => c.doc === s.docId);
+    if (isPreview && ver.cards) cards = ver.cards.map(x => ({ ...this.CARDS0.find(c => c.id === x.id), col:x.col }));
+    const columns = s.columns.filter(c => c.doc === s.docId).map(col => {
+      const list = cards.filter(c => c.col === col.id);
+      return {
+        id:col.id, title:col.title, count:String(list.length),
+        bg: s.dragOver === col.id ? T.colOver : T.colBg,
+        onDragOver: e => { if (!boardEditable) return; e.preventDefault(); if (s.dragOver !== col.id) this.setState({ dragOver:col.id }); },
+        onDrop: e => { e.preventDefault(); const id = this.state.dragId; this.setState({ dragOver:null, dragId:null }); if (id) this.edit(st => this.moveCard(st, id, col.id)); },
+        add: () => { const id = 'k' + Date.now().toString(36); this.edit(st => ({ cards:[...st.cards, { id, doc:st.docId, title:'New card', col:col.id, desc:'', by:'Ada' }] })); this.setState({ drawer:id }); },
+        cards: list.map(c => {
+          const peer = online && peersOn && !isPreview && s.peerCard === c.id;
+          return {
+            id:c.id, title:c.title, key:'#' + c.id.toUpperCase(), hasDesc: !!c.desc, peer, peerName:'Grace', peerColor:this.PAL.Grace,
+            border: peer ? this.PAL.Grace : (s.drawer === c.id ? '#1c1b18' : T.border),
+            shadow: peer ? `0 0 0 1px ${this.PAL.Grace}` : 'none',
+            opacity: s.dragId === c.id ? 0.4 : 1,
+            onDragStart: e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; this.setState({ dragId:c.id }); },
+            onDragEnd: () => this.setState({ dragId:null, dragOver:null }),
+            onDrop: e => { e.preventDefault(); e.stopPropagation(); const id = this.state.dragId; this.setState({ dragOver:null, dragId:null }); if (id && id !== c.id) this.edit(st => this.moveCard(st, id, col.id, c.id)); },
+            open: () => !isPreview && this.setState({ drawer:c.id, historyOpen:false }),
+            remove: e => { e.stopPropagation(); this.edit(st => ({ cards: st.cards.filter(x => x.id !== c.id), drawer: st.drawer === c.id ? null : st.drawer })); },
+          };
+        }),
+      };
+    });
+
+    const dc = s.cards.find(c => c.id === s.drawer);
+    const hasDrawer = onDoc && isBoard && !!dc;
+    const setCard = patch => this.edit(st => ({ cards: st.cards.map(c => c.id === s.drawer ? { ...c, ...patch } : c) }));
+
+    const presence = [{ initial:'A', name:'Ada (you)', color:this.PAL.Ada, opacity:1 }];
+    if (peersOn) presence.push({ initial:'G', name:'Grace \u00b7 editing', color:this.PAL.Grace, opacity: online ? 1 : 0.35 }, { initial:'V', name:'Vera \u00b7 viewing', color:this.PAL.Vera, opacity: online ? 1 : 0.35 });
+    const nOnline = presence.length;
+
+    const crumbs = s.screen === 'dashboard' ? [null, 'Workspaces'] : s.screen === 'workspace' ? ['Workspaces', ws.name] : [ws.name, doc?.title ?? ''];
+    const pending = s.pending;
+
+    return {
+      role, canEdit, isOwner, isViewer, onLogin: s.screen === 'login', inApp: s.screen !== 'login',
+      onDashboard: s.screen === 'dashboard', onWorkspace: s.screen === 'workspace', onDoc, isBoard, isText,
+      showShare: s.screen === 'workspace' || onDoc, showReadOnly: isViewer && onDoc,
+      hasCrumbA: !!crumbs[0], crumbA: crumbs[0], crumbB: crumbs[1],
+      crumbAGo: () => s.screen === 'workspace' ? this.go('dashboard') : this.go('workspace'),
+      wsName: ws.name, wsInitial: ws.name.slice(0, 1).toUpperCase(),
+      wsMeta: `${wsDocs.length} document${wsDocs.length === 1 ? '' : 's'} \u00b7 ${memberCount} member${memberCount === 1 ? '' : 's'} \u00b7 you are ${role}`,
+      wsNavBg: s.screen === 'workspace' ? T.navActive : 'transparent',
+      dashNavBg: s.screen === 'dashboard' ? T.navActive : 'transparent',
+      contentBg: isBoard ? T.boardBg : T.contentBg,
+      docCount: String(wsDocs.length), noDocs: wsDocs.length === 0,
+      sideDocs: wsDocs.map(d => ({ title:d.title, tag: d.type === 'board' ? 'BRD' : 'DOC', live: this.props.peers !== false && (d.id === 'd1' || d.id === 'd2') && online, bg: onDoc && d.id === s.docId ? T.navActive : 'transparent', open: () => this.go('doc', d.id) })),
+      docRows: wsDocs.map(d => ({ title:d.title, tag: d.type === 'board' ? 'BOARD' : 'DOC', updated:d.updated, open: () => this.go('doc', d.id) })),
+      workspaceRows: s.workspaces.map(w => ({ name:w.name, initial:w.name.slice(0, 1).toUpperCase(), role: w.id === 'w1' ? role : w.role, docs: String(s.docs.filter(d => d.ws === w.id).length), members: String(w.id === 'w1' ? s.members.length : 1), open: () => { this.setState({ wsId:w.id }); this.go('workspace'); } })),
+      memberRows: (ws.id === 'w1' ? s.members : [s.members[0]]).map((m, i) => ({
+        name: m.name + (m.name === 'Ada' ? ' (you)' : ''), email:m.email, role: m.name === 'Ada' ? role : m.role, initial:m.name[0], color:this.PAL[m.name] ?? '#6e6a62',
+        editable: isOwner && m.name !== 'Ada', fixed: !(isOwner && m.name !== 'Ada'),
+        onRole: e => { const v = e.target.value; this.setState(st => ({ members: st.members.map(x => x.email === m.email ? { ...x, role:v } : x) })); this.toast(`${m.name} is now ${v} \u00b7 applies on next connection`); },
+      })),
+      manageLabel: isOwner ? 'Manage access' : 'View access',
+      goDashboard: () => this.go('dashboard'), goWorkspace: () => this.go('workspace'),
+      signIn: () => this.go('doc', 'd1'), signOut: () => this.go('login'),
+      newWsName: s.newWsName, onNewWsName: e => this.setState({ newWsName:e.target.value }),
+      createWs: () => { const n = s.newWsName.trim(); if (!n) return; this.setState(st => ({ workspaces:[...st.workspaces, { id:'w' + Date.now(), name:n, role:'owner' }], newWsName:'' })); this.toast(`Created ${n}`); },
+      newDocTitle: s.newDocTitle, onNewDocTitle: e => this.setState({ newDocTitle:e.target.value }),
+      setTypeDoc: () => this.setState({ newDocType:'doc' }), setTypeBoard: () => this.setState({ newDocType:'board' }),
+      typeDocBg: s.newDocType === 'doc' ? T.segOnBg : 'transparent', typeDocFg: s.newDocType === 'doc' ? T.segOnFg : T.segOffFg,
+      typeBoardBg: s.newDocType === 'board' ? T.segOnBg : 'transparent', typeBoardFg: s.newDocType === 'board' ? T.segOnFg : T.segOffFg,
+      createDoc: () => {
+        const t = s.newDocTitle.trim(); if (!t) return;
+        const id = 'd' + Date.now(), type = s.newDocType;
+        if (type === 'doc') this.docHtml[id] = this.html([{ k:'h1', text:t }, { k:'p', text:'' }]);
+        this.setState(st => ({ newDocTitle:'', docs:[...st.docs, { id, ws:ws.id, title:t, type, updated:'Ada \u00b7 just now' }], columns: type === 'board' ? [...st.columns, ...['To do','Doing','Done'].map((x, i) => ({ id:id + 'c' + i, doc:id, title:x }))] : st.columns }));
+        this.go('doc', id);
+      },
+      presence, peersLabel: online ? `${nOnline} online` : 'peers unknown',
+      connLabel: online ? 'connected' : s.conn === 'offline' ? 'offline' : 'syncing\u2026',
+      connColor: online ? T.green : s.conn === 'offline' ? T.amber : T.blue,
+      latencyLabel: online ? `${s.latency} ms` : '\u2014 ms',
+      pendingLabel: `${pending} queued`, versionLabel: `v${s.version}`, isOffline: s.conn === 'offline',
+      hasConnAction: s.conn !== 'syncing', connAction: online ? 'Go offline' : 'Reconnect', toggleConn: this.toggleConn,
+      showConnBand: !online,
+      connBandText: s.conn === 'offline' ? 'You\u2019re offline. Edits are kept on this device and merge when you reconnect.' : `Reconnecting. Sending ${pending} queued update${pending === 1 ? '' : 's'} and fetching what you missed\u2026`,
+      columns, boardEditable,
+      addColumn: () => this.edit(st => ({ columns:[...st.columns, { id:'c' + Date.now(), doc:st.docId, title:'New column' }] })),
+      hasDrawer, drawerKey: dc ? '#' + dc.id.toUpperCase() : '', drawerTitle: dc?.title ?? '', drawerDesc: dc?.desc ?? '', drawerCol: dc?.col ?? '',
+      drawerCreator: dc?.by ?? 'Ada', drawerPeer: !!dc && online && peersOn && s.peerCard === dc.id,
+      onDrawerTitle: e => setCard({ title:e.target.value }), onDrawerDesc: e => setCard({ desc:e.target.value }), onDrawerCol: e => setCard({ col:e.target.value }),
+      columnOptions: s.columns.filter(c => c.doc === s.docId).map(c => ({ id:c.id, title:c.title })),
+      drawerActivity: (dc ? (this.ACTIVITY[dc.id] ?? [{ who:'Ada', what:'created this card', t:'just now' }]) : []).map(a => ({ ...a, color:this.PAL[a.who] ?? '#6e6a62' })),
+      closeDrawer: () => this.setState({ drawer:null }),
+      drawerRemove: () => this.edit(st => ({ cards: st.cards.filter(x => x.id !== st.drawer), drawer:null })),
+      showHistory: onDoc && s.historyOpen, historyBtnBg: s.historyOpen ? T.btnActive : 'transparent',
+      toggleHistory: () => this.setState(st => ({ historyOpen: !st.historyOpen, historyIdx:null, drawer:null })),
+      historyMax: String(max), historyIdx: String(idx), historyFirst: versions[0] ? 'v' + versions[0].v : '',
+      onScrub: e => this.setState({ historyIdx: +e.target.value }),
+      history: versions.map((v, i) => ({ v:'v' + v.v, what:v.what, meta: v.who === 'Live' ? 'Live \u00b7 now' : `${v.who} \u00b7 ${v.t}`, color: this.PAL[v.who] ?? T.green, bg: i === idx ? T.listActive : 'transparent', select: () => this.setState({ historyIdx:i }) })).reverse(),
+      isPreview, previewLabel: ver ? `v${ver.v} \u00b7 ${ver.who} \u00b7 ${ver.t}` : '',
+      previewBlocks: isPreview && ver.blocks ? ver.blocks.map(b => ({ text:b.text, isH1:b.k === 'h1', isH2:b.k === 'h2', isP:b.k === 'p' })) : [],
+      restore: () => {
+        if (ver.cards) this.edit(st => ({ cards:[...st.cards.filter(c => c.doc !== 'd1'), ...ver.cards.map(x => ({ ...this.CARDS0.find(c => c.id === x.id), col:x.col }))] }));
+        if (ver.blocks) { this.docHtml[s.docId] = this.html(ver.blocks); this.edit(() => ({})); }
+        this.setState({ historyIdx:null }); this.toast('Version restored');
+      },
+      backToLive: () => this.setState({ historyIdx:null }),
+      showFloatingTb: isText && !isPreview && (this.props.toolbarPlacement ?? 'sheet') === 'floating',
+      showSheetTb: isText && !isPreview && (this.props.toolbarPlacement ?? 'sheet') === 'sheet',
+      sheetPad: (this.props.toolbarPlacement ?? 'sheet') === 'sheet' && isText && !isPreview ? '40px 56px 96px' : '56px 56px 96px',
+      sheetTbShadow: s.tbStuck ? '.12' : '0',
+      showEditor: isText && !isPreview, editorRef: this.editorRef, docEditable: canEdit,
+      onDocInput: e => { this.countWords(); this.readFmt(); this.docHtml[s.docId] = e.currentTarget.innerHTML; if (s.conn !== 'online') this.setState(st => ({ pending: st.pending + 1 })); else if (Math.random() < 0.25) this.setState(st => ({ version: st.version + 1 })); },
+      showCaret: isText && !isPreview && online && peersOn && !!s.caret,
+      caretLeft: s.caret ? s.caret.x + 'px' : '0px', caretTop: s.caret ? s.caret.y + 'px' : '0px', caretHeight: s.caret ? s.caret.h + 'px' : '0px',
+      isShare: s.modal === 'share', openShare: () => this.setState({ modal:'share', inviteError:null }), closeModal: () => this.setState({ modal:null }), stop: e => e.stopPropagation(),
+      inviteEmail: s.inviteEmail, onInviteEmail: e => this.setState({ inviteEmail:e.target.value, inviteError:null }),
+      inviteRole: s.inviteRole, onInviteRole: e => this.setState({ inviteRole:e.target.value }),
+      onInviteKey: e => { if (e.key === 'Enter') this.invite(); },
+      invite: () => this.invite(),
+      hasInviteError: !!s.inviteError, inviteError: s.inviteError,
+      toast: s.toast, hasToast: !!s.toast,
+      toastNice: s.toast,
+      ...this.calmVals(s, { online, doc, onDoc, isPreview, ver, peersOn, nOnline, role, ws, wsDocs, memberCount, versions, idx, columns, canEdit }),
+    };
+  }
+  calmVals(s, v) {
+    const roleNice = r => r === 'owner' ? 'Owner' : r === 'editor' ? 'Can edit' : 'Can view';
+    const items = s.palette ? this.paletteList() : [];
+    const sel = Math.min(s.paletteSel, Math.max(0, items.length - 1));
+    const n = s.pending;
+    const shortDate = t => t;
+    return {
+      headerBorder: v.onDoc ? '#e8e8ed' : 'transparent',
+      statusOpen: s.statusOpen, toggleStatus: () => this.setState(st => ({ statusOpen: !st.statusOpen })),
+      statusShort: v.online ? (v.onDoc ? v.nOnline + ' here' : 'Synced') : s.conn === 'offline' ? 'Offline' : 'Syncing',
+      connTitle: v.online ? 'Everything is up to date' : s.conn === 'offline' ? 'Working offline' : 'Catching up',
+      connAnim: s.conn === 'syncing' ? 'c-pulse 1s infinite' : 'none',
+      peersCount: v.online ? String(v.onDoc ? v.nOnline : 1) : '—',
+      pendingShort: n ? n + (n === 1 ? ' change' : ' changes') : 'None',
+      connActionNice: v.online ? 'Go offline (simulate)' : 'Reconnect now',
+      bandBg: s.conn === 'offline' ? '#fff8ec' : '#eef5fe',
+      connBandNice: s.conn === 'offline' ? (n ? `You're offline. ${n} change${n === 1 ? '' : 's'} saved on this device will sync when you're back.` : "You're offline. Keep working, your changes are saved on this device.") : 'Back online. Syncing your changes…',
+      wsMetaNice: `${v.wsDocs.length} document${v.wsDocs.length === 1 ? '' : 's'} · ${v.memberCount} ${v.memberCount === 1 ? 'person' : 'people'}`,
+      docRows: v.wsDocs.map(d => ({ title:d.title, kind: d.type === 'board' ? 'Board' : 'Page', updated:d.updated, open: () => this.go('doc', d.id) })),
+      sideDocs: v.wsDocs.map(d => { const on = v.onDoc && d.id === s.docId; return { title:d.title, glyph: d.type === 'board' ? '▦' : '¶', live: this.props.peers !== false && (d.id === 'd1' || d.id === 'd2') && v.online, bg: on ? '#e3e3e8' : 'transparent', fg: '#1d1d1f', weight: on ? 600 : 400, open: () => this.go('doc', d.id) }; }),
+      typeDocShadow: s.newDocType === 'doc' ? '0 1px 3px rgba(30,45,40,.14)' : 'none',
+      typeBoardShadow: s.newDocType === 'board' ? '0 1px 3px rgba(0,0,0,.12)' : 'none',
+      onDocKey: e => { if (e.key === 'Enter') this.renderVals().createDoc(); },
+      onWsKey: e => { if (e.key === 'Enter') this.renderVals().createWs(); },
+      memberRows: (v.ws.id === 'w1' ? s.members : [s.members[0]]).map(m => {
+        const r = m.name === 'Ada' ? v.role : m.role, own = v.role === 'owner' && m.name !== 'Ada';
+        return { name: m.name + (m.name === 'Ada' ? ' (you)' : ''), email:m.email, role:r, roleNice: roleNice(r), initial:m.name[0], color:this.PAL[m.name] ?? '#86868b', editable: own, fixed: !own,
+          onRole: e => { const x = e.target.value; this.setState(st => ({ members: st.members.map(y => y.email === m.email ? { ...y, role:x } : y) })); this.toast(`${m.name} ${roleNice(x).toLowerCase()} now`); } };
+      }),
+      manageLabel: v.role === 'owner' ? 'Manage' : 'See who has access',
+      historyBtnFg: '#1d1d1f', historyBtnBg: s.historyOpen ? '#ffffff' : 'rgba(240,240,244,.9)',
+      history: v.versions.map((x, i) => ({ what: x.who === 'Live' ? 'Now' : x.what, metaNice: x.who === 'Live' ? 'Current version' : `${x.who} · ${x.t}`, initial: x.who === 'Live' ? '•' : x.who[0], color: this.PAL[x.who] ?? '#34c759', bgC: i === v.idx ? '#ffffff' : 'transparent', select: () => this.setState({ historyIdx:i }) })).reverse(),
+      previewNice: v.ver ? `${v.ver.who} · ${v.ver.t}` : '',
+      columns: v.columns.map(col => ({ ...col, ring: s.dragOver === col.id ? 'inset 0 0 0 2px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))' : 'none',
+        cards: col.cards.map(cd => ({ ...cd, metaRow: cd.hasDesc || cd.peer, peerName: 'Grace',
+          shadow: cd.peer ? '0 0 0 2px #0ea5e9, 0 4px 14px rgba(14,165,233,.18)' : (s.drawer === cd.id ? '0 0 0 2px oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))' : '0 0 0 1px #e4e4e0') })) })),
+      drawerActivity: (this.ACTIVITY[s.drawer] ?? [{ who:'Ada', what:'created this card', t:'just now' }]).map(a => ({ ...a, initial:a.who[0], color:this.PAL[a.who] ?? '#86868b' })),
+      openPalette: this.openPalette, isPalette: s.palette, paletteRef: this.paletteRef, paletteQ: s.paletteQ,
+      closePalette: () => this.setState({ palette:false }),
+      onPaletteQ: e => this.setState({ paletteQ:e.target.value, paletteSel:0 }),
+      onPaletteKey: e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); this.setState({ paletteSel: Math.min(sel + 1, items.length - 1) }); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState({ paletteSel: Math.max(sel - 1, 0) }); }
+        else if (e.key === 'Enter' && items[sel]) { this.setState({ palette:false }); items[sel].run(); }
+      },
+      paletteItems: items.map((it, i) => ({ label:it.label, hint:it.hint, bg: i === sel ? 'oklch(calc(var(--acc-l) + 0.00) var(--acc-c) var(--acc-h))' : 'transparent', fg: i === sel ? '#ffffff' : '#1d1d1f', hover: () => this.state.paletteSel !== i && this.setState({ paletteSel:i }), run: () => { this.setState({ palette:false }); it.run(); } })),
+      paletteEmpty: s.palette && items.length === 0,
+      showTabs: s.screen === 'workspace' || s.screen === 'doc',
+      tabs: [{ id:'ov', label:'Overview', active: s.screen === 'workspace', live:false, open: () => this.go('workspace') },
+        ...v.wsDocs.map(d => ({ id:d.id, label:d.title, active: v.onDoc && d.id === s.docId, live: this.props.peers !== false && (d.id === 'd1' || d.id === 'd2') && v.online, open: () => this.go('doc', d.id) }))]
+        .map(x => ({ ...x, activeStr: String(x.active), fg: x.active ? 'oklch(calc(var(--acc-l) + -0.06) var(--acc-c) var(--acc-h))' : '#5f625d', weight: x.active ? 600 : 500 })),
+      tabsRef: this.tabsRef, indX: s.ind.x + 'px', indW: s.ind.w + 'px', indOpacity: s.ind.on ? 1 : 0,
+      userMenu: s.userMenu, toggleUserMenu: () => this.setState(st => ({ userMenu: !st.userMenu, statusOpen:false })),
+      toggleStatus: () => this.setState(st => ({ statusOpen: !st.statusOpen, userMenu:false })),
+      ...this.tbVals(),
+      mainPad: '0',
+      splashRef: this.splashRef,
+      searchMinW: s.narrowNav ? '0px' : '170px',
+      wide: !s.narrowNav, presenceDisplay: s.narrowNav ? 'none' : 'flex',
+      tabsMask: s.tabsOverflow ? 'linear-gradient(90deg,#000 82%,transparent)' : 'none',
+    };
+  }
+  invite() {
+    const email = this.state.inviteEmail.trim().toLowerCase(); if (!email) return;
+    if (this.state.members.some(m => m.email === email)) return this.setState({ inviteError:`${email} already has access.` });
+    const name = this.ACCOUNTS[email];
+    if (!name) return this.setState({ inviteError:`We couldn't find ${email}. Ask them to sign in once, then try again.` });
+    this.setState(st => ({ members:[...st.members, { name, email, role:st.inviteRole }], inviteEmail:'', inviteError:null }));
+    this.toast(`${name} added`);
+  }
+}
+</script>
+</body>
+</html>
