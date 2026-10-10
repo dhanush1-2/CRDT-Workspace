@@ -1,4 +1,5 @@
 import { env } from '@/lib/env'
+import { acceptPendingInvitations } from '@/lib/invitations'
 import { safeNext } from '@/lib/safe-next'
 import { sessionCookie, signSession } from '@/lib/session'
 import { OAuthError, type OAuthErrorCode } from '@/lib/oauth/errors'
@@ -43,6 +44,7 @@ export async function GET(
     const accessToken = await exchangeCode(provider, client, code, flow.verifier, callbackUrl(appUrl, provider))
     const profile = await fetchProfile(provider, accessToken)
     const user = await resolveOAuthUser(provider, profile)
+    await acceptInvitationsQuietly(user.id)
     const token = await signSession(user.id, secret)
     return redirectResponse(new URL(next, appUrl), [spent, sessionCookie(token)])
   } catch (error) {
@@ -50,5 +52,29 @@ export async function GET(
     // Logged without the code, token, verifier or any secret.
     console.error(JSON.stringify({ level: 'error', msg: 'oauth callback failed', provider, error: String(error) }))
     return fail('provider_error')
+  }
+}
+
+/**
+ * Accepts the person's pending invitations as they sign in, so an invite works even if
+ * its link was lost. A failure here must not fail the sign-in: the invitations stay
+ * pending, and the next sign-in or the link accepts them. Logged with the error's name
+ * and code only, because a Prisma message can quote the query, and this query carries
+ * the person's email.
+ */
+async function acceptInvitationsQuietly(userId: string): Promise<void> {
+  try {
+    await acceptPendingInvitations(userId)
+  } catch (error) {
+    const code =
+      typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        msg: 'invitation sweep failed',
+        error: error instanceof Error ? error.name : 'unknown',
+        code: typeof code === 'string' ? code : null,
+      }),
+    )
   }
 }

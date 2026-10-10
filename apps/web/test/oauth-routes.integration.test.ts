@@ -3,6 +3,8 @@ import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest
 import { prisma } from '@crdt/db'
 import { GET as start } from '../src/app/api/auth/oauth/[provider]/route.js'
 import { GET as callback } from '../src/app/api/auth/oauth/[provider]/callback/route.js'
+import { INVITE_TTL_MS } from '../src/lib/invite-token.js'
+import { createOrReplaceInvitation, resolveInvite } from '../src/lib/invitations.js'
 import { flowCookie } from '../src/lib/oauth/flow.js'
 import { SESSION_COOKIE, verifySession } from '../src/lib/session.js'
 
@@ -240,5 +242,99 @@ describe('GET /api/auth/oauth/:provider/callback', () => {
     const response = await finish('github', { code: 'c', state: flow.state }, cookie)
 
     expect(response.headers.get('location')).toBe(`${APP}/`)
+  })
+})
+
+describe('signing in accepts pending invitations', () => {
+  let inviterId: string
+  let workspaceId: string
+  let secondWorkspaceId: string
+  let lateWorkspaceId: string
+  let documentId: string
+
+  beforeAll(async () => {
+    // The host's email matches the file's cleanup, which deletes the workspaces they
+    // own, and the invitations go with them. The label avoids "inviter-", which other
+    // files' cleanup patterns match.
+    inviterId = (await prisma.user.create({ data: { email: email('host'), name: 'Host' } })).id
+    const make = async (name: string) =>
+      (await prisma.workspace.create({ data: { name: `${name}-${RUN}`, ownerId: inviterId } })).id
+    workspaceId = await make('oauth-invite')
+    secondWorkspaceId = await make('oauth-invite-second')
+    lateWorkspaceId = await make('oauth-invite-late')
+    documentId = (await prisma.document.create({ data: { workspaceId, type: 'doc', title: 'Invited doc' } })).id
+  })
+
+  it('a new person invited by email joins on first sign-in, returns to the invite, and it sends them to the document', async () => {
+    const invited = email('guest')
+    const { link } = await createOrReplaceInvitation({
+      workspaceId,
+      email: invited,
+      role: 'viewer',
+      documentId,
+      invitedById: inviterId,
+    })
+    // GitHub reports the address in its own capitalisation.
+    stubGithub({ accountId: `gh-guest-${RUN}`, email: invited.toUpperCase() })
+    const { cookie, state } = await begin('github', link)
+
+    const response = await finish('github', { code: 'c', state }, cookie)
+
+    expect(response.headers.get('location')).toBe(`${APP}${link}`)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: invited }, select: { id: true, email: true } })
+    const membership = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId: user.id } },
+    })
+    expect(membership?.role).toBe('viewer')
+    const row = await prisma.invitation.findUniqueOrThrow({
+      where: { workspaceId_email: { workspaceId, email: invited } },
+    })
+    expect(row.acceptedAt).not.toBeNull()
+    // Back on the invite page, the used link sends its own person on to the document.
+    expect(await resolveInvite(link.slice('/invite/'.length), user)).toEqual({
+      kind: 'redirect',
+      to: `/workspaces/${workspaceId}/documents/${documentId}`,
+    })
+  })
+
+  it('accepts pending invitations without the link, skips expired ones, and never changes a role', async () => {
+    const returning = email('returning')
+    stubGithub({ accountId: `gh-returning-${RUN}`, email: returning })
+    // A first sign-in creates the person.
+    const first = await begin('github')
+    await finish('github', { code: 'c', state: first.state }, first.cookie)
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: returning } })
+    await prisma.workspaceMember.create({ data: { workspaceId, userId: user.id, role: 'editor' } })
+
+    // The members route only invites emails with no account; these stand for
+    // invitations made before the account existed and not yet swept.
+    const base = { email: returning, documentId: null, invitedById: inviterId }
+    await createOrReplaceInvitation({ ...base, workspaceId, role: 'viewer' })
+    await createOrReplaceInvitation({ ...base, workspaceId: secondWorkspaceId, role: 'editor' })
+    await createOrReplaceInvitation({
+      ...base,
+      workspaceId: lateWorkspaceId,
+      role: 'editor',
+      now: new Date(Date.now() - INVITE_TTL_MS - 60_000),
+    })
+
+    const again = await begin('github', '/')
+    const response = await finish('github', { code: 'c', state: again.state }, again.cookie)
+    expect(response.headers.get('location')).toBe(`${APP}/`)
+
+    const memberships = await prisma.workspaceMember.findMany({
+      where: { userId: user.id, workspaceId: { in: [workspaceId, secondWorkspaceId, lateWorkspaceId] } },
+      select: { workspaceId: true, role: true },
+    })
+    expect(new Map(memberships.map((m) => [m.workspaceId, m.role]))).toEqual(
+      new Map([
+        [workspaceId, 'editor'],
+        [secondWorkspaceId, 'editor'],
+      ]),
+    )
+    const late = await prisma.invitation.findUniqueOrThrow({
+      where: { workspaceId_email: { workspaceId: lateWorkspaceId, email: returning } },
+    })
+    expect(late.acceptedAt).toBeNull()
   })
 })
