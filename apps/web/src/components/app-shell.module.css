@@ -40,9 +40,9 @@
   gap: 10px;
   height: 56px;
   /* As wide as its contents and never wider than the window, so the bar is a pill in
-     the middle of the page rather than an edge-to-edge strip. Both the tabs strip and
-     the label slot must stay `flex: 0 1 auto` for this to hold -- a growing child
-     makes the bar grow to the window and the centring is lost. */
+     the middle of the page rather than an edge-to-edge strip. The tabs strip must stay
+     `flex: 0 1 auto` and the Workspaces link `flex: none` for this to hold -- a growing
+     child makes the bar grow to the window and the centring is lost. */
   width: fit-content;
   max-width: 100%;
   padding: 0 8px 0 10px;
