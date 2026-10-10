@@ -23,23 +23,25 @@ enum DocumentType {
 }
 
 model User {
-  id           String            @id @default(cuid())
-  email        String            @unique
-  name         String
-  passwordHash String?
-  createdAt    DateTime          @default(now())
-  memberships  WorkspaceMember[]
-  accounts     Account[]
-  updates      DocumentUpdate[]
+  id              String            @id @default(cuid())
+  email           String            @unique
+  name            String
+  passwordHash    String?
+  createdAt       DateTime          @default(now())
+  memberships     WorkspaceMember[]
+  accounts        Account[]
+  updates         DocumentUpdate[]
+  invitationsSent Invitation[]
 }
 
 model Workspace {
-  id        String            @id @default(cuid())
-  name      String
-  ownerId   String
-  createdAt DateTime          @default(now())
-  members   WorkspaceMember[]
-  documents Document[]
+  id          String            @id @default(cuid())
+  name        String
+  ownerId     String
+  createdAt   DateTime          @default(now())
+  members     WorkspaceMember[]
+  documents   Document[]
+  invitations Invitation[]
 }
 
 model WorkspaceMember {
@@ -63,6 +65,7 @@ model Document {
   workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   updates     DocumentUpdate[]
   snapshots   DocumentSnapshot[]
+  invitations Invitation[]
 
   @@index([workspaceId])
 }
@@ -104,4 +107,32 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+/// A pending invitation to a workspace for an email that has no account yet. Only a
+/// SHA-256 hash of the link's token is stored, so a copy of this table opens nothing.
+model Invitation {
+  id          String    @id @default(cuid())
+  workspaceId String
+  /// Trimmed and lowercased, as sign-in stores User.email.
+  email       String
+  role        Role
+  /// The document the share sheet was opened from. Accepting lands there.
+  documentId  String?
+  invitedById String?
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  /// Set when accepted. Accepted rows are kept, marked used.
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  invitedBy   User?     @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, email])
+  // The sign-in sweep looks invitations up by email.
+  @@index([email])
+  // Foreign keys, which Postgres does not index on its own.
+  @@index([documentId])
+  @@index([invitedById])
 }
