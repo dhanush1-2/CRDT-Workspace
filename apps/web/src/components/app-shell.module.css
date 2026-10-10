@@ -97,6 +97,9 @@
   width: 36px;
   height: 36px;
   border: 0;
+  /* 5px of fill around the 26px glyph (LogoMark), so the dots never touch the edge. */
+  padding: 5px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;

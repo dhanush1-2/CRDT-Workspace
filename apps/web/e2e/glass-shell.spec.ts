@@ -600,18 +600,22 @@ test('the nav logo actually renders at 36px', async ({ page }) => {
   await signIn(page, owner.id)
   await page.goto('/')
 
-  // The logo is an empty <span>. An inline non-replaced element ignores width and
-  // height, so a missing display:block collapses it to nothing while every locator,
-  // typecheck and unit test still passes. Measure the rendered box.
-  const box = await page
-    .getByRole('link', { name: 'All workspaces' })
-    .locator('span')
-    .evaluate((el) => {
-      const rect = el.getBoundingClientRect()
-      return { width: rect.width, height: rect.height }
-    })
+  // The logo is a <span> holding the glyph. An inline non-replaced element ignores width
+  // and height, so a missing display:block would size it to the glyph alone while every
+  // locator, typecheck and unit test still passes. Measure the rendered box.
+  const logo = page.getByRole('link', { name: 'All workspaces' }).locator('span')
+  const box = await logo.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    return { width: rect.width, height: rect.height }
+  })
   expect(box.width).toBeCloseTo(36, 0)
   expect(box.height).toBeCloseTo(36, 0)
+  // The glyph (three joined dots) draws inside the 5px of padding: 26px square.
+  const glyph = await logo.locator('svg').evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    return { width: rect.width, height: rect.height, dots: el.querySelectorAll('circle').length }
+  })
+  expect(glyph).toEqual({ width: 26, height: 26, dots: 3 })
 
   await cleanup(label)
 })

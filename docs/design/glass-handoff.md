@@ -217,7 +217,7 @@ The bar is centred and only as wide as its contents, with **no flexible spacer**
 
 | # | Element | Spec | Action |
 |---|---|---|---|
-| 1 | Logo | 36px circle, `--accent`, `inset 0 1px 0 rgba(255,255,255,.4), 0 4px 10px var(--accent-shadow)`; `aria-label="All workspaces"`. Hover `rotate(-8deg) scale(1.05)`; pressed `scale(.92)` | → dashboard |
+| 1 | Logo | 36px circle, `--accent`, holding the white three-joined-dots glyph (`LogoMark.tsx`, chosen by the owner 2026-10-09; also the sign-in card mark and `app/icon.svg`), `inset 0 1px 0 rgba(255,255,255,.4), 0 4px 10px var(--accent-shadow)`; `aria-label="All workspaces"`. Hover `rotate(-8deg) scale(1.05)`; pressed `scale(.92)` | → dashboard |
 | 2 | Workspace name | 36px high, pill, padding 0 12px, 600 weight; hover `rgba(255,255,255,.7)`. On the dashboard, show a plain "Workspaces" label instead | → Overview |
 | — | Divider | 1×22px, `rgba(0,0,0,.08)` | |
 | 3 | Tabs strip | `position:relative; display:flex; gap:2px; flex:0 1 auto; min-width:120px; overflow-x:auto; scrollbar-width:none; padding:3px; border-radius:999px`. When it overflows: `mask-image: linear-gradient(90deg,#000 82%,transparent)` | |

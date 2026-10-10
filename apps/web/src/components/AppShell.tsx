@@ -15,6 +15,7 @@ import { NavPresence } from './NavPresence'
 import { NavTabs } from './NavTabs'
 import { ShareContext } from './share-context'
 import { ShareSheet } from './ShareSheet'
+import { LogoMark } from './LogoMark'
 import { SyncStatus } from './SyncStatus'
 import { UserMenu } from './UserMenu'
 import { Button } from './ui/Button'
@@ -315,7 +316,9 @@ export function AppShell({
             data-condensed={condensed}
           >
             <Link href="/" aria-label="All workspaces">
-              <span className={styles.logo} />
+              <span className={styles.logo}>
+                <LogoMark />
+              </span>
             </Link>
 
             {/* The logo was the only way back to the dashboard, and nothing said so. On
