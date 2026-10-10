@@ -321,6 +321,8 @@ describe('signing in accepts pending invitations', () => {
     const again = await begin('github', '/')
     const response = await finish('github', { code: 'c', state: again.state }, again.cookie)
     expect(response.headers.get('location')).toBe(`${APP}/`)
+    // The sweep ran as part of a sign-in that still completed.
+    expect(response.headers.getSetCookie().some((c) => c.startsWith(`${SESSION_COOKIE}=`))).toBe(true)
 
     const memberships = await prisma.workspaceMember.findMany({
       where: { userId: user.id, workspaceId: { in: [workspaceId, secondWorkspaceId, lateWorkspaceId] } },
@@ -332,6 +334,12 @@ describe('signing in accepts pending invitations', () => {
         [secondWorkspaceId, 'editor'],
       ]),
     )
+    // The viewer invitation to a workspace they already belong to was used up without
+    // touching their editor role.
+    const viewerInvite = await prisma.invitation.findUniqueOrThrow({
+      where: { workspaceId_email: { workspaceId, email: returning } },
+    })
+    expect(viewerInvite.acceptedAt).not.toBeNull()
     const late = await prisma.invitation.findUniqueOrThrow({
       where: { workspaceId_email: { workspaceId: lateWorkspaceId, email: returning } },
     })
