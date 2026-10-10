@@ -1671,9 +1671,15 @@ routes and one public page. Decisions 1-3 of 2026-10-09 (Precedence, above).
   - Signed in as another email: "This invite is for {email}. You're signed in as
     {other}." and a Sign out button in the Google button's style, which stays on the
     page.
-  - Expired, revoked, used (by anyone else) or unknown: one message, "This invite link is
-    no longer valid. Ask the person who shared it for a new one." HTTP 200 in every case.
-  - `<meta name="referrer" content="no-referrer">`, because the token is in the URL.
+  - Expired, revoked, used (unless opened signed in as the invited email) or unknown: one
+    message, "This invite link is no longer valid. Ask the person who shared it for a new
+    one." HTTP 200 in every case, naming no workspace, inviter or email. This state and
+    the mismatch state use the heading "Invitation" and have no provider buttons.
+  - `Referrer-Policy: no-referrer` as a response header (`headers()` in `next.config.ts`,
+    for `/invite/:path*`, with `Cache-Control: no-store`), and the same as
+    `<meta name="referrer">` from the page's metadata, because the token is in the URL.
+    The header is the one that counts: the meta tag is parsed after the stylesheet and
+    script tags before it, whose requests would already carry the token in Referer.
   - Deviations from §7: the footnote reads "New here? Signing in creates your account."
     (no workspace is created by an invitation); the invalid state adds a "Go to your
     workspaces" link in the footnote's style; the lede carries `overflow-wrap: anywhere`
@@ -1681,8 +1687,9 @@ routes and one public page. Decisions 1-3 of 2026-10-09 (Precedence, above).
     are other people's text and can be one unbroken word, which would otherwise push
     past the 400px card. Sign out is a `<button>` wearing the provider look
     (`.providerButton` undoes the browser's font, width and cursor), disabled at 50%
-    opacity while it runs. Its press and hover motion is the providers' own, inside
-    `prefers-reduced-motion: no-preference`.
+    opacity while it runs, and then ignores hover and press (the provider hover and press
+    rules are scoped `:not(:disabled)`; the sign-in links are unaffected). Its motion is
+    the providers' own, inside `prefers-reduced-motion: no-preference`.
 - **Signing in accepts pending invitations** for the user's stored email, in the OAuth
   callback, without the link. An existing member's role never changes.
 - **Share sheet.** Inviting an email with no account (owner only) shows the link in a

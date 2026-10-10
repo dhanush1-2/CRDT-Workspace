@@ -25,6 +25,22 @@ const config: NextConfig = {
   experimental: {
     extensionAlias: { '.js': ['.ts', '.tsx', '.js'] },
   },
+  // The invite token is in the page's URL. A <meta name="referrer"> is parsed after the
+  // stylesheet and script tags that precede it, so those requests would still carry the
+  // token in Referer. A response header applies before anything is parsed. The page also
+  // sets the metadata, as a second layer. no-store: no cache may keep a page whose content
+  // depends on the token and the viewer.
+  async headers() {
+    return [
+      {
+        source: '/invite/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+    ]
+  },
 }
 
 export default config

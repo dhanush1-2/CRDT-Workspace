@@ -34,7 +34,10 @@ test('a signed-out visitor sees who invited them to what, and signs in back to t
     documentId: document.id,
   })
 
-  await page.goto(link)
+  const response = await page.goto(link)
+  // A real header, not only the meta tag: the meta comes after the stylesheet and script
+  // tags in the HTML, whose requests would already have carried the token in Referer.
+  expect(response?.headers()['referrer-policy']).toBe('no-referrer')
   await expect(page.getByTestId('invite-summary')).toHaveText(
     `Owner invited you to view e2e doc in ${label}. Sign in as ${email} to open it.`,
   )
@@ -44,7 +47,7 @@ test('a signed-out visitor sees who invited them to what, and signs in back to t
       `/api/auth/oauth/${provider}?next=${encodeURIComponent(link)}`,
     )
   }
-  // The token is in this page's URL. No referrer, so no Referer header ever carries it.
+  // The metadata is the second layer.
   await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'no-referrer')
 
   await cleanup(label)
@@ -68,21 +71,30 @@ test('long names wrap inside the card instead of overflowing it', async ({ page 
     documentId: document.id,
   })
 
+  const fitsInCard = (testId: string) =>
+    page.evaluate((id) => {
+      const lede = document.querySelector(`[data-testid="${id}"]`)!
+      const card = lede.closest('main > div')!
+      return {
+        page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        card: card.scrollWidth <= card.clientWidth,
+        lede: lede.scrollWidth <= lede.clientWidth,
+      }
+    }, testId)
+
   await page.setViewportSize({ width: 360, height: 800 })
   await page.goto(link)
-  const summary = page.getByTestId('invite-summary')
-  await expect(summary).toContainText('T'.repeat(120))
-  const fits = await page.evaluate(() => {
-    const lede = document.querySelector('[data-testid="invite-summary"]')!
-    const card = lede.closest('main > div')!
-    return {
-      page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      card: card.scrollWidth <= card.clientWidth,
-      lede: lede.scrollWidth <= lede.clientWidth,
-    }
-  })
-  expect(fits).toEqual({ page: true, card: true, lede: true })
+  await expect(page.getByTestId('invite-summary')).toContainText('T'.repeat(120))
+  expect(await fitsInCard('invite-summary')).toEqual({ page: true, card: true, lede: true })
 
+  // The mismatch text holds two emails, one of them this long.
+  const other = await seedWorkspace(`${label}-other`)
+  await signIn(page, other.owner.id)
+  await page.goto(link)
+  await expect(page.getByTestId('invite-mismatch')).toContainText(email)
+  expect(await fitsInCard('invite-mismatch')).toEqual({ page: true, card: true, lede: true })
+
+  await cleanup(`${label}-other`)
   await cleanup(label)
 })
 
@@ -155,23 +167,32 @@ test('someone signed in under another email is told who it is for, and can sign 
 test('expired, revoked, used and unknown links all read the same, and name nothing', async ({ page }) => {
   const label = `${LABEL}-invalid`
   const { owner, workspace } = await seedWorkspace(label)
+  // A name nothing else on the page says, so finding it there means the page leaked it.
+  const inviterName = 'Zed Quillfeather'
+  await prisma.user.update({ where: { id: owner.id }, data: { name: inviterName } })
   const base = { workspaceId: workspace.id, invitedById: owner.id, role: 'editor' as const }
-  const expired = await invite({ ...base, email: `${label}-expired@e2e.test` })
+  const emails = ['expired', 'revoked', 'used'].map((word) => `${label}-${word}@e2e.test`)
+  const expired = await invite({ ...base, email: emails[0] })
   await prisma.invitation.update({
     where: { id: expired.id },
     data: { expiresAt: new Date(Date.now() - 1000) },
   })
-  const revoked = await invite({ ...base, email: `${label}-revoked@e2e.test` })
+  const revoked = await invite({ ...base, email: emails[1] })
   await revokeInvitation(workspace.id, revoked.id)
-  const used = await invite({ ...base, email: `${label}-used@e2e.test` })
+  const used = await invite({ ...base, email: emails[2] })
   await prisma.invitation.update({ where: { id: used.id }, data: { acceptedAt: new Date() } })
 
   for (const path of [expired.link, revoked.link, used.link, `/invite/${'A'.repeat(43)}`, '/invite/nonsense']) {
     const response = await page.goto(path)
     expect(response?.status(), path).toBe(200)
     await expect(page.getByTestId('invite-invalid'), path).toHaveText(INVALID)
-    // Nothing about the workspace or the inviter, for a link that does not work.
-    await expect(page.locator('body'), path).not.toContainText(label)
+    // Nothing about the workspace, the inviter or the invited email, for a link that does
+    // not work. (Every email here contains the label, so the first check covers them too;
+    // the explicit ones keep this true if the labels ever change.)
+    const body = page.locator('body')
+    await expect(body, path).not.toContainText(label)
+    await expect(body, path).not.toContainText(inviterName)
+    for (const email of emails) await expect(body, path).not.toContainText(email)
     await expect(page.getByTestId('signin-github'), path).toHaveCount(0)
   }
 
