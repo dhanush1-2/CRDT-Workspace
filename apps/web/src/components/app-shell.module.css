@@ -164,25 +164,40 @@
 }
 
 /*
-  Where the tab strip goes when there is a workspace, and a label when there is not.
-  `0 1 auto` with no minimum: it is only used on the dashboard, where the label sizes
-  it, and a flexible or minimum-width spacer here is the empty middle gap the design
-  owner asked to remove.
+  The Workspaces link. Styled as an inactive tab (handoff §5.3 row 3a): 32px high,
+  0 14px, 14px/500 in --text-muted, no background of its own. `flex: none` so a tight
+  bar shrinks the workspace name and the tab strip, never this label.
 */
-.tabsSlot {
-  flex: 0 1 auto;
-  display: flex;
+.navLink {
+  flex: none;
+  display: inline-flex;
   align-items: center;
-}
-
-/* Matches an inactive tab -- same 14px, 500 weight, muted colour and 0 14px inset.
-   It is a label, not a link, so it gets no pill and no hover. */
-.navContext {
+  height: 32px;
   padding: 0 14px;
+  border-radius: var(--r-pill);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.navLink:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* The current page: the active tab's text style. The sliding glass pill (§5.4) belongs
+   to the tab strip and is not drawn here. */
+.navLinkCurrent,
+.navLinkCurrent:hover {
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .navLink {
+    transition: color var(--dur-fast) var(--ease);
+  }
 }
 
 /* A flex item that would otherwise shrink and wrap its label when the nav is tight. */
@@ -354,10 +369,12 @@
 }
 
 /* Below 760px the tabs become one dropdown and the workspace name hides (handoff 5.5).
-   The logo still links to the dashboard; the dropdown's Overview entry replaces the name. */
+   The Workspaces link hides with it: the logo still links to the dashboard, and the
+   dropdown's Overview entry replaces the name. */
 @media (max-width: 760px) {
   .workspaceName,
-  .divider {
+  .divider,
+  .navLink {
     display: none;
   }
 }

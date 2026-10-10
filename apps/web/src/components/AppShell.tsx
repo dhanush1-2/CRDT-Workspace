@@ -76,9 +76,13 @@ export function AppShell({
 }) {
   // Read from the path rather than from the doc-state store: the store is populated
   // by the page after it mounts, so the button would pop into the nav a beat after
-  // the rest of it.
-  const activeDocumentId = activeDocumentIdFrom(usePathname())
+  // the rest of it. usePathname resolves during the server render too, so the
+  // Workspaces link's aria-current is already right in the HTML.
+  const pathname = usePathname()
+  const activeDocumentId = activeDocumentIdFrom(pathname)
   const onDocument = activeDocumentId !== undefined
+  // The dashboard is the one page the Workspaces link points at.
+  const onDashboard = pathname === '/'
   // Which overlay is open, if any. One slot rather than a boolean per overlay, so
   // opening one can never leave another open behind it.
   const [overlay, setOverlay] = useState<'share' | 'palette' | null>(null)
@@ -314,6 +318,18 @@ export function AppShell({
               <span className={styles.logo} />
             </Link>
 
+            {/* The logo was the only way back to the dashboard, and nothing said so. On
+                the dashboard this is the current page, and it takes the place of the
+                plain "Workspaces" label the bar used to show there. */}
+            <Link
+              className={`${styles.navLink} ${onDashboard ? styles.navLinkCurrent : ''}`}
+              href="/"
+              aria-current={onDashboard ? 'page' : undefined}
+              data-testid="nav-workspaces"
+            >
+              Workspaces
+            </Link>
+
             {workspace && (
               <>
                 <Link
@@ -328,17 +344,7 @@ export function AppShell({
               </>
             )}
 
-            {workspace && documents ? (
-              <NavTabs workspaceId={workspace.id} documents={documents} />
-            ) : (
-              /* No workspace in context, so there are no tabs. The bar is now sized to
-                 its contents, so an unlabelled slot here would be a visible hole. */
-              <div className={styles.tabsSlot}>
-                <span className={styles.navContext} data-testid="nav-context">
-                  Workspaces
-                </span>
-              </div>
-            )}
+            {workspace && documents && <NavTabs workspaceId={workspace.id} documents={documents} />}
 
             {role === 'viewer' && (
               <span className={`${ui.chip} ${styles.viewOnly}`} data-testid="view-only">

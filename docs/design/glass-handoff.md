@@ -691,6 +691,19 @@ file was generated, so they win over §5.3 and §10 where they differ. Plan:
    everyone else sees it on their next data load. Titles are not live-synced through the
    CRDT.
 
+**Decisions of 2026-10-09 (invite links and a Workspaces nav link).** Made by the owner
+after this file was generated, so they win over §5.3 and §14 where they differ. Spec:
+`docs/superpowers/specs/2026-10-09-invite-links-and-nav-design.md`; plan:
+`docs/superpowers/plans/2026-10-09-invite-links-and-nav.md`.
+
+1. A visible **Workspaces** link follows the logo on every page and goes to the
+   dashboard. On the dashboard it is the current page (`aria-current="page"`). The logo
+   keeps working.
+2. There is no email service. Inviting an email with no account makes a link the owner
+   copies and sends themselves.
+3. A link works only for the email it was made for. Anyone signed in under another email
+   is told who the invite is for.
+
 **Zoom and the document title (decided 2026-10-03, while closing the toolbar).** §12.4's
 prose says zoom is "applied as `zoom` on the editor container". Built to the letter, that
 leaves the document title outside the zoomed element, so at 70% a 32px title sits over
@@ -1628,6 +1641,23 @@ question for the owner (Decision 2 of the design record); the copy was not chang
 - The open panel's list does not refetch after a restore, so the restore's own new version
   appears only on reopening (the sync server writes updates on a 500 ms timer).
 - No connection band, offline pill or status popover (connection-states plan).
+
+### Invite links and the Workspaces nav link
+
+`2026-10-09-invite-links-and-nav.md`. One additive migration (`Invitation`), three API
+routes and one public page. Decisions 1-3 of 2026-10-09 (Precedence, above).
+
+- **Workspaces link.** `AppShell` renders it directly after the logo
+  (`data-testid="nav-workspaces"`), on the dashboard and inside workspaces. On `/` it
+  carries `aria-current="page"`, computed from `usePathname()` so it is right in the
+  server HTML. The dashboard's old "Workspaces" label (`nav-context`) is gone.
+
+| Where | The design says | Built | Why |
+|---|---|---|---|
+| §5.3 row 2, on the dashboard | A plain "Workspaces" label where the workspace name goes | The Workspaces link, current, in that place; the label is removed | Decision 1. Two "Workspaces" side by side would read as a fault. |
+| Workspaces link position | Not in §5.3 | Directly after the logo, before the workspace name, on every page | Decision 1. |
+| Workspaces link style | Not in §5.3 | An inactive tab (row 3a): 32px, `0 14px`, 14px/500 in `--text-muted`. Current: 600 in `--accent-text`, no background | "Styled like the nav's other text items". The sliding glass pill (§5.4) belongs to the tab strip and is not drawn on this link. |
+| §5.5 below 760px | The workspace name hides | The Workspaces link hides with it | The logo still goes to the dashboard, and the bar must stay inside the 760px no-overflow test. |
 
 ### Deferred, each needing its own plan
 

@@ -180,16 +180,51 @@ test('the nav is a pill sized to its contents and centred', async ({ page }) => 
   await cleanup(label)
 })
 
-test('the dashboard nav labels the slot where tabs would be', async ({ page }) => {
-  const label = `${LABEL}-navcontext`
-  const { owner } = await seedWorkspace(label)
+test('the Workspaces link follows the logo and marks the dashboard as the current page', async ({
+  page,
+}) => {
+  const label = `${LABEL}-navworkspaces`
+  const { owner, workspace } = await seedWorkspace(label)
+  const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
-  await page.goto('/')
+  await page.setViewportSize({ width: 1280, height: 800 })
 
-  // With a content-sized bar an unlabelled slot is a visible hole rather than
-  // slack, which is why this arrives with the pill and not later.
-  await expect(page.getByTestId('nav-context')).toHaveText('Workspaces')
+  await page.goto(documentPath(document))
+  const link = page.getByTestId('nav-workspaces')
+  await expect(link).toHaveText('Workspaces')
+  await expect(link).toHaveAttribute('href', '/')
+  // Away from the dashboard it is an ordinary link. Asserted first: a link that always
+  // carried aria-current, or always wore the current style, would pass the checks below.
+  await expect(link).not.toHaveAttribute('aria-current')
+  await expect(link).toHaveCSS('font-weight', '500')
+  // Directly after the logo.
+  const firstTwo = await page
+    .getByTestId('nav-bar')
+    .evaluate((nav) =>
+      Array.from(nav.children)
+        .slice(0, 2)
+        .map((el) => el.getAttribute('aria-label') ?? el.getAttribute('data-testid')),
+    )
+  expect(firstTwo).toEqual(['All workspaces', 'nav-workspaces'])
+
+  await link.click()
+  await expect(page).toHaveURL('/')
+  const current = page.getByTestId('nav-workspaces')
+  await expect(current).toHaveAttribute('aria-current', 'page')
+  await expect(current).toHaveCSS('font-weight', '600')
+  // It replaces the plain label the dashboard used to show in that place, rather than
+  // doubling it, and there are still no tabs here.
+  await expect(page.getByTestId('nav-context')).toHaveCount(0)
   await expect(page.getByTestId('tab-overview')).toHaveCount(0)
+
+  // The logo keeps working.
+  await page.goto(documentPath(document))
+  await page.getByRole('link', { name: 'All workspaces' }).click()
+  await expect(page).toHaveURL('/')
+
+  // Below 760px it hides with the workspace name; the logo is the way home there.
+  await page.setViewportSize({ width: 700, height: 800 })
+  await expect(page.getByTestId('nav-workspaces')).toBeHidden()
 
   await cleanup(label)
 })
@@ -1279,6 +1314,10 @@ test('moving on again while the bar is still animating holds its width until the
       })
     }
 
+    // Wide enough that the bar is sized by its contents and not capped at the window. The
+    // seeded workspace name makes it about 1340px wide with the Workspaces link, and the cap
+    // at the default 1280 would hide the narrowing this test is about.
+    await page.setViewportSize({ width: 1600, height: 900 })
     await signIn(page, owner.id)
     await page.goto(`${documentPath(first)}?nobc=1`)
     await expect(page.getByTestId('status')).toHaveText('2 here')
