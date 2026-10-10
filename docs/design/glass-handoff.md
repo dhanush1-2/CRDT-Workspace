@@ -1723,6 +1723,41 @@ Known limitations, specific to this work:
   invite page's included.
 - **Used and expired invitations are kept.** Used ones are marked and hidden; expired
   ones stay listed until re-issued or revoked. Nothing purges them.
+- **The link panel is lost when the sheet closes.** Only a hash is stored, so the link
+  cannot be shown again. The Invited list's Copy link re-issues one.
+- **Revoke has no confirm step.** One click deletes the invitation and kills its link.
+  After it, focus moves to the next row's Revoke button, else the previous row's, else
+  the email field.
+- **The Invited list is a snapshot taken when the sheet opens**, refreshed after this
+  owner's own invite, Copy link or Revoke. Another owner's changes appear on the next open.
+- **The invite path also travels in `?next=` on `/api/auth/oauth/*` and on `/login`** (a
+  cancelled or failed sign-in returns to `/login?error=...&next=/invite/<token>`).
+  Hosting access logs record request paths, so the token is in them there too. Both the
+  invite page and `/login` send `Referrer-Policy: no-referrer` and `Cache-Control:
+  no-store`, and the OAuth start route never sends `next` to the provider.
+- **A mid-flow re-invite lands on the invalid page.** If the owner re-invites while the
+  invitee is signing in, the old link dies, the sign-in sweep still accepts the new
+  invitation, and the browser returns to the old link: the invitee sees "no longer
+  valid" although they do have access.
+- **Demoting an owner deletes their pending invitations.** A pending invitation is only
+  as good as the authority of whoever sent it: an owner can invite someone as owner, and
+  if that owner is demoted, the link must not grant more than they could now. The members
+  route does it in the same transaction as the role change, for every pending invitation
+  with `invitedById` equal to the demoted owner in that workspace. Accepted invitations
+  are history and stay; other owners' invitations are untouched. Their links then find
+  nothing and show the invalid page.
+- **Error strings the share sheet can show**, verbatim, in the red `member-error` line
+  unless noted:
+  - "Could not reach the server. Check your connection and try again."
+  - "Your role in this workspace changed. Reload the page." (a 403)
+  - "Could not update that member" (the server's own message when it sends one; also when
+    a role change comes back as anything but a member)
+  - "{email} already has access."
+  - "Could not copy the link. Select it in the field and copy it yourself."
+  - "Could not make a new link. Reload the page and try again."
+  - "Could not revoke that invite. Reload the page and try again."
+  - "Could not load pending invites. Reload the page to try again." (its own line,
+    `invited-error`)
 
 ### Deferred, each needing its own plan
 
