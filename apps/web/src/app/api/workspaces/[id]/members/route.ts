@@ -90,11 +90,28 @@ export async function POST(
       )
     }
 
-    const member = await prisma.workspaceMember.upsert({
-      where: { workspaceId_userId: { workspaceId, userId: invitee.id } },
-      create: { workspaceId, userId: invitee.id, role: parsed.data.role },
-      update: { role: parsed.data.role },
-      select: { userId: true, role: true },
+    // One transaction: the role change and the withdrawal of what an ex-owner sent land
+    // together, so there is no moment where a demoted owner's invitation is still live.
+    const member = await prisma.$transaction(async (tx) => {
+      const before = await tx.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId: invitee.id } },
+        select: { role: true },
+      })
+      const updated = await tx.workspaceMember.upsert({
+        where: { workspaceId_userId: { workspaceId, userId: invitee.id } },
+        create: { workspaceId, userId: invitee.id, role: parsed.data.role },
+        update: { role: parsed.data.role },
+        select: { userId: true, role: true },
+      })
+      if (before?.role === 'owner' && parsed.data.role !== 'owner') {
+        // A pending invitation is only as good as the authority of whoever sent it. An
+        // owner could invite someone as owner; if that owner is demoted, the link must
+        // not hand out more than they can grant now. Used invitations are history and stay.
+        await tx.invitation.deleteMany({
+          where: { workspaceId, invitedById: invitee.id, acceptedAt: null },
+        })
+      }
+      return updated
     })
     const result: MemberPostResult = { kind: 'member', ...member }
     return Response.json(result, { status: 201 })

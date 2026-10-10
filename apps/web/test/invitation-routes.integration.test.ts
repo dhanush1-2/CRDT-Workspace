@@ -183,6 +183,68 @@ describe('POST /api/workspaces/[id]/members', () => {
   })
 })
 
+describe('demoting an owner withdraws what they sent', () => {
+  /** A workspace of its own with two owners, so demoting one never disturbs the shared fixtures. */
+  async function twoOwners(label: string) {
+    const a = await prisma.user.create({ data: { email: email(`${label}-a`), name: 'A' }, select: { id: true } })
+    const b = await prisma.user.create({ data: { email: email(`${label}-b`), name: 'B' }, select: { id: true } })
+    const ws = await prisma.workspace.create({ data: { name: `invroute-${label}-${RUN}`, ownerId: a.id } })
+    await prisma.workspaceMember.createMany({
+      data: [
+        { workspaceId: ws.id, userId: a.id, role: 'owner' },
+        { workspaceId: ws.id, userId: b.id, role: 'owner' },
+      ],
+    })
+    return { a, b, workspaceId: ws.id }
+  }
+
+  async function inviteAs(userId: string, workspace: string, address: string, role: 'viewer' | 'owner') {
+    await as(userId)
+    const response = await postMember(request('POST', { email: address, role }), inWorkspace(workspace))
+    const body = (await response.json()) as MemberPostResult
+    if (body.kind !== 'invitation') throw new Error('expected an invitation')
+    return body
+  }
+
+  it('deletes the demoted owner\'s pending invitations, and their links stop working', async () => {
+    const { a, b, workspaceId: ws } = await twoOwners('demote')
+    const fromA = await inviteAs(a.id, ws, email('demote-x'), 'owner')
+    const fromAToo = await inviteAs(a.id, ws, email('demote-y'), 'viewer')
+    const fromB = await inviteAs(b.id, ws, email('demote-z'), 'viewer')
+
+    await as(b.id)
+    const response = await postMember(
+      request('POST', { email: email('demote-a'), role: 'viewer' }),
+      inWorkspace(ws),
+    )
+    expect(response.status).toBe(201)
+
+    expect(await prisma.invitation.findUnique({ where: { id: fromA.invitation.id } })).toBeNull()
+    expect(await prisma.invitation.findUnique({ where: { id: fromAToo.invitation.id } })).toBeNull()
+    expect(await resolveInvite(tokenOf(fromA.link), null)).toEqual({ kind: 'invalid' })
+    // B is still an owner: what B sent is untouched.
+    expect(await prisma.invitation.findUnique({ where: { id: fromB.invitation.id } })).not.toBeNull()
+    expect((await resolveInvite(tokenOf(fromB.link), null)).kind).toBe('sign-in')
+  })
+
+  it('keeps what an owner sent when their role does not drop, and what was already accepted', async () => {
+    const { a, b, workspaceId: ws } = await twoOwners('keep')
+    const pending = await inviteAs(a.id, ws, email('keep-x'), 'viewer')
+    const used = await inviteAs(a.id, ws, email('keep-used'), 'viewer')
+    await prisma.invitation.update({ where: { id: used.invitation.id }, data: { acceptedAt: new Date() } })
+
+    // Owner to owner is not a demotion.
+    await as(b.id)
+    await postMember(request('POST', { email: email('keep-a'), role: 'owner' }), inWorkspace(ws))
+    expect(await prisma.invitation.findUnique({ where: { id: pending.invitation.id } })).not.toBeNull()
+
+    // A demotion removes the pending one only: the accepted row is history.
+    await postMember(request('POST', { email: email('keep-a'), role: 'editor' }), inWorkspace(ws))
+    expect(await prisma.invitation.findUnique({ where: { id: pending.invitation.id } })).toBeNull()
+    expect(await prisma.invitation.findUnique({ where: { id: used.invitation.id } })).not.toBeNull()
+  })
+})
+
 describe('GET /api/workspaces/[id]/invitations', () => {
   it('lists pending invitations for owners, with no token or hash in sight', async () => {
     await inviteAsOwner('listed')
