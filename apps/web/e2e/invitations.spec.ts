@@ -35,6 +35,11 @@ test('a signed-out visitor sees who invited them to what, and signs in back to t
   })
 
   const response = await page.goto(link)
+  // What the dev server really sends. next.config.ts asks for `no-store` on this path, but
+  // `next dev` replaces every Cache-Control with `no-cache, must-revalidate` so that edits
+  // show up, so that is the value to assert here. A production server sends the configured
+  // `no-store` (checked by hand against `next start`; this test cannot run against one).
+  expect(response?.headers()['cache-control']).toBe('no-cache, must-revalidate')
   // A real header, not only the meta tag: the meta comes after the stylesheet and script
   // tags in the HTML, whose requests would already have carried the token in Referer.
   expect(response?.headers()['referrer-policy']).toBe('no-referrer')
@@ -51,6 +56,15 @@ test('a signed-out visitor sees who invited them to what, and signs in back to t
   await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'no-referrer')
 
   await cleanup(label)
+})
+
+test('/login sends no referrer, since a cancelled invite sign-in returns there with the invite path', async ({
+  page,
+}) => {
+  const response = await page.goto(`/login?error=access_denied&next=${encodeURIComponent(`/invite/${'A'.repeat(43)}`)}`)
+  expect(response?.headers()['referrer-policy']).toBe('no-referrer')
+  // As above: the dev server's replacement for the configured no-store.
+  expect(response?.headers()['cache-control']).toBe('no-cache, must-revalidate')
 })
 
 test('long names wrap inside the card instead of overflowing it', async ({ page }) => {
@@ -384,6 +398,108 @@ test('revoking an invite removes it and kills its link', async ({ page, browser 
   const visitor = await visitSignedOut(browser, url)
   await expect(visitor.page.getByTestId('invite-invalid')).toHaveText(INVALID)
   await visitor.context.close()
+
+  await cleanup(label)
+})
+
+test('a failed copy says so, keeps the link on screen, and a later copy clears the message', async ({
+  page,
+}) => {
+  const label = `${LABEL}-noclip`
+  const { owner, workspace } = await seedWorkspace(label)
+  const email = `${label}-new@e2e.test`
+  // No clipboard permission is granted to this context, so writeText rejects.
+  await signIn(page, owner.id)
+
+  const url = await inviteFromSheet(page, `/workspaces/${workspace.id}`, email, 'editor')
+  const sheet = page.getByTestId('sheet')
+  await expect(sheet.getByTestId('member-error')).toHaveCount(0)
+
+  await sheet.getByTestId('invite-link-copy').click()
+  await expect(sheet.getByTestId('member-error')).toHaveText(
+    'Could not copy the link. Select it in the field and copy it yourself.',
+  )
+  // The link is still there to copy by hand, and nothing claimed it was copied.
+  await expect(sheet.getByTestId('invite-link')).toHaveValue(url)
+  await expect(page.getByTestId('toast').filter({ hasText: /copied/i })).toHaveCount(0)
+
+  // Permission granted: the next copy works and the old message goes.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await sheet.getByTestId('invite-link-copy').click()
+  await expect(page.getByTestId('toast').filter({ hasText: 'Link copied' })).toBeVisible()
+  await expect(sheet.getByTestId('member-error')).toHaveCount(0)
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(url)
+
+  await cleanup(label)
+})
+
+test('an expired invite is marked, and Copy link brings it back', async ({ page, browser }) => {
+  const label = `${LABEL}-expired`
+  const { owner, workspace } = await seedWorkspace(label)
+  const email = `${label}-new@e2e.test`
+  const old = await invite({ workspaceId: workspace.id, invitedById: owner.id, email, role: 'editor' })
+  await prisma.invitation.update({ where: { id: old.id }, data: { expiresAt: new Date(Date.now() - 60_000) } })
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await signIn(page, owner.id)
+
+  await page.goto(`/workspaces/${workspace.id}`)
+  await page.getByTestId('share').click()
+  const sheet = page.getByTestId('sheet')
+  const row = sheet.getByTestId(`invited-${old.id}`)
+  await expect(row).toContainText('link expired')
+  const stale = await visitSignedOut(browser, old.link)
+  await expect(stale.page.getByTestId('invite-invalid')).toHaveText(INVALID)
+  await stale.context.close()
+
+  await row.getByTestId(`invited-copy-${old.id}`).click()
+  await expect(page.getByTestId('toast').filter({ hasText: `New link copied for ${email}` })).toBeVisible()
+  // Revived: no longer marked, and the new link opens the invite.
+  await expect(row).not.toContainText('link expired')
+  await expect(row).toContainText('Can edit')
+  const fresh = await sheet.getByTestId('invite-link').inputValue()
+  const visitor = await visitSignedOut(browser, fresh)
+  await expect(visitor.page.getByTestId('invite-summary')).toContainText('invited you to edit')
+  await visitor.context.close()
+
+  await cleanup(label)
+})
+
+test('after Revoke, focus moves to the next row, else the previous, else the email field', async ({ page }) => {
+  const label = `${LABEL}-focus`
+  const { owner, workspace } = await seedWorkspace(label)
+  // Created one after another, so they list in this order.
+  const ids: string[] = []
+  for (const name of ['a', 'b', 'c']) {
+    const made = await invite({
+      workspaceId: workspace.id,
+      invitedById: owner.id,
+      email: `${label}-${name}@e2e.test`,
+      role: 'viewer',
+    })
+    ids.push(made.id)
+  }
+  const [a, b, c] = ids as [string, string, string]
+  await signIn(page, owner.id)
+  await page.goto(`/workspaces/${workspace.id}`)
+  await page.getByTestId('share').click()
+  const sheet = page.getByTestId('sheet')
+  const revoke = (id: string) => sheet.getByTestId(`invited-revoke-${id}`)
+  await expect(revoke(c)).toBeVisible()
+
+  // The middle row: focus goes to the row that was below it.
+  await revoke(b).click()
+  await expect(sheet.getByTestId(`invited-${b}`)).toHaveCount(0)
+  await expect(revoke(c)).toBeFocused()
+
+  // The last row: there is no next one, so the previous.
+  await revoke(c).click()
+  await expect(sheet.getByTestId(`invited-${c}`)).toHaveCount(0)
+  await expect(revoke(a)).toBeFocused()
+
+  // The only row: the list is gone, and focus goes to the email field.
+  await revoke(a).click()
+  await expect(sheet.getByTestId('invited-list')).toHaveCount(0)
+  await expect(sheet.getByTestId('member-email')).toBeFocused()
 
   await cleanup(label)
 })
