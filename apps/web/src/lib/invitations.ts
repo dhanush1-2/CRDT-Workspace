@@ -38,6 +38,10 @@ const expiryFrom = (now: Date) => new Date(now.getTime() + INVITE_TTL_MS)
  * Stores a pending invitation for an email with no account, or replaces the one that
  * email already has in this workspace: new token, role, document, inviter and expiry,
  * and not accepted. The token's hash changes, so the old link stops working.
+ *
+ * Resetting `acceptedAt` re-opens a used invitation. That is deliberate: this is only
+ * called for an email with no account, so inviting it again means the owner wants it
+ * to work again.
  */
 export async function createOrReplaceInvitation(input: {
   workspaceId: string
@@ -99,7 +103,8 @@ export async function revokeInvitation(workspaceId: string, invitationId: string
 export async function listPendingInvitations(workspaceId: string, now = new Date()): Promise<InvitationView[]> {
   const rows = await prisma.invitation.findMany({
     where: { workspaceId, acceptedAt: null },
-    orderBy: { createdAt: 'asc' },
+    // id breaks a tie, so two invitations made in the same millisecond list in a fixed order.
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: VIEW_SELECT,
   })
   return rows.map((row) => toView(row, now))
@@ -111,8 +116,10 @@ export async function listPendingInvitations(workspaceId: string, now = new Date
  * re-issue or a revoke in between wins). Then the membership is inserted with ON
  * CONFLICT DO NOTHING, so someone who is already a member keeps their role. An invite
  * never changes a role, up or down.
+ *
+ * Exported for the integration test, which changes the row underneath it.
  */
-async function acceptOne(
+export async function acceptOne(
   match: { id: string; tokenHash?: string },
   userId: string,
   now: Date,
@@ -220,6 +227,11 @@ export async function resolveInvite(
   }
   if (!isInvitee) return { kind: 'mismatch', invitedEmail: row.email, signedInEmail: user.email }
 
-  const accepted = await acceptOne({ id: row.id, tokenHash }, user.id, now)
-  return accepted ? { kind: 'redirect', to: destination } : { kind: 'invalid' }
+  if (await acceptOne({ id: row.id, tokenHash }, user.id, now)) return { kind: 'redirect', to: destination }
+
+  // Nothing matched. Either the same person's other tab accepted it a moment ago (a double
+  // click), in which case they are a member now and belong in the document, or it was
+  // re-issued, revoked or expired in between. Read the row once more to tell which.
+  const settled = await prisma.invitation.findUnique({ where: { tokenHash }, select: { acceptedAt: true } })
+  return settled?.acceptedAt != null ? { kind: 'redirect', to: destination } : { kind: 'invalid' }
 }

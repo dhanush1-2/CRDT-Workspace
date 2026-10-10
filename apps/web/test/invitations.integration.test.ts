@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma } from '@crdt/db'
 import type { Role } from '@crdt/shared/types'
 import {
+  acceptOne,
   acceptPendingInvitations,
   createOrReplaceInvitation,
   listPendingInvitations,
@@ -10,7 +11,7 @@ import {
   resolveInvite,
   revokeInvitation,
 } from '../src/lib/invitations.js'
-import { INVITE_TTL_MS } from '../src/lib/invite-token.js'
+import { INVITE_TTL_MS, hashInviteToken } from '../src/lib/invite-token.js'
 
 const RUN = Date.now().toString(36)
 const email = (label: string) => `invite-${label}-${RUN}@example.com`
@@ -41,8 +42,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Workspace.ownerId has no foreign key; workspaces go first, invitations with them.
-  await prisma.workspace.deleteMany({ where: { name: { endsWith: `-${RUN}` } } })
-  await prisma.user.deleteMany({ where: { email: { endsWith: `-${RUN}@example.com` } } })
+  await prisma.workspace.deleteMany({ where: { name: { startsWith: 'invite-', endsWith: `-${RUN}` } } })
+  await prisma.user.deleteMany({ where: { email: { startsWith: 'invite-', endsWith: `-${RUN}@example.com` } } })
   await prisma.$disconnect()
 })
 
@@ -114,6 +115,17 @@ describe('createOrReplaceInvitation', () => {
     expect(await prisma.invitation.count({ where: { workspaceId, email: email('again') } })).toBe(1)
     expect(await resolveInvite(tokenOf(first.link), null)).toEqual({ kind: 'invalid' })
     expect((await resolveInvite(tokenOf(second.link), null)).kind).toBe('sign-in')
+  })
+})
+
+describe('createOrReplaceInvitation, concurrently', () => {
+  it('two calls for the same workspace and email leave one row and exactly one live link', async () => {
+    const results = await Promise.all([invite('twice', { role: 'viewer' }), invite('twice', { role: 'editor' })])
+
+    expect(results[0].invitation.id).toBe(results[1].invitation.id)
+    expect(await prisma.invitation.count({ where: { workspaceId, email: email('twice') } })).toBe(1)
+    const outcomes = await Promise.all(results.map((r) => resolveInvite(tokenOf(r.link), null)))
+    expect(outcomes.map((o) => o.kind).sort()).toEqual(['invalid', 'sign-in'])
   })
 })
 
@@ -214,6 +226,36 @@ describe('resolveInvite', () => {
     })
   })
 
+  it('sends the invitee on in both tabs when two opens race, with one membership', async () => {
+    const { link } = await invite('double', { role: 'editor' })
+    const invitee = await makeUser('double')
+
+    const [first, second] = await Promise.all([
+      resolveInvite(tokenOf(link), invitee),
+      resolveInvite(tokenOf(link), invitee),
+    ])
+
+    expect(first).toEqual({ kind: 'redirect', to: documentPath })
+    expect(second).toEqual({ kind: 'redirect', to: documentPath })
+    expect(
+      await prisma.workspaceMember.count({ where: { workspaceId, userId: invitee.id } }),
+    ).toBe(1)
+    expect(await roleOf(invitee.id)).toBe('editor')
+  })
+
+  it('treats the instant of expiry as expired, and the millisecond before as live', async () => {
+    const made = new Date('2026-10-09T12:00:00.000Z')
+    const { link, invitation } = await invite('edge', { now: made })
+    const expiresAt = new Date(invitation.expiresAt)
+    const justBefore = new Date(expiresAt.getTime() - 1)
+    const invitee = await makeUser('edge')
+
+    expect(await resolveInvite(tokenOf(link), null, expiresAt)).toEqual({ kind: 'invalid' })
+    expect(await resolveInvite(tokenOf(link), invitee, expiresAt)).toEqual({ kind: 'invalid' })
+    expect(await roleOf(invitee.id)).toBeNull()
+    expect((await resolveInvite(tokenOf(link), null, justBefore)).kind).toBe('sign-in')
+  })
+
   it('does not accept an expired invitation even for the person it was for', async () => {
     const late = await invite('late', { now: longAgo() })
     const invitee = await makeUser('late')
@@ -276,6 +318,97 @@ describe('listPendingInvitations', () => {
       [email('list-stale'), true],
     ])
     expect(Object.keys(list[0]!).sort()).toEqual(['email', 'expired', 'expiresAt', 'id', 'role'])
+  })
+})
+
+describe('expiry in the list', () => {
+  it('marks an invitation expired from the instant of expiry, not a millisecond before', async () => {
+    const listWorkspaceId = (
+      await prisma.workspace.create({ data: { name: `invite-edge-${RUN}`, ownerId: owner.id } })
+    ).id
+    const { invitation } = await invite('list-edge', { workspaceId: listWorkspaceId, documentId: null })
+    const expiresAt = new Date(invitation.expiresAt)
+
+    const at = await listPendingInvitations(listWorkspaceId, expiresAt)
+    const before = await listPendingInvitations(listWorkspaceId, new Date(expiresAt.getTime() - 1))
+    expect(at.map((i) => i.expired)).toEqual([true])
+    expect(before.map((i) => i.expired)).toEqual([false])
+  })
+})
+
+describe('listPendingInvitations, order', () => {
+  it('lists invitations made in the same millisecond in a fixed order, by id', async () => {
+    const listWorkspaceId = (
+      await prisma.workspace.create({ data: { name: `invite-order-${RUN}`, ownerId: owner.id } })
+    ).id
+    const createdAt = new Date('2026-10-09T12:00:00.000Z')
+    const ids = ['inv-order-c', 'inv-order-a', 'inv-order-b'].map((id) => `${id}-${RUN}`)
+    for (const id of ids) {
+      await prisma.invitation.create({
+        data: {
+          id,
+          workspaceId: listWorkspaceId,
+          email: email(id),
+          role: 'viewer',
+          tokenHash: hashInviteToken(id),
+          expiresAt: new Date(createdAt.getTime() + INVITE_TTL_MS),
+          createdAt,
+        },
+      })
+    }
+
+    const list = await listPendingInvitations(listWorkspaceId, createdAt)
+    expect(list.map((i) => i.id)).toEqual([...ids].sort())
+  })
+})
+
+describe('acceptOne, against a row that changes underneath it', () => {
+  // acceptOne is the atomic step. Its callers filter first, so each clause of its where
+  // is only reachable by changing the row after that filter and before the update.
+  async function pending(label: string, now?: Date) {
+    const made = await invite(label, { now, documentId: null })
+    const user = await makeUser(label)
+    return { ...made, user, tokenHash: hashInviteToken(tokenOf(made.link)) }
+  }
+
+  it('accepts a pending, unexpired invitation that still carries the token, once', async () => {
+    const { invitation, user, tokenHash } = await pending('one-ok')
+    expect(await acceptOne({ id: invitation.id, tokenHash }, user.id, new Date())).toBe(true)
+    expect(await roleOf(user.id)).toBe('editor')
+  })
+
+  it('refuses when the invitation was re-issued after the token was read', async () => {
+    const { invitation, user, tokenHash } = await pending('one-reissued')
+    await reissueInvitation(workspaceId, invitation.id)
+
+    expect(await acceptOne({ id: invitation.id, tokenHash }, user.id, new Date())).toBe(false)
+    expect(await roleOf(user.id)).toBeNull()
+    expect((await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })).acceptedAt).toBeNull()
+  })
+
+  it('refuses when the invitation was accepted after it was read', async () => {
+    const { invitation, user, tokenHash } = await pending('one-used')
+    const first = await makeUser('one-used-first')
+    expect(await acceptOne({ id: invitation.id }, first.id, new Date())).toBe(true)
+
+    expect(await acceptOne({ id: invitation.id, tokenHash }, user.id, new Date())).toBe(false)
+    expect(await roleOf(user.id)).toBeNull()
+  })
+
+  it('refuses at the instant of expiry and accepts a millisecond before it', async () => {
+    const { invitation, user, tokenHash } = await pending('one-edge')
+    const expiresAt = new Date(invitation.expiresAt)
+
+    expect(await acceptOne({ id: invitation.id, tokenHash }, user.id, expiresAt)).toBe(false)
+    expect(await roleOf(user.id)).toBeNull()
+    expect(await acceptOne({ id: invitation.id, tokenHash }, user.id, new Date(expiresAt.getTime() - 1))).toBe(true)
+    expect(await roleOf(user.id)).toBe('editor')
+  })
+
+  it('refuses a long-expired invitation', async () => {
+    const { invitation, user } = await pending('one-old', longAgo())
+    expect(await acceptOne({ id: invitation.id }, user.id, new Date())).toBe(false)
+    expect(await roleOf(user.id)).toBeNull()
   })
 })
 
