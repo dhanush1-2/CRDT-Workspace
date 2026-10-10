@@ -3,7 +3,7 @@ import styles from './privacy.module.css'
 
 export const metadata = { title: 'Privacy · CRDT Workspace' }
 
-const CONTACT = 'dhanush12232002@gmail.com'
+const CONTACT = 'cdhanush1223@gmail.com'
 
 // Public, like /login: Google's consent screen links here, so it must load signed out.
 // Every claim below is checked against the code; change the page when the data changes.

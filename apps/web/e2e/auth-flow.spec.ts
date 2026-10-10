@@ -34,9 +34,9 @@ test('the privacy policy is public and linked from the login page', async ({ pag
   await page.getByTestId('privacy-link').click()
   await expect(page).toHaveURL(/\/privacy$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'dhanush12232002@gmail.com' }).first()).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'cdhanush1223@gmail.com' }).first()).toHaveAttribute(
     'href',
-    'mailto:dhanush12232002@gmail.com',
+    'mailto:cdhanush1223@gmail.com',
   )
 })
 
