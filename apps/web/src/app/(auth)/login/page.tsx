@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/current-user'
 import { safeNext } from '@/lib/safe-next'
 import { oauthErrorMessage } from '@/lib/oauth/errors'
-import { PROVIDERS, availableProviders } from '@/lib/oauth/providers'
+import { ProviderButtons } from '../ProviderButtons'
 import styles from '../auth.module.css'
 import ui from '@/components/ui/ui.module.css'
 
@@ -18,7 +18,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   // redirect() signals by throwing — it is deliberately outside any try/catch.
   if (await getCurrentUser()) redirect(destination)
 
-  const providers = availableProviders()
   // ?error= only selects one of a fixed set of messages; it is never displayed.
   const message = oauthErrorMessage(error)
 
@@ -33,26 +32,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           {message}
         </p>
       )}
-      {providers.length === 0 ? (
-        <p className={styles.alt} data-testid="no-providers">
-          No sign-in providers are configured.
-        </p>
-      ) : (
-        <div className={styles.providers}>
-          {providers.map((id) => (
-            <a
-              key={id}
-              className={`${styles.provider} ${
-                id === 'github' ? styles.providerAccent : styles.providerGlass
-              }`}
-              href={`/api/auth/oauth/${id}?next=${encodeURIComponent(destination)}`}
-              data-testid={`signin-${id}`}
-            >
-              Continue with {PROVIDERS[id].label}
-            </a>
-          ))}
-        </div>
-      )}
+      <ProviderButtons next={destination} />
       <p className={styles.alt}>
         New here? Signing in creates your account and a workspace of your own.{' '}
         <Link href="/privacy" data-testid="privacy-link">Privacy</Link>

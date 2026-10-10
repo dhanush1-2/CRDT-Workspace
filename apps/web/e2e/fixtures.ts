@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { prisma } from '@crdt/db'
 import type { Role } from '@crdt/shared/types'
+import { createOrReplaceInvitation } from '../src/lib/invitations.js'
 import { signSession } from '../src/lib/session.js'
 
 export async function seedWorkspace(label: string) {
@@ -58,4 +59,22 @@ export async function signIn(page: Page, userId: string) {
 export async function cleanup(label: string) {
   await prisma.workspace.deleteMany({ where: { name: label } })
   await prisma.user.deleteMany({ where: { email: { contains: `${label}-` } } })
+}
+
+/**
+ * A pending invitation, made exactly as the members route makes one. Returns its id and
+ * its link's path (/invite/<token>); the token exists nowhere else.
+ */
+export async function invite(input: {
+  workspaceId: string
+  invitedById: string
+  email: string
+  role: Role
+  documentId?: string
+}) {
+  const { invitation, link } = await createOrReplaceInvitation({
+    ...input,
+    documentId: input.documentId ?? null,
+  })
+  return { id: invitation.id, link }
 }

@@ -124,3 +124,24 @@
   font-size: 13px;
   color: var(--text-faint);
 }
+
+/* A <button> wearing the provider look: undo the browser's button font, width and
+   cursor. Used by the invite page's Sign out. */
+.providerButton {
+  width: 100%;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.providerButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Workspace names, document titles, inviter names and emails are other people's text and
+   can be one unbroken word. Let it break anywhere, and count that in the card's minimum
+   width, so a long one wraps inside the card instead of pushing past it. */
+.inviteText {
+  overflow-wrap: anywhere;
+}

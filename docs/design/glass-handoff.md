@@ -1659,6 +1659,33 @@ routes and one public page. Decisions 1-3 of 2026-10-09 (Precedence, above).
 | Workspaces link style | Not in §5.3 | An inactive tab (row 3a): 32px, `0 14px`, 14px/500 in `--text-muted`. Current: 600 in `--accent-text`, no background | "Styled like the nav's other text items". The sliding glass pill (§5.4) belongs to the tab strip and is not drawn on this link. |
 | §5.5 below 760px | The workspace name hides | The Workspaces link hides with it | The logo still goes to the dashboard, and the bar must stay inside the 760px no-overflow test. |
 
+- **Invite page, `/invite/[token]`.** Public, in the `(auth)` group, so it is the sign-in
+  card of §7 (mark, 30px heading, lede in `--text-muted`, the two provider buttons,
+  13px footnote). States:
+  - Valid, signed out: "You're invited", then "{inviter} invited you to {edit|view|own}
+    {document} in {workspace}. Sign in as {email} to open it." Without a document:
+    "... to {verb} {workspace}." An inviter who deleted their account is "Someone".
+    The provider buttons return to the same page.
+  - Signed in as the invited email: accepted, and redirected to the document, or the
+    workspace if none. A used link opened by that same person redirects again.
+  - Signed in as another email: "This invite is for {email}. You're signed in as
+    {other}." and a Sign out button in the Google button's style, which stays on the
+    page.
+  - Expired, revoked, used (by anyone else) or unknown: one message, "This invite link is
+    no longer valid. Ask the person who shared it for a new one." HTTP 200 in every case.
+  - `<meta name="referrer" content="no-referrer">`, because the token is in the URL.
+  - Deviations from §7: the footnote reads "New here? Signing in creates your account."
+    (no workspace is created by an invitation); the invalid state adds a "Go to your
+    workspaces" link in the footnote's style; the lede carries `overflow-wrap: anywhere`
+    (`.inviteText`), because workspace names, document titles, inviter names and emails
+    are other people's text and can be one unbroken word, which would otherwise push
+    past the 400px card. Sign out is a `<button>` wearing the provider look
+    (`.providerButton` undoes the browser's font, width and cursor), disabled at 50%
+    opacity while it runs. Its press and hover motion is the providers' own, inside
+    `prefers-reduced-motion: no-preference`.
+- **Signing in accepts pending invitations** for the user's stored email, in the OAuth
+  callback, without the link. An existing member's role never changes.
+
 ### Deferred, each needing its own plan
 
 - **Status popover, offline and syncing pills.** The status pill itself is built (see

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { colorFor } from '@/lib/color'
 import type { SessionUser } from '@/lib/current-user'
-import { clearVersionStateCache } from '@/lib/history-client'
+import { signOut } from '@/lib/sign-out'
 import styles from './user-menu.module.css'
 
 export function UserMenu({ user }: { user: SessionUser }) {
@@ -76,19 +76,12 @@ export function UserMenu({ user }: { user: SessionUser }) {
             disabled={pending}
             onClick={async () => {
               setPending(true)
-              try {
-                await fetch('/api/auth/logout', { method: 'POST' })
-              } catch {
-                // fetch rejects — rather than resolving with an error status — when the
-                // request never reaches the server: offline, DNS failure, connection
-                // refused. Without this the rejection escapes the handler, pending stays
-                // true, and the button sits disabled forever with no way to retry.
+              // False when the request never reached the server. Without re-enabling here
+              // the button would sit disabled forever with no way to retry.
+              if (!(await signOut())) {
                 setPending(false)
                 return
               }
-              // The next person to sign in on this browser must not be served a document
-              // state this one fetched: the cache is keyed by document and version only.
-              clearVersionStateCache()
               // refresh() drops the server tree rendered for the old session
               // before navigating, so no signed-in data stays on screen.
               router.refresh()
