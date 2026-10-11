@@ -857,7 +857,7 @@ test('the nav status pill shows Synced on a document and does not exist on the d
   await cleanup(label)
 })
 
-test('a document sits on the 780px glass sheet and a board does not', async ({ page }) => {
+test('a document sits on the 780px sheet and a board does not', async ({ page }) => {
   const label = `${LABEL}-sheet`
   const { owner, workspace } = await seedWorkspace(label)
   const doc = await createDocument(workspace.id, 'doc')
@@ -886,10 +886,16 @@ test('a document sits on the 780px glass sheet and a board does not', async ({ p
   await expect(page.locator('.editor .ProseMirror')).toBeVisible()
   const sheet = await sheetAbove('.editor')
   expect(sheet).not.toBeNull()
-  expect(sheet!.radius).toBe('30px')
-  expect(sheet!.paddingTop).toBe('56px')
-  expect(sheet!.paddingBottom).toBe('96px')
+  expect(sheet!.radius).toBe('2px')
+  // The toolbar now sits inside the sheet, so the sheet has no padding of its own; the body
+  // under the toolbar carries the text's 40 / 56 / 96 (the reference's sheet padding).
+  expect(sheet!.paddingTop).toBe('0px')
+  expect(sheet!.paddingBottom).toBe('0px')
   expect(sheet!.width).toBeLessThanOrEqual(780)
+  const body = page.getByTestId('document-body')
+  await expect(body).toHaveCSS('padding-top', '40px')
+  await expect(body).toHaveCSS('padding-left', '56px')
+  await expect(body).toHaveCSS('padding-bottom', '96px')
 
   // The temporary 24px editor padding is gone; the sheet owns the padding now.
   const editorPadding = await page

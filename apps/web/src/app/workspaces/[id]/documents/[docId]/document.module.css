@@ -1,29 +1,39 @@
+/*
+  The page sheet (spec, "Material"): solid white, a hairline, 2px corners, and the floating
+  shadow a sheet has (decision 15). The toolbar sits inside it, at its top; .body carries
+  the text's padding under it.
+*/
 .page {
   max-width: 780px;
   /* 28px below the nav, per the design owner's review: the sheet was touching the
-     bottom of the bar. The board is not wrapped in .page and its scroller already
-     carries the same 28px of top padding. */
+     bottom of the bar. */
   margin: 28px auto 64px;
-  border-radius: var(--r-sheet);
-  padding: 56px 56px 96px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  box-shadow: var(--glass-hl);
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
 }
 
-/* The View tab's Wide (handoff 12.4 and 12.7). Narrow is the 780px above. */
+/* The View tab's Wide. Narrow is the 780px above. */
 .page[data-width='wide'] {
   max-width: 1040px;
 }
 
-/* The sheet widens and narrows over .55s rather than jumping (handoff 12.4). Reduced
-   motion gets the jump. */
+/* The sheet widens and narrows over .55s rather than jumping. Reduced motion gets the jump. */
 @media (prefers-reduced-motion: no-preference) {
   .page {
     transition: max-width var(--dur) var(--ease);
   }
+}
+
+/* The text's padding: 56 / 56 / 96 without a toolbar (a read-only preview), 40 on top under
+   the toolbar (the reference's sheet padding in both cases). */
+.body {
+  padding: 56px 56px 96px;
+}
+
+.page[data-toolbar='true'] > .body {
+  padding-top: 40px;
 }
 
 /*
@@ -37,16 +47,7 @@
   text-wrap: pretty;
 }
 
-/* Same reason globals.css swaps the sheet tokens: without backdrop blur, 0.78 white
-   over the canvas blobs loses text contrast. */
-@supports not (backdrop-filter: blur(1px)) {
-  .page {
-    background: rgba(255, 255, 255, 0.92);
-  }
-}
-
-/* A board's title: smaller than a document's, above the columns, aligned with the
-   board's 1000px measure (the toolbar's). */
+/* A board's title: smaller than a document's, above the columns, on a 1000px measure. */
 .boardHeading {
   max-width: 1000px;
   margin: 24px auto 0;
@@ -62,7 +63,7 @@
   padding: 0;
   margin: 0;
   border: 0;
-  border-radius: var(--r-item);
+  border-radius: var(--r);
   background: transparent;
   color: inherit;
   font: inherit;

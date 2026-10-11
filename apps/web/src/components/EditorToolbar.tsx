@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import type { Editor } from '@tiptap/react'
 import { MENU_SCOPE } from './EditorMenu'
 import { HomeTools } from './HomeTools'
@@ -63,6 +63,37 @@ function useWordCount(editor: Editor | null): number {
   return count
 }
 
+/**
+ * Whether the sticky toolbar has left its place at the top of the sheet. At rest its top is
+ * the sheet's top plus the sheet's 1px border; the gap grows past 2px only while the page
+ * scrolls the sheet up under it. Read on scroll and resize, at most once a frame.
+ */
+function useStuck(root: RefObject<HTMLElement | null>): boolean {
+  const [stuck, setStuck] = useState(false)
+  useEffect(() => {
+    const element = root.current
+    const sheet = element?.parentElement
+    if (!element || !sheet) return
+    let frame = 0
+    const read = () => {
+      frame = 0
+      setStuck(element.getBoundingClientRect().top - sheet.getBoundingClientRect().top > 2)
+    }
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(read)
+    }
+    read()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      if (frame !== 0) cancelAnimationFrame(frame)
+    }
+  }, [root])
+  return stuck
+}
+
 interface EditorToolbarProps {
   /** Null until Tiptap has mounted, which is after hydration. */
   editor: Editor | null
@@ -77,9 +108,9 @@ interface EditorToolbarProps {
 }
 
 /**
- * The Word-style ribbon (handoff 12.1): a floating glass panel above the page, not part
- * of it. Row 1 holds the tabs, a "View only" chip for viewers and the word count; row 2
- * holds the active tab's tools, added group by group.
+ * The Word-style ribbon, sticky at the top of the page sheet (spec, "Document toolbar").
+ * Row 1 holds the tabs, a "View only" chip for viewers and the word count; row 2 holds the
+ * open tab's tools. It takes the floating shadow while stuck.
  */
 export function EditorToolbar({ editor, editable, readOnly, view }: EditorToolbarProps) {
   const ids = useId()
@@ -89,6 +120,8 @@ export function EditorToolbar({ editor, editable, readOnly, view }: EditorToolba
   const words = useWordCount(editor)
   const roving = useRovingToolRow()
   const lastColours = useLastColours()
+  const root = useRef<HTMLElement>(null)
+  const stuck = useStuck(root)
 
   // A viewer cannot edit, so Home and Insert are not disabled, they are absent. Derived
   // rather than stored so a role change cannot leave the open tab pointing at one.
@@ -119,13 +152,15 @@ export function EditorToolbar({ editor, editable, readOnly, view }: EditorToolba
 
   return (
     <section
+      ref={root}
       className={styles.root}
       aria-label="Document toolbar"
       data-testid="tb-root"
+      data-stuck={stuck}
       // The bounds of "outside the toolbar" for a menu's click-away close.
       {...MENU_SCOPE}
     >
-      <div className={styles.panel}>
+      <div className={styles.panel} data-testid="tb-panel">
         <div className={styles.tabsRow}>
           <div
             className={styles.tabs}

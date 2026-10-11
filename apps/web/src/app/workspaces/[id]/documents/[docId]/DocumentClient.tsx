@@ -152,9 +152,10 @@ export function DocumentClient({
     </h1>
   )
 
-  // The toolbar floats above the sheet as its own panel, so the editor can no longer
-  // sit inside a wrapper rendered here: DocumentEditor renders both, and takes the
-  // sheet's class and the heading so the sheet is still styled and titled from here.
+  // The toolbar sits inside the sheet, at its top (spec, "Document toolbar"), so the editor
+  // cannot sit inside a wrapper rendered here: DocumentEditor renders the sheet, the toolbar
+  // and the body, and takes the sheet's classes and the heading so they are still styled and
+  // titled from here.
   //
   // The board is a horizontal scroller with its own gutters and would be crushed into
   // a 780px column, so it gets no sheet and no toolbar.
@@ -166,6 +167,7 @@ export function DocumentClient({
         user={user}
         readOnly={readOnly}
         sheetClassName={styles.page}
+        bodyClassName={styles.body}
         heading={heading}
       />
     ) : (
@@ -214,6 +216,7 @@ export function DocumentClient({
         type={type}
         heading={previewHeading}
         sheetClassName={styles.page}
+        bodyClassName={styles.body}
         fallback={live}
       />
     </>

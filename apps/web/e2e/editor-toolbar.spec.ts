@@ -58,19 +58,24 @@ async function settled(page: Page) {
   })
 }
 
-test('the toolbar sits above the document sheet, not inside it', async ({ page }) => {
+test('the toolbar sits inside the document sheet, at its top, inset 10px', async ({ page }) => {
   await openDocument(page, `${LABEL}-above`)
+  await settled(page)
 
-  const toolbar = (await page.getByTestId('tb-root').boundingBox())!
+  // A child of the sheet, ahead of the text (spec, "Document toolbar": by default the bar
+  // sits inside the page sheet).
+  expect(
+    await page.getByTestId('tb-root').evaluate((el) => el.parentElement?.dataset.testid),
+  ).toBe('document-page')
   const sheet = (await page.getByTestId('document-page').boundingBox())!
-  // Bottom edge of the ribbon clears the top edge of the sheet: two panels, stacked.
-  expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(sheet.y)
-
-  // And it is not a descendant of the sheet, which would put it inside the glass page.
-  const nested = await page
-    .getByTestId('tb-root')
-    .evaluate((el) => el.closest('[data-testid="document-page"]') !== null)
-  expect(nested).toBe(false)
+  const panel = (await page.getByTestId('tb-panel').boundingBox())!
+  // The sheet's 1px border plus the 10px inset, on the top and on both sides.
+  expect(panel.y - sheet.y).toBeCloseTo(11, 0)
+  expect(panel.x - sheet.x).toBeCloseTo(11, 0)
+  expect(sheet.x + sheet.width - (panel.x + panel.width)).toBeCloseTo(11, 0)
+  // And the text comes after it, in the same sheet.
+  const body = (await page.getByTestId('document-body').boundingBox())!
+  expect(body.y).toBeGreaterThanOrEqual(panel.y + panel.height)
 })
 
 test('the toolbar follows the nav up to 64px from the top while the page scrolls', async ({ page }) => {
@@ -326,8 +331,8 @@ test('hovering an active toggle keeps its accent fill', async ({ page }) => {
   await tb(page, 'bold').click()
   await expect(tb(page, 'bold')).toHaveAttribute('aria-pressed', 'true')
 
-  // The pointer is on the button now, having just pressed it. An unpressed button turns
-  // white on hover; a pressed one must keep --accent-soft, or the press would be invisible.
+  // The pointer is on the button now, having just pressed it. An unpressed button takes
+  // the wash on hover; a pressed one must keep --accent-soft, or the press would be invisible.
   const fill = (id: string) =>
     tb(page, id).evaluate((el) => getComputedStyle(el).backgroundColor)
   // The token as the browser resolves it, so the test does not copy its value.
@@ -346,7 +351,7 @@ test('hovering an active toggle keeps its accent fill', async ({ page }) => {
   expect(await fill('bold')).toBe(accentSoft)
 
   await tb(page, 'italic').hover()
-  await expect.poll(() => fill('italic')).toBe('rgba(255, 255, 255, 0.9)')
+  await expect.poll(() => fill('italic')).toBe('rgba(40, 40, 60, 0.06)')
 })
 
 test('bulleted and numbered lists wrap the line, and toggle off again', async ({ page }) => {
@@ -1183,7 +1188,7 @@ test('colour and highlight made in one browser appear in the other', async ({ br
   await b.close()
 })
 
-test('a menu blurs the page behind it: no ancestor of its panel is a backdrop root', async ({
+test('a menu is a flat white panel with the floating shadow, and nothing above it blurs', async ({
   page,
 }) => {
   await openDocument(page, `${LABEL}-backdrop`)
@@ -1192,23 +1197,26 @@ test('a menu blurs the page behind it: no ancestor of its panel is a backdrop ro
   for (const id of ['style', 'color', 'highlight'] as const) {
     await openMenu(page, id)
     const found = await tb(page, `${id}-menu`).evaluate((menu) => {
-      const filter = (el: Element, pseudo?: string) => {
-        const style = getComputedStyle(el, pseudo)
-        return style.backdropFilter !== 'none' ? style.backdropFilter : 'none'
+      const blurred: string[] = []
+      for (let el: Element | null = menu; el; el = el.parentElement) {
+        if (getComputedStyle(el).backdropFilter !== 'none') blurred.push(el.className || el.tagName)
       }
-      const ancestors: string[] = []
-      for (let el = menu.parentElement; el; el = el.parentElement) {
-        if (filter(el) !== 'none') ancestors.push(el.className || el.tagName)
+      const style = getComputedStyle(menu)
+      return {
+        blurred,
+        background: style.backgroundColor,
+        shadow: style.boxShadow,
+        radius: style.borderTopLeftRadius,
+        border: style.borderTopColor,
       }
-      const panel = menu.closest('[data-testid="tb-root"]')!.firstElementChild!
-      return { own: filter(menu), ancestors, panelGlass: filter(panel, '::before') }
     })
-    // A backdrop-filter on an ancestor makes it the root the menu's blur samples from, and
-    // the menu hangs below that ancestor's edge, over the document: it would blur nothing.
-    expect(found.ancestors, `${id} menu`).toEqual([])
-    expect(found.own, `${id} menu`).not.toBe('none')
-    // The toolbar's own glass is still there, on its own layer.
-    expect(found.panelGlass).not.toBe('none')
+    expect(found, `${id} menu`).toEqual({
+      blurred: [],
+      background: 'rgb(255, 255, 255)',
+      shadow: 'rgba(0, 0, 0, 0.25) 0px 24px 48px -28px',
+      radius: '2px',
+      border: 'rgb(228, 228, 224)',
+    })
     await page.keyboard.press('Escape')
   }
 })
@@ -1712,7 +1720,7 @@ test('the Link popover’s controls are not stops of the tool row', async ({ pag
   await expect(tb(page, 'insert-link-input')).toBeFocused()
 })
 
-test('the Link popover blurs the page behind it: no ancestor is a backdrop root', async ({
+test('the Link popover is a flat white panel with the floating shadow, and nothing above it blurs', async ({
   page,
 }) => {
   await openDocument(page, `${LABEL}-link-backdrop`)
@@ -1720,15 +1728,19 @@ test('the Link popover blurs the page behind it: no ancestor is a backdrop root'
   await openInsert(page)
   await openLink(page)
   const found = await tb(page, 'insert-link-menu').evaluate((menu) => {
-    const filter = (el: Element) => getComputedStyle(el).backdropFilter
-    const ancestors: string[] = []
-    for (let el = menu.parentElement; el; el = el.parentElement) {
-      if (filter(el) !== 'none') ancestors.push(el.className || el.tagName)
+    const blurred: string[] = []
+    for (let el: Element | null = menu; el; el = el.parentElement) {
+      if (getComputedStyle(el).backdropFilter !== 'none') blurred.push(el.className || el.tagName)
     }
-    return { own: filter(menu), ancestors }
+    const style = getComputedStyle(menu)
+    return { blurred, background: style.backgroundColor, shadow: style.boxShadow, radius: style.borderTopLeftRadius }
   })
-  expect(found.ancestors).toEqual([])
-  expect(found.own).not.toBe('none')
+  expect(found).toEqual({
+    blurred: [],
+    background: 'rgb(255, 255, 255)',
+    shadow: 'rgba(0, 0, 0, 0.25) 0px 24px 48px -28px',
+    radius: '2px',
+  })
 })
 
 test('Divider, Code block and Quote insert or toggle', async ({ page }) => {
@@ -2207,10 +2219,10 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
   const BROWN = 1 + text.indexOf('brown')
 
   // How tall one character's box is at 100%: the body font's ascent plus descent at the
-  // body size, so it moves with the font. 21 for the system stack at 18px. Schibsted
-  // Grotesk at 18px is about 22; the browser snaps each zoom to whole pixels, so it
-  // measures 15, 23 and 33 at 70%, 100% and 150% (Gallery, Task 1). The +-1.5 stays.
-  const GLYPH_HEIGHT = 22
+  // body size. It is measured below, once, at 100%, and every zoom's band is scaled from
+  // that, so the test follows the font and the body size instead of a number copied from
+  // one of them. The browser snaps each zoom to whole pixels, hence the bands' slack.
+  let glyphHeight = 0
 
   /** Where A would click to put the caret just before "brown", in A's own layout. */
   const brownPoint = (page: Page) =>
@@ -2259,6 +2271,13 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
       }
     }, head)
 
+  // The premise: one character's height at 100%. If zoom did not apply, every later zoom
+  // would measure this same height and fail its band.
+  await zoomTo(b.page, 100)
+  await expect(b.page.locator('.collaboration-carets__caret')).toHaveCount(1)
+  glyphHeight = (await measure(b.page, BROWN)).charHeight
+  expect(glyphHeight).toBeGreaterThan(10)
+
   // Each side at each zoom, and the two zooms different, which is the case where one
   // browser's click and the other's drawing could most easily disagree.
   const cases = [
@@ -2291,6 +2310,11 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
 
     const m = await measure(b.page, BROWN)
     const scale = viewer / 100
+    // 1.5 for the snapping at this zoom, plus the half pixel the 100% measurement itself
+    // was snapped by, which the scale carries along (at 18px a box read 23 at 100% and 33
+    // at 150%, not 34.5; at 17px it reads 21, 15 and 32). Zoom that did not apply misses
+    // by 6 to 10px.
+    const band = 1.5 + 0.5 * scale
     // The bar is on ProseMirror's own answer for that position, at that zoom.
     expect(Math.abs(m.caretLeft - m.wantedLeft)).toBeLessThan(0.5)
     expect(Math.abs(m.caretTop - m.wantedTop)).toBeLessThan(0.5)
@@ -2299,8 +2323,8 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
     expect(Math.abs(m.caretTop - m.charTop)).toBeLessThan(1)
     // It is as tall as the line, so it was scaled with the text and not left at 100%.
     expect(Math.abs(m.caretHeight - m.charHeight)).toBeLessThan(1)
-    expect(m.charHeight).toBeGreaterThan(GLYPH_HEIGHT * scale - 1.5)
-    expect(m.charHeight).toBeLessThan(GLYPH_HEIGHT * scale + 1.5)
+    expect(m.charHeight).toBeGreaterThan(glyphHeight * scale - band)
+    expect(m.charHeight).toBeLessThan(glyphHeight * scale + band)
     // The name pill hangs off the bar's left edge and rides on its top.
     expect(Math.abs(m.labelLeft - m.caretLeft)).toBeLessThan(1)
     expect(Math.abs(m.labelBottom - m.caretTop)).toBeLessThan(3)
@@ -2382,27 +2406,26 @@ test('headings, paragraphs, quote, code, lists and rule carry 12.7’s values', 
   expect(await computed(page, 'h2', ['font-size', 'font-weight', 'line-height', 'letter-spacing', 'margin-top', 'margin-bottom', 'color'])).toEqual({
     'font-size': '21px', 'font-weight': '600', 'line-height': '27.3px', 'letter-spacing': '-0.42px', 'margin-top': '30px', 'margin-bottom': '10px', color: text,
   })
-  // h3 is 18px, level with the body: §12.7's 17px was 17px against a 17px body, and the body
-  // has since moved to 18px (see the handoff's deviation table).
+  // h3 is 17px, level with the 17px body (spec, "Document headings and body"; the reference's h3).
   expect(await computed(page, 'h3', ['font-size', 'font-weight', 'line-height', 'margin-top', 'margin-bottom', 'color'])).toEqual({
-    'font-size': '18px', 'font-weight': '600', 'line-height': '24.3px', 'margin-top': '22px', 'margin-bottom': '8px', color: text,
+    'font-size': '17px', 'font-weight': '600', 'line-height': '22.95px', 'margin-top': '22px', 'margin-bottom': '8px', color: text,
   })
 
-  // The body is 18px, which is a later decision than 12.7's 17 and must not be "corrected".
+  // The body is 17px with a 1.65 line-height (spec, "Document headings and body").
   expect(await computed(page, 'p', ['font-size', 'line-height', 'margin-bottom'])).toEqual({
-    'font-size': '18px', 'line-height': '29.7px', 'margin-bottom': '14px',
+    'font-size': '17px', 'line-height': '28.05px', 'margin-bottom': '14px',
   })
 
   const quote = await computed(page, 'blockquote', ['margin-top', 'margin-bottom', 'padding-top', 'padding-bottom', 'padding-left', 'border-left-width', 'border-left-color', 'color'])
   expect(quote).toEqual({
     'margin-top': '18px', 'margin-bottom': '18px', 'padding-top': '2px', 'padding-bottom': '2px', 'padding-left': '18px', 'border-left-width': '3px',
-    'border-left-color': await resolveColour(page, 'oklch(0.42 0.11 285 / .35)'), color: muted,
+    'border-left-color': await resolveColour(page, 'oklch(0.5 0.17 290 / .35)'), color: muted,
   })
   // The quote's text is a paragraph; the paragraph rule must not repaint it or pad its end.
   expect(await computed(page, 'blockquote p', ['color', 'margin-bottom'])).toEqual({ color: muted, 'margin-bottom': '0px' })
 
   expect(await computed(page, 'pre', ['margin-bottom', 'padding-top', 'padding-left', 'border-top-left-radius', 'background-color', 'font-size', 'line-height', 'white-space', 'font-family'])).toEqual({
-    'margin-bottom': '14px', 'padding-top': '14px', 'padding-left': '16px', 'border-top-left-radius': '14px',
+    'margin-bottom': '14px', 'padding-top': '14px', 'padding-left': '16px', 'border-top-left-radius': '2px',
     'background-color': await resolveColour(page, 'rgba(40,40,60,.05)'), 'font-size': '14px', 'line-height': '21.7px', 'white-space': 'pre-wrap',
     'font-family': 'ui-monospace, SFMono-Regular, Menlo, monospace',
   })
@@ -2429,7 +2452,7 @@ test('a table and its cells carry 12.7’s values, and the text in a cell is the
   const table = await computed(page, 'table', ['border-collapse', 'border-top-width', 'border-top-color', 'border-top-left-radius', 'overflow', 'font-size', 'margin-bottom'])
   expect(table).toEqual({
     'border-collapse': 'separate', 'border-top-width': '1px', 'border-top-color': await resolveColour(page, 'rgba(40,40,60,.14)'),
-    'border-top-left-radius': '12px', overflow: 'hidden', 'font-size': '15px', 'margin-bottom': '16px',
+    'border-top-left-radius': '2px', overflow: 'hidden', 'font-size': '15px', 'margin-bottom': '16px',
   })
   // Full width of the page's text column.
   const widths = await page.evaluate(() => ({
@@ -2444,7 +2467,7 @@ test('a table and its cells carry 12.7’s values, and the text in a cell is the
     'border-right-width': '1px', 'border-bottom-width': '1px', 'border-right-color': hairline, 'border-bottom-color': hairline,
     'padding-top': '8px', 'padding-left': '12px', 'min-width': '60px', 'vertical-align': 'top',
   })
-  // A cell's text is a paragraph and would be 18px with a 14px tail; it is the table's size.
+  // A cell's text is a paragraph and would be 17px with a 14px tail; it is the table's size.
   expect(await computed(page, 'td p', ['font-size', 'margin-bottom'])).toEqual({ 'font-size': '15px', 'margin-bottom': '0px' })
 })
 
@@ -2469,11 +2492,11 @@ test('a link is accent and underlined, and colour and highlight marks keep their
   expect(await computed(page, 'mark', ['background-color'])).toEqual({ 'background-color': await resolveColour(page, '#fde68a') })
 })
 
-test('the sheet keeps 28px above it, and its text is 18px', async ({ page }) => {
+test('the sheet keeps 28px above it, and its text is 17px', async ({ page }) => {
   await loadEveryElement(page)
   await expect(sheet(page)).toHaveCSS('margin-top', '28px')
   await expect(sheet(page)).toHaveCSS('margin-bottom', '64px')
-  await expect(prose(page).locator('p').first()).toHaveCSS('font-size', '18px')
+  await expect(prose(page).locator('p').first()).toHaveCSS('font-size', '17px')
 })
 
 test('pasting text styled with a font family and size writes neither into the document', async ({ page }) => {

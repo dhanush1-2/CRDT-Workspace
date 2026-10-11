@@ -471,3 +471,76 @@ test.describe('board', () => {
     await cleanup(label)
   })
 })
+
+test.describe('document', () => {
+  async function openDoc(page: Page, label: string) {
+    const { owner, workspace } = await seedWorkspace(label)
+    const document = await createDocument(workspace.id, 'doc')
+    await signIn(page, owner.id)
+    await page.goto(documentPath(document))
+    await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+    await settleAnimations(page)
+  }
+
+  test('the page is one white sheet with the floating shadow, and the toolbar is a white bar at its top', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-doc`
+    await openDoc(page, label)
+    expect(await material(page.getByTestId('document-page'))).toEqual({
+      background: WHITE,
+      backdrop: 'none',
+      shadow: FLOAT,
+      radius: '2px',
+      borderColor: HAIRLINE,
+      borderWidth: '1px',
+    })
+    expect(await material(page.getByTestId('tb-panel'))).toEqual({
+      background: WHITE,
+      backdrop: 'none',
+      shadow: 'none',
+      radius: '2px',
+      borderColor: HAIRLINE,
+      borderWidth: '1px',
+    })
+    const root = page.getByTestId('tb-root')
+    await expect(root).toHaveCSS('position', 'sticky')
+    await expect(root).toHaveCSS('top', '80px')
+    await expect(root).toHaveCSS('padding-top', '10px')
+    await cleanup(label)
+  })
+
+  test('the open toolbar tab is a white chip in the accent; the others are plain grey', async ({ page }) => {
+    const label = `${LABEL}-tbtabs`
+    await openDoc(page, label)
+    expect(await material(page.getByTestId('tb-tab-home'))).toMatchObject({
+      background: WHITE,
+      radius: '2px',
+      shadow: `${HAIRLINE} 0px 0px 0px 1px`,
+    })
+    await expect(page.getByTestId('tb-tab-home')).toHaveCSS('color', await resolveColour(page, 'var(--accent)'))
+    await expect(page.getByTestId('tb-tab-home')).toHaveCSS('font-weight', '600')
+    await expect(page.getByTestId('tb-tab-insert')).toHaveCSS('color', 'rgb(95, 98, 93)')
+    await expect(page.getByTestId('tb-tab-insert')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    await cleanup(label)
+  })
+
+  test('the toolbar takes the floating shadow only while it is stuck', async ({ page }) => {
+    const label = `${LABEL}-stuck`
+    await page.setViewportSize({ width: 1280, height: 420 })
+    await openDoc(page, label)
+    const root = page.getByTestId('tb-root')
+    const shadow = () => page.getByTestId('tb-panel').evaluate((el) => getComputedStyle(el).boxShadow)
+    await expect(root).toHaveAttribute('data-stuck', 'false')
+    expect(await shadow()).toBe('none')
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await expect(root).toHaveAttribute('data-stuck', 'true')
+    await expect.poll(shadow).toBe(FLOAT)
+
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect(root).toHaveAttribute('data-stuck', 'false')
+    await expect.poll(shadow).toBe('none')
+    await cleanup(label)
+  })
+})

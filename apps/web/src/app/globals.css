@@ -305,16 +305,12 @@ textarea {
   }
 }
 
-/* Tiptap editor surface. Typography follows the Glass document spec, handoff 12.7's
-   element table. The page sheet (workspaces/[id]/documents/[docId]/document.module.css) supplies the
-   56/56/96 padding.
+/* Tiptap editor surface. Typography follows the spec's "Document headings and body": H1 32px
+   600 -0.025em, H2 21px 600, body 17px / 1.65; the rest from glass-handoff.md 12.7's element
+   table. The page sheet (document.module.css) supplies the padding.
 
-   Two deliberate departures from that table, both recorded in the handoff's Precedence
-   section: the body is 18px, not 17, and the page margin is 28px, not 16.
-
-   Literal values below are 12.7's own: the table gives rgba(40,40,60,.14), .1 and .05
-   and a 35% accent, and none of those is a token (--line is .07, --sep .12, --track .08,
-   --dash .22, --accent-soft a 12% tint). They are not rounded to the nearest token. */
+   Literal values below are the reference's: rgba(40,40,60,.14), .1 and .05 and a 35% accent,
+   none of which is a token. */
 .editor .ProseMirror {
   min-height: 60vh;
   outline: none;
@@ -341,12 +337,10 @@ textarea {
   color: var(--text);
 }
 
-/* 18px, level with the body, not §12.7's 17. In the prototype the body and the h3 are both
-   17px, so the design marked a subheading by weight, colour (--text against --text-2) and
-   its 22px top margin, never by size. The owner's later move of the body to 18px would have
-   made the h3 smaller than the text under it, so the h3 moves with it. */
+/* 17px, level with the body: the design marks a subheading by weight, colour (--text
+   against --text-2) and its 22px top margin, never by size. */
 .editor .ProseMirror h3 {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.35;
   margin: 22px 0 8px;
@@ -354,9 +348,8 @@ textarea {
 }
 
 .editor .ProseMirror p {
-  /* 18px, raised from 17 with the base above. At the 668px measure this is about
-     71-75 characters a line, down from 75-80 -- still inside a comfortable measure. */
-  font-size: 18px;
+  /* 17px / 1.65 (spec, "Document headings and body"). */
+  font-size: 17px;
   line-height: 1.65;
   color: var(--text-2);
   margin: 0 0 14px;
@@ -365,7 +358,7 @@ textarea {
 .editor .ProseMirror blockquote {
   margin: 18px 0;
   padding: 2px 0 2px 18px;
-  border-left: 3px solid oklch(0.42 0.11 285 / 0.35);
+  border-left: 3px solid oklch(0.5 0.17 290 / 0.35);
   color: var(--text-muted);
 }
 
@@ -383,7 +376,7 @@ textarea {
 .editor .ProseMirror pre {
   margin: 0 0 14px;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--r);
   background: rgba(40, 40, 60, 0.05);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 14px;
@@ -426,7 +419,7 @@ textarea {
   border-spacing: 0;
   margin: 0 0 16px;
   border: 1px solid rgba(40, 40, 60, 0.14);
-  border-radius: var(--r-item);
+  border-radius: var(--r);
   overflow: hidden;
   font-size: 15px;
 }
@@ -445,7 +438,7 @@ textarea {
   text-align: left;
 }
 
-/* A cell's text is a paragraph. At 18px it would be bigger than the table's own 15px,
+/* A cell's text is a paragraph. At 17px it would be bigger than the table's own 15px,
    and its bottom margin would double the cell's padding. */
 .editor .ProseMirror td p,
 .editor .ProseMirror th p {
@@ -486,7 +479,7 @@ textarea {
 }
 
 .collaboration-carets__label {
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   color: #fff;
   font-size: 11px;
   font-weight: 500;
@@ -497,5 +490,4 @@ textarea {
   top: -1.4em;
   user-select: none;
   white-space: nowrap;
-  box-shadow: 0 4px 10px rgba(30, 45, 40, 0.18);
 }

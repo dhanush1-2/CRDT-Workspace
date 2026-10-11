@@ -20,6 +20,8 @@ interface DocumentEditorProps {
   readOnly?: boolean
   /** The sheet's own styles. They live with the page, which owns its width and margin. */
   sheetClassName?: string
+  /** The padding box under the toolbar, inside the sheet. Its styles live with the page too. */
+  bodyClassName?: string
   /** The document's title, rendered at the top of the sheet. */
   heading: ReactNode
   /**
@@ -32,10 +34,11 @@ interface DocumentEditorProps {
 }
 
 /**
- * The document surface: a toolbar, and below it the sheet the text is typed on.
+ * The document surface: the page sheet, with the toolbar sticky at its top (spec, "Document
+ * toolbar": by default the bar sits inside the page sheet) and the text under it.
  *
  * This owns `useEditor` rather than a component beneath the sheet because the toolbar
- * is a separate floating panel above it (handoff 12.1) and has to read the same editor.
+ * and the text are both inside the sheet and have to read the same editor.
  * It replaced Editor.tsx, which had shrunk to a hook call and one element.
  *
  * It renders before the session exists, with a toolbar and no editor, so server HTML
@@ -48,6 +51,7 @@ export function DocumentEditor({
   user,
   readOnly = false,
   sheetClassName,
+  bodyClassName,
   heading,
   content,
   toolbar = true,
@@ -86,7 +90,15 @@ export function DocumentEditor({
   )
 
   return (
-    <>
+    // data-width, not a second class: the sheet's stylesheet owns what each width is.
+    // data-toolbar lets it give the body less top padding under the toolbar (40px) than
+    // without one (56px, a read-only preview), as the reference does.
+    <div
+      className={sheetClassName}
+      data-testid="document-page"
+      data-width={pageWidth}
+      data-toolbar={toolbar ? 'true' : 'false'}
+    >
       {toolbar && (
         <EditorToolbar
           editor={editor}
@@ -98,8 +110,7 @@ export function DocumentEditor({
           view={{ zoom, onZoom: setZoom, pageWidth, onPageWidth: setPageWidth }}
         />
       )}
-      {/* data-width, not a second class: the sheet's stylesheet owns what each width is. */}
-      <div className={sheetClassName} data-testid="document-page" data-width={pageWidth}>
+      <div className={bodyClassName} data-testid="document-body">
         {/* CSS zoom wraps the title as well as the editor (handoff 12.4, resolved against
             the prototype: it zooms a div that contains the document's h1, so the title
             scales with the body). Zooming only `.editor` left a 32px title over 12.6px
@@ -114,6 +125,6 @@ export function DocumentEditor({
           <EditorContent editor={editor} className="editor" />
         </div>
       </div>
-    </>
+    </div>
   )
 }

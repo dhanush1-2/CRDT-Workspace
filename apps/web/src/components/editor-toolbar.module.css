@@ -1,56 +1,39 @@
 /*
-  The ribbon above the page (handoff 12.1). It floats, so it is its own panel rather
-  than part of the sheet, and it is wider than the sheet's narrow setting (1000 against
-  780) the way a Word ribbon is wider than its page.
+  The ribbon (spec, "Document toolbar"): inside the page sheet, sticky 80px from the top
+  (12px under the nav, following it as it condenses), inset 10px from the sheet's edges.
+  A white bar with a hairline; the floating shadow only while stuck (EditorToolbar sets
+  data-stuck). The floating placement above the sheet is the reference's alternative and is
+  not built.
 */
 
 .root {
-  /* 12px under the nav (handoff 12.1), following it when it condenses on scroll. */
   position: sticky;
   top: calc(var(--nav-bottom, 68px) + 12px);
   z-index: 20;
-  max-width: 1000px;
-  margin: 24px auto 0;
-  padding: 0 16px;
+  padding: 10px 10px 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .root {
-    animation: global(g-pop) 0.6s var(--ease);
+    animation: global(g-fade) 0.4s var(--ease);
     transition: top 0.4s var(--ease);
   }
 }
 
 .panel {
-  /* The glass is on ::before, not here. A backdrop-filter on this element would make it a
-     backdrop root, and the dropdowns (absolute, hanging below the panel's edge) are its
-     descendants: what lies outside the root is invisible to their own blur, so over the
-     document they would blur nothing. With the filter on a sibling layer, the menus are
-     no longer inside a backdrop root and blur the page behind them. */
-  position: relative;
-  isolation: isolate;
-  border-radius: var(--r-pop);
-  /* Keeps the 1px the hairline used to occupy, so the content does not move. */
-  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
 }
 
-.panel::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  z-index: -1;
-  border-radius: inherit;
-  background: var(--glass-tool);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  /* The design's literals for this panel: a hairline a shade darker than --line, and
-     its own three-layer shadow. */
-  border: 1px solid rgba(40, 40, 60, 0.1);
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 10px 28px rgba(30, 30, 50, 0.1),
-    0 1px 3px rgba(30, 30, 50, 0.06);
-  pointer-events: none;
+.root[data-stuck='true'] .panel {
+  box-shadow: var(--shadow-float);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    transition: box-shadow var(--dur-fast) var(--ease);
+  }
 }
 
 /* Row 1 */
@@ -72,7 +55,7 @@
   height: 28px;
   padding: 0 13px;
   border: none;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
@@ -80,10 +63,11 @@
   cursor: pointer;
 }
 
+/* The open tab: a white chip in the accent (spec). On the white bar it needs an edge, and
+   Gallery has no small shadows, so the edge is a hairline ring. */
 .tabActive {
-  /* The design's literals: a near-opaque white chip and its one-layer shadow. */
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 1px 3px rgba(30, 30, 50, 0.12);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--hairline);
   color: var(--accent);
   font-weight: 600;
 }
@@ -103,7 +87,7 @@
   height: 22px;
   padding: 0 10px;
   margin-left: 6px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: rgba(40, 40, 60, 0.06);
   color: var(--text-muted);
   font-size: 12.5px;
@@ -153,7 +137,7 @@
   min-width: 32px;
   padding: 0 7px;
   border: none;
-  border-radius: var(--r-tool);
+  border-radius: var(--r);
   background: transparent;
   color: var(--text-2);
   font-size: 13.5px;
@@ -172,10 +156,10 @@
 }
 
 .tool:hover:not(.toolActive):not([aria-expanded='true']):not([aria-disabled='true']) {
-  /* The design's literal. Not applied to an active toggle: the pointer is on the button
-     the moment it is pressed, so a hover fill that beat the active one would hide the
-     toggle's new state until the mouse moved away. */
-  background: rgba(255, 255, 255, 0.9);
+  /* The wash, not the reference's #fff, which is invisible on the white bar. Not applied to
+     an active toggle: the pointer is on the button the moment it is pressed, so a hover
+     fill that beat the active one would hide the toggle's new state. */
+  background: var(--wash);
 }
 
 .tool svg {
@@ -267,17 +251,16 @@
   gap: 8px;
   padding: 0 10px 0 12px;
   border: 1px solid var(--field-border);
-  /* The design's literal: a white a little clearer than the glass around it. */
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--paper);
   color: var(--text);
 }
 
 .toolField:hover:not(.toolActive):not([aria-expanded='true']) {
-  background: #fff;
+  background: var(--paper);
 }
 
 .tool.toolField[aria-expanded='true'] {
-  background: #fff;
+  background: var(--paper);
   border-color: var(--accent);
   color: var(--text);
 }
@@ -293,22 +276,18 @@
   color: var(--text-faint);
 }
 
-/* The panel: one container for all three menus. */
+/* The panel: one container for every toolbar menu. A floating menu: white, a hairline,
+   the floating shadow. */
 .menu {
   position: absolute;
   left: 0;
   top: 40px;
   z-index: 5;
   padding: 8px;
-  border-radius: var(--r-menu);
-  background: var(--glass-menu);
-  backdrop-filter: var(--blur-3);
-  -webkit-backdrop-filter: var(--blur-3);
-  /* The design's literals: a near-white edge and a two-layer shadow. */
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 18px 44px rgba(30, 30, 50, 0.16);
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
   transform-origin: top left;
 }
 
@@ -342,7 +321,7 @@
   min-height: 38px;
   padding: 4px 12px;
   border: none;
-  border-radius: var(--r-item);
+  border-radius: var(--r);
   background: transparent;
   text-align: left;
   color: var(--text);
@@ -350,8 +329,7 @@
 }
 
 .styleRow:hover {
-  /* The design's literal. */
-  background: rgba(40, 40, 60, 0.06);
+  background: var(--wash);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -459,7 +437,7 @@
 .colourBar {
   width: 15px;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--r);
 }
 
 /* The marker's underline, in the last highlight used. The stroke is set inline. */
@@ -496,9 +474,8 @@
   height: 34px;
   padding: 0 14px;
   border: 1px solid var(--field-border);
-  border-radius: var(--r-pill);
-  /* "White pill": opaque, against the translucent glass behind it. */
-  background: #fff;
+  border-radius: var(--r);
+  background: var(--paper);
   color: var(--text);
   font-size: 13.5px;
 }
@@ -525,7 +502,7 @@
   height: 34px;
   padding: 0 14px;
   border: none;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
@@ -541,8 +518,7 @@
 }
 
 .linkRemove {
-  /* The design's literal. */
-  background: rgba(40, 40, 60, 0.06);
+  background: var(--wash);
   color: var(--text-2);
 }
 
@@ -618,7 +594,7 @@
 .segmented {
   display: flex;
   padding: 3px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--track);
 }
 
@@ -626,7 +602,7 @@
   height: 26px;
   padding: 0 12px;
   border: none;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: transparent;
   color: var(--text);
   font-size: 13px;
@@ -634,10 +610,9 @@
   cursor: pointer;
 }
 
+/* The chosen width: white on the grey track. No shadow (Gallery has no small shadows). */
 .segmentOn {
-  /* The design's literals: pure white, and a shade lighter than the tab chip's shadow. */
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(30, 30, 50, 0.14);
+  background: var(--paper);
 }
 
 @media (prefers-reduced-motion: no-preference) {

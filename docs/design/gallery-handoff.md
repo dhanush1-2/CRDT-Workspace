@@ -43,3 +43,12 @@ Rows are added by the task that made the decision.
 | T5.4 | Column transitions | Reference: `background .4s, box-shadow .4s` | None, as before | The held-drag test reads the drag-over ring mid-drag; the column never animated. |
 | T5.5 | Column delete confirm | Code before: red fill | `--danger` text on the Cancel grey | Decision 20 (made in Task 2). |
 | T5.6 | Test premise: board material test (`e2e/gallery.spec.ts`) | The brief reads the card straight after adding it | Parks the pointer at (0, 0) first | The new card lands under the pointer (it takes the "+ Add a card" button's place), so the resting-state test read the hover ring. Behaviour unchanged. |
+| T6.1 | Toolbar when stuck | Reference `inset 0 1px 0 #fff, 0 1px 2px rgba(30,30,50,.05), 0 8px 22px rgba(30,30,50,.12)`; border `rgba(40,40,60,.08)` | `var(--shadow-float)`; `1px solid var(--hairline)` | The spec: "hairline border", "the floating shadow" (decision 9). |
+| T6.2 | Toolbar's open tab | Reference: white chip, `0 1px 3px rgba(30,30,50,.12)` | White chip with a `0 0 0 1px` hairline ring | No small shadows; a white chip on a white bar needs an edge (decision 10). |
+| T6.3 | Tool hover | Reference `#fff` on the white bar | `--wash` | Invisible otherwise (decision 17). |
+| T6.4 | Sticky top | Reference `top:80px` fixed | `calc(var(--nav-bottom) + 12px)`: 80px at rest, 64px when the nav condenses | Existing motion is kept (decision 18). |
+| T6.5 | Toolbar entrance | Code before `g-pop .6s` (floating) | `g-fade .4s`, the reference's for the in-sheet bar | Decision 19. |
+| T6.6 | Page sheet shadow | Spec lists "sheets" | The page sheet has the floating shadow, as the reference draws it | The spec calls it "the page sheet" (decision 15, question 4). |
+| T6.7 | Narrow/Wide segment | Reference: white with `0 1px 3px` | White on the grey track, no shadow | Decision 10. |
+| T6.8 | Remote caret label | Code before `0 4px 10px` shadow, pill | No shadow, 2px corners | No shadows; the reference's label has none. |
+| T6.9 | Document h3 | Code before 18px (level with the 18px body) | 17px | Moves with the 17px body; the reference's 17px. |

@@ -65,6 +65,7 @@ export function VersionPreview({
   type,
   heading,
   sheetClassName,
+  bodyClassName,
   fallback,
 }: {
   documentId: string
@@ -87,6 +88,7 @@ export function VersionPreview({
   /** A plain, non-editable title: a past version cannot be renamed. */
   heading: ReactNode
   sheetClassName?: string
+  bodyClassName?: string
   /** The live view, shown whenever there is no preview to show. */
   fallback: ReactNode
 }) {
@@ -208,6 +210,7 @@ export function VersionPreview({
               toolbar={false}
               content={preview.content}
               sheetClassName={sheetClassName}
+              bodyClassName={bodyClassName}
               heading={heading}
             />
           )}
