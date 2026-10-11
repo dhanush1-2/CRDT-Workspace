@@ -27,58 +27,48 @@
      Anything that hangs under the bar (floating pills) overflows rather than grows it. */
   box-sizing: border-box;
   height: 68px;
-  /* A column, not a row: the bar is centred, and so are the floating offline and
-     old-version pills that sit under it. */
+  /* A column, not a row: the bar is centred, and so are the pills that sit under it. */
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/*
+  The bar (spec, "Nav bar"): solid white, the spec's own edge colour, 2px corners, no blur
+  and no shadow. As wide as its contents and never wider than the window; AppShell tweens
+  the width between contents (lastNavWidth). The tabs strip must stay `flex: 0 1 auto` and
+  the Workspaces link `flex: none` for this to hold: a growing child makes the bar grow to
+  the window and the centring is lost.
+*/
 .nav {
   display: flex;
   align-items: center;
   gap: 10px;
   height: 56px;
-  /* As wide as its contents and never wider than the window, so the bar is a pill in
-     the middle of the page rather than an edge-to-edge strip. The tabs strip must stay
-     `flex: 0 1 auto` and the Workspaces link `flex: none` for this to hold -- a growing
-     child makes the bar grow to the window and the centring is lost. */
   width: fit-content;
   max-width: 100%;
   padding: 0 8px 0 10px;
-  border-radius: var(--r-pill);
-  background: var(--glass-mid);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
+  border-radius: var(--r);
+  background: var(--paper);
+  /* The spec's literal for the bar's edge: a shade darker than --hairline. */
   border: 1px solid rgba(40, 40, 60, 0.1);
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 12px 32px rgba(30, 30, 50, 0.12),
-    0 2px 6px rgba(30, 30, 50, 0.08);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .nav {
     animation: global(g-pop) 0.6s var(--ease);
-    /* Grows and shrinks from the middle as items appear. Needs
-       `interpolate-size: allow-keywords` (globals.css) to interpolate against
-       fit-content; without it the width simply jumps. */
+    /* The width line is the CSS backstop for a contents change inside one page; the JS
+       tween in AppShell is what runs across a navigation. */
     transition:
       width var(--dur) var(--ease),
-      height 0.4s var(--ease),
-      background 0.4s var(--ease);
+      height 0.4s var(--ease);
   }
 }
 
-/*
-  The condensed state. 56 → 46, the wrapper's gap 12 → 6, the glass .72 → .85, over
-  0.4s. All four are design literals: there is no 0.4s token (--dur-fast is 0.3s,
-  --dur is 0.55s), and the .85 background is set here rather than on
-  --glass-mid, which the sheets and popovers also use.
-*/
+/* Condensed past 24px of scroll (spec): 56 → 46, the wrapper's gap 12 → 6, over 0.4s.
+   0.4s is a literal: no token is 0.4s. */
 .navCondensed {
   height: 46px;
-  background: rgba(255, 255, 255, 0.85);
 }
 
 .navWrapCondensed {
@@ -91,6 +81,7 @@
   }
 }
 
+/* The logo stays a round accent disc (spec, "Corners"); it casts nothing. */
 .logo {
   display: block;
   flex: none;
@@ -103,7 +94,6 @@
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: 0 4px 14px var(--accent-shadow);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -123,8 +113,8 @@
   name would otherwise stretch the nav and make the whole page scroll sideways. It shrinks
   and truncates instead. 240px is not a design value; it leaves the tab strip its room.
 
-  A block with a line-height rather than the prototype's display:flex, because
-  text-overflow: ellipsis only applies to a block container's own text.
+  A block with a line-height rather than display:flex, because text-overflow: ellipsis only
+  applies to a block container's own text.
 */
 .workspaceName {
   display: block;
@@ -134,7 +124,7 @@
   height: 36px;
   padding: 0 12px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: transparent;
   font-size: 15px;
   font-weight: 600;
@@ -146,8 +136,9 @@
   text-overflow: ellipsis;
 }
 
+/* The reference's #fff hover is invisible on the white bar; the wash shows. */
 .workspaceName:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--wash);
   text-decoration: none;
 }
 
@@ -161,15 +152,15 @@
   flex: none;
   width: 1px;
   height: 22px;
-  /* Raw value on purpose: the handoff's prototype gives this divider
-     rgba(0,0,0,.08), which has no token. --field-border is a different colour. */
+  /* Raw value on purpose: the reference gives this divider rgba(0,0,0,.08), which has no
+     token. --field-border is a different colour. */
   background: rgba(0, 0, 0, 0.08);
 }
 
 /*
-  The Workspaces link. Styled as an inactive tab (handoff §5.3 row 3a): 32px high,
-  0 14px, 14px/500 in --text-muted, no background of its own. `flex: none` so a tight
-  bar shrinks the workspace name and the tab strip, never this label.
+  The Workspaces link, styled as an inactive tab: 32px high, 0 14px, 14px/500 in
+  --text-muted, no background of its own. `flex: none` so a tight bar shrinks the
+  workspace name and the tab strip, never this label.
 */
 .navLink {
   flex: none;
@@ -177,7 +168,7 @@
   align-items: center;
   height: 32px;
   padding: 0 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-muted);
@@ -189,8 +180,8 @@
   text-decoration: none;
 }
 
-/* The current page: the active tab's text style. The sliding glass pill (§5.4) belongs
-   to the tab strip and is not drawn here. */
+/* The current page: the open tab's text style. The underline belongs to the tab strip and
+   is not drawn here. */
 .navLinkCurrent,
 .navLinkCurrent:hover {
   font-weight: 600;
@@ -209,6 +200,8 @@
   white-space: nowrap;
 }
 
+/* Field style: the spec keeps fields at rgba(40,40,60,.12). #55585f is the reference's
+   literal for this label; no token holds it. */
 .search {
   flex: none;
   display: flex;
@@ -217,10 +210,9 @@
   height: 36px;
   min-width: 170px;
   padding: 0 10px 0 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--field-bg);
   border: 1px solid var(--field-border);
-  box-shadow: inset 0 1px 2px rgba(30, 30, 50, 0.06);
   color: #55585f;
   font-size: 14px;
   font-family: inherit;
@@ -228,12 +220,25 @@
   cursor: pointer;
 }
 
+.search:hover {
+  background: var(--paper);
+  border-color: var(--dash);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .search {
+    transition:
+      background var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease);
+  }
+}
+
 .kbd {
   margin-left: auto;
   padding: 2px 6px;
   border: 1px solid var(--field-border);
-  border-radius: 6px;
-  background: #fff;
+  border-radius: var(--r);
+  background: var(--paper);
   font-size: 11px;
   color: var(--text-muted);
 }
@@ -247,11 +252,10 @@
   gap: 8px;
   height: 36px;
   padding: 0 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--field-bg);
   border: 1px solid var(--field-border);
-  box-shadow: inset 0 1px 2px rgba(30, 30, 50, 0.06);
-  color: #55585f;
+  color: var(--text-2);
   font-size: 14px;
   white-space: nowrap;
 }
@@ -261,6 +265,13 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+/* Syncing: the accent dot pulses (spec, "Status"). Its colour comes from status-display.ts. */
+@media (prefers-reduced-motion: no-preference) {
+  .status[data-status='connecting'] .statusDot {
+    animation: global(g-pulse) 1s ease-in-out infinite;
+  }
 }
 
 .presence {
@@ -291,12 +302,13 @@
   margin-left: -7px;
 }
 
+/* No hover lift (spec, "Hover"); the small grow stays. */
 @media (prefers-reduced-motion: no-preference) {
   .avatar {
     transition: transform var(--dur-fast) var(--ease);
   }
   .avatar:hover {
-    transform: translateY(-3px) scale(1.06);
+    transform: scale(1.06);
   }
 }
 
@@ -312,9 +324,7 @@
     The design hides the status label and the avatars here for compactness. display:none
     would also remove them from the accessibility tree, leaving the status colour-only
     and the names unavailable, so they are clipped instead (same pattern as .labelHidden
-    in ui.module.css; a media rule cannot compose it). The status label is the only
-    place the words live. The avatars are the only place the names live: the status
-    pill shows a count, not who.
+    in ui.module.css; a media rule cannot compose it).
   */
   .statusLabel,
   .presence {
@@ -344,16 +354,15 @@
   flex: none;
 }
 
-/* Field style, like the search and status pills. White when open, per the design. */
+/* Field style, like the search and status pills. White while open. */
 .history {
   display: flex;
   align-items: center;
   height: 36px;
   padding: 0 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--field-bg);
   border: 1px solid var(--field-border);
-  box-shadow: inset 0 1px 2px rgba(30, 30, 50, 0.06);
   color: #55585f;
   font-size: 14px;
   font-family: inherit;
@@ -362,7 +371,7 @@
 }
 
 .historyOpen {
-  background: #fff;
+  background: var(--paper);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -371,9 +380,9 @@
   }
 }
 
-/* Below 760px the tabs become one dropdown and the workspace name hides (handoff 5.5).
-   The Workspaces link hides with it: the logo still links to the dashboard, and the
-   dropdown's Overview entry replaces the name. */
+/* Below 760px the tabs become one dropdown and the workspace name hides. The Workspaces
+   link hides with it: the logo still links to the dashboard, and the dropdown's Overview
+   entry replaces the name. */
 @media (max-width: 760px) {
   .workspaceName,
   .divider,

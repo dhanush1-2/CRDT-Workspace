@@ -161,7 +161,7 @@ test('a board shows its title above the columns', async ({ page }) => {
   await cleanup(label)
 })
 
-test('the nav is a pill sized to its contents and centred', async ({ page }) => {
+test('the nav is a bar sized to its contents and centred', async ({ page }) => {
   const label = `${LABEL}-navpill`
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'doc')
@@ -310,7 +310,7 @@ async function tabOffset(page: Page, testId: string): Promise<number> {
   })
 }
 
-test('the pill slides to the new tab across a navigation instead of appearing there', async ({
+test('the underline slides to the new tab across a navigation instead of appearing there', async ({
   page,
 }) => {
   const label = `${LABEL}-pillslide`
@@ -333,12 +333,12 @@ test('the pill slides to the new tab across a navigation instead of appearing th
 
   expect(Math.abs(to - from)).toBeGreaterThan(20)
 
-  // The property the remembered position actually buys: the pill never leaves the
-  // span between the two tabs. Without it the new nav's pill starts at the strip's
+  // The property the remembered position actually buys: the underline never leaves the
+  // span between the two tabs. Without it the new nav's underline starts at the strip's
   // left edge with width 0, so some frame reads close to zero -- and because that
   // still *moves* towards the destination, it still satisfies the travel assertion
   // below. This is the assertion that fails. (The first samples cannot be used for
-  // this: they are the old page's pill, sitting at `from` by definition.)
+  // this: they are the old page's underline, sitting at `from` by definition.)
   expect(samples.length).toBeGreaterThan(0)
   expect(Math.min(...samples)).toBeGreaterThan(Math.min(from, to) - 10)
 

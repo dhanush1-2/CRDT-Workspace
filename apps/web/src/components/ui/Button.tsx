@@ -3,11 +3,11 @@
 import type { ButtonHTMLAttributes } from 'react'
 import styles from './ui.module.css'
 
-type Variant = 'accent' | 'glass' | 'ghost' | 'danger'
+type Variant = 'accent' | 'plain' | 'ghost' | 'danger'
 
 const VARIANT_CLASS: Record<Variant, string> = {
   accent: styles.accent!,
-  glass: styles.glassButton!,
+  plain: styles.plainButton!,
   ghost: styles.ghost!,
   danger: styles.danger!,
 }

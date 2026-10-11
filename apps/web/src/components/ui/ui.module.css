@@ -19,7 +19,7 @@
   height: 36px;
   padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -46,24 +46,21 @@
 .accent {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 4px 14px var(--accent-shadow);
 }
 
 .accent:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 
-.glassButton {
-  background: var(--glass-mid);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
+/* A white button with a field edge, for a secondary action on a white surface. */
+.plainButton {
+  background: var(--paper);
   border-color: var(--field-border);
   color: var(--text);
-  box-shadow: var(--glass-hl), 0 2px 8px rgba(30, 45, 40, 0.06);
 }
 
-.glassButton:hover:not(:disabled) {
-  background: #fff;
+.plainButton:hover:not(:disabled) {
+  border-color: var(--dash);
 }
 
 .ghost {
@@ -202,7 +199,7 @@
   align-items: center;
   height: 22px;
   padding: 0 10px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: rgba(0, 0, 0, 0.05);
   font-size: 12px;
   font-weight: 500;

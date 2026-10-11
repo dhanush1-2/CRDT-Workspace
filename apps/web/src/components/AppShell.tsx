@@ -180,7 +180,9 @@ export function AppShell({
       // grow it back: the collapse the hold exists to prevent. Take over from where the bar
       // is on screen instead; the code below holds it there or animates once from there.
       if (!settling || holdExpired) return
-      const shown = bar.getBoundingClientRect().width
+      // offsetWidth, not the bounding box: the nav's g-pop entrance scales it, and the
+      // bounding box includes that transform (up to 4% low) where the layout width does not.
+      const shown = bar.offsetWidth
       stopAnimation.current?.()
       lastNavWidth = shown
       holding.current = true
@@ -216,24 +218,21 @@ export function AppShell({
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     animatingWidth.current = true
-    // Pin the start width with no transition, let it paint, and only then change to
-    // the target. The usual set-then-force-a-reflow trick is not enough here: the bar
-    // is a brand-new node on a navigation to or from the dashboard, and a property's
-    // first resolved value on a freshly inserted element is its initial value, not
-    // something to transition from -- measured, the transition was swallowed and the
-    // width simply jumped. A real frame in between gives the browser a painted
-    // "before".
+    // The spec's tween ("Nav bar"), in its order: (1) the bar at the old width, with no
+    // transition; (2) a forced layout, which commits that width as the value the
+    // transition starts from; (3) the transition on and the new width, over --dur
+    // (0.55s) with --ease (cubic-bezier(.32,.72,0,1)). `done` below clears the inline
+    // width on the bar's own width transitionend. On the first-ever mount `from` is null
+    // and this is never reached; under reduced motion the early return above skips it.
     bar.style.transition = 'none'
     bar.style.width = `${from}px`
-    const frame = requestAnimationFrame(() => {
-      bar.style.transition = 'width var(--dur) var(--ease)'
-      bar.style.width = `${to}px`
-    })
+    void bar.offsetWidth
+    bar.style.transition = 'width var(--dur) var(--ease)'
+    bar.style.width = `${to}px`
 
     let settled = false
     const stop = () => {
       settled = true
-      cancelAnimationFrame(frame)
       window.clearTimeout(timeout)
       bar.removeEventListener('transitionend', done)
       animatingWidth.current = false

@@ -3,20 +3,19 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  /* Not `1 1 auto`. The nav sizes itself to this row, so a strip that grows to fill
-     the nav makes the nav grow to fill the window: each would be waiting for the
-     other, and the bar would stop being a centred pill. It takes the space it needs,
-     can still shrink to 120px, and scrolls sideways with the edge fade beyond that. */
+  /* Not `1 1 auto`. The nav sizes itself to this row, so a strip that grows to fill the
+     nav makes the nav grow to fill the window: each would be waiting for the other, and
+     the bar would stop being centred. It takes the space it needs, can still shrink to
+     120px (spec, "Tabs"), and scrolls sideways with the edge fade beyond that. */
   flex: 0 1 auto;
   min-width: 120px;
   padding: 3px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   overflow-x: auto;
   scrollbar-width: none;
   /*
-    The edge fade is applied inline from measured overflow, not here. The
-    prototype sets mask-image to `none` when the strip fits: an unconditional
-    mask fades the right edge of a two-tab strip forever, which reads as a
+    The right-edge fade is applied inline from measured overflow (NavTabs), not here: an
+    unconditional mask fades the right edge of a two-tab strip forever, which reads as a
     rendering fault rather than as "there is more".
   */
 }
@@ -35,7 +34,7 @@
   height: 32px;
   padding: 0 14px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: transparent;
   font-size: 14px;
   font-weight: 500;
@@ -63,62 +62,27 @@
   text-decoration: none;
 }
 
-/* The design specifies this literal text colour for the active tab. */
+/* The open tab: violet text at 600 (spec, "Active tab"). Inactive tabs are --text-muted
+   (#5f625d) at 500, above. */
 .tabActive,
 .tabActive:hover {
   font-weight: 600;
-  color: oklch(0.36 0.11 285);
+  color: var(--accent-text);
 }
 
 /*
-  The liquid-glass pill that slides between tabs. Positioned and sized from
-  JavaScript; everything visual lives here. The design specifies these literals,
-  including the accent oklch values.
+  The open tab's underline (spec, "Active tab"): a 2px accent rule at the bottom of the
+  strip. NavTabs places it with transform: translateX(offsetLeft) and sizes it with
+  width: offsetWidth, both measured from the open tab, and remembers the last position
+  at module level (lastMetrics) so it slides across page changes too.
 */
 .indicator {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
   left: 0;
-  border-radius: var(--r-pill);
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
   pointer-events: none;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.3) 100%
-    ),
-    oklch(0.42 0.11 285 / 0.14);
-  backdrop-filter: blur(8px) saturate(220%);
-  -webkit-backdrop-filter: blur(8px) saturate(220%);
-  border: 1px solid oklch(0.42 0.11 285 / 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -2px 6px rgba(255, 255, 255, 0.4),
-    inset 0 2px 5px oklch(0.42 0.11 285 / 0.12),
-    0 2px 6px oklch(0.42 0.11 285 / 0.16),
-    0 6px 16px oklch(0.42 0.11 285 / 0.12);
-}
-
-/*
-  No backdrop-filter, so the translucent fill would leave the active label on a
-  near-transparent pill. Keep the accent tint and gradient, but sit them on a .92
-  white base. A second gradient layer carries the tint because only the final
-  layer of a background can be a plain colour.
-*/
-@supports not (backdrop-filter: blur(1px)) {
-  .indicator {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.55) 0%,
-        rgba(255, 255, 255, 0.08) 50%,
-        rgba(255, 255, 255, 0.3) 100%
-      ),
-      linear-gradient(oklch(0.42 0.11 285 / 0.14), oklch(0.42 0.11 285 / 0.14)),
-      rgba(255, 255, 255, 0.92);
-  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -167,7 +131,7 @@
   height: 32px;
   padding: 0 12px;
   border: 1px solid var(--field-border);
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--field-bg);
   color: var(--text);
   font-size: 14px;
@@ -195,6 +159,7 @@
   border-top: 5px solid var(--icon-faint);
 }
 
+/* A floating menu: white, a hairline, the floating shadow. */
 .menuList {
   position: absolute;
   top: calc(100% + 10px);
@@ -205,14 +170,10 @@
   margin: 0;
   padding: 6px;
   list-style: none;
-  border-radius: var(--r-menu);
-  background: var(--glass-menu);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    var(--glass-hl),
-    0 18px 40px rgba(30, 30, 50, 0.16);
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -225,7 +186,7 @@
 .menuItem {
   display: block;
   padding: 8px 12px;
-  border-radius: 12px;
+  border-radius: var(--r);
   color: var(--text-muted);
   font-size: 14px;
   white-space: nowrap;
@@ -234,14 +195,14 @@
 }
 
 .menuItem:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--wash);
   color: var(--text);
   text-decoration: none;
 }
 
-/* The same active colour the strip's active tab uses. */
+/* The same colour the strip's open tab uses. */
 .menuItemActive,
 .menuItemActive:hover {
   font-weight: 600;
-  color: oklch(0.36 0.11 285);
+  color: var(--accent-text);
 }

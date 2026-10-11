@@ -7,7 +7,12 @@ import { declarations, SRC } from './css-walk.js'
  * Stylesheets that have moved to Gallery, relative to src. Each screen's task appends its
  * files; the cleanup task replaces the list with every stylesheet in src.
  */
-const MIGRATED: string[] = ['components/canvas-background.module.css']
+const MIGRATED: string[] = [
+  'components/canvas-background.module.css',
+  'components/app-shell.module.css',
+  'components/nav-tabs.module.css',
+  'components/user-menu.module.css',
+]
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])
 /** The canvas blobs keep their organic shape: paint, not UI. */
