@@ -78,3 +78,32 @@ export async function invite(input: {
   })
   return { id: invitation.id, link }
 }
+
+/**
+ * Waits until no finite animation or transition is running anywhere on the page, over two
+ * quiet frames (a transition does not exist until the style recalculation after the change
+ * that starts it). Infinite ones, such as the canvas blobs, are ignored. Call it before
+ * reading geometry straight after a navigation: entrance animations scale and move things.
+ */
+export async function settleAnimations(page: Page) {
+  await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    const running = () =>
+      document
+        .getAnimations()
+        .filter(
+          (animation) =>
+            animation.playState !== 'finished' &&
+            Number.isFinite(animation.effect?.getComputedTiming().endTime ?? Number.POSITIVE_INFINITY),
+        )
+    for (let quiet = 0; quiet < 2; ) {
+      const pending = running()
+      if (pending.length === 0) quiet += 1
+      else {
+        quiet = 0
+        await Promise.allSettled(pending.map((animation) => animation.finished))
+      }
+      await frame()
+    }
+  })
+}

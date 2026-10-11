@@ -29,10 +29,10 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .overlay {
-    animation: g-fade 0.35s var(--ease);
+    animation: global(g-fade) 0.35s var(--ease);
   }
   .sheet {
-    animation: g-sheet var(--dur-slow) var(--ease);
+    animation: global(g-sheet) var(--dur-slow) var(--ease);
   }
 }
 
@@ -78,8 +78,23 @@
   background: oklch(0.78 0.12 300);
 }
 
+/*
+  The toast's rise. Not globals.css's g-up, which translates by -50% for a toast that centres
+  itself; this one is centred by .toastWrap, so the shared keyframes would throw it sideways.
+*/
+@keyframes up {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .toast {
-    animation: g-up 0.55s var(--ease);
+    animation: up 0.55s var(--ease);
   }
 }

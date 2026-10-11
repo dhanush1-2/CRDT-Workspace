@@ -8,7 +8,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .page {
-    animation: g-in var(--dur-slow) var(--ease);
+    animation: global(g-in) var(--dur-slow) var(--ease);
   }
 }
 

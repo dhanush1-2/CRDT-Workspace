@@ -46,11 +46,16 @@
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
 }
 
 .button:hover {
   background: rgba(255, 255, 255, 0.22);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button {
+    transition: background var(--dur-fast) var(--ease);
+  }
 }
 
 .primary {

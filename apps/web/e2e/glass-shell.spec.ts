@@ -7,6 +7,7 @@ import {
   documentPath,
   seedWorkspace,
   sessionCookieFor,
+  settleAnimations,
   signIn,
 } from './fixtures.js'
 
@@ -599,6 +600,7 @@ test('the nav logo actually renders at 36px', async ({ page }) => {
   const { owner } = await seedWorkspace(label)
   await signIn(page, owner.id)
   await page.goto('/')
+  await settleAnimations(page)
 
   // The logo is a <span> holding the glyph. An inline non-replaced element ignores width
   // and height, so a missing display:block would size it to the glyph alone while every
@@ -1374,7 +1376,10 @@ test('moving on again while the bar is still animating holds its width until the
           const connected =
             document.querySelector('[data-testid="status"]')?.getAttribute('data-status') === 'connected'
           if (thirdIsActive && !connected) out.push(width)
-          await new Promise((r) => requestAnimationFrame(r))
+          // A timer, not a frame: with the canvas blobs running, a headless frame can take 70ms,
+          // and the connecting window (600ms) would hold too few frames to count. The width
+          // only changes on a frame, so sampling more often than that loses nothing.
+          await new Promise((r) => setTimeout(r, 8))
         }
         return { widths: out, clicked: clickedThird }
       },

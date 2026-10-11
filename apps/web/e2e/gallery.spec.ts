@@ -128,3 +128,52 @@ test.describe('canvas, splatter and colour', () => {
     await cleanup(label)
   })
 })
+
+test.describe('motion', () => {
+  /** Records the name of every CSS animation that runs in the first 3s of each page load. */
+  async function recordAnimations(page: Page) {
+    await page.addInitScript(() => {
+      const seen = new Set<string>()
+      ;(window as unknown as { __animations: Set<string> }).__animations = seen
+      const start = performance.now()
+      const sample = () => {
+        for (const animation of document.getAnimations()) {
+          if (animation instanceof CSSAnimation) seen.add(animation.animationName)
+        }
+        if (performance.now() - start < 3000) requestAnimationFrame(sample)
+      }
+      requestAnimationFrame(sample)
+    })
+  }
+  const recorded = (page: Page) =>
+    page.evaluate(() => [...(window as unknown as { __animations: Set<string> }).__animations])
+
+  test('the shared entrance animations actually run from CSS modules', async ({ page }) => {
+    const label = `${LABEL}-motion`
+    const { owner } = await seedWorkspace(label)
+    await signIn(page, owner.id)
+    await recordAnimations(page)
+    await page.goto('/')
+    // The nav pops in, the dashboard rises, and the canvas blobs drift.
+    await expect
+      .poll(() => recorded(page))
+      .toEqual(expect.arrayContaining(['g-pop', 'g-in', 'g-paint']))
+    await cleanup(label)
+  })
+
+  test.describe('with prefers-reduced-motion: reduce', () => {
+    test.use({ reducedMotion: 'reduce' })
+
+    test('none of them runs', async ({ page }) => {
+      const label = `${LABEL}-motion-reduced`
+      const { owner } = await seedWorkspace(label)
+      await signIn(page, owner.id)
+      await recordAnimations(page)
+      await page.goto('/')
+      await expect(page.getByTestId('nav-bar')).toBeVisible()
+      await page.waitForTimeout(1000)
+      expect((await recorded(page)).filter((name) => name.startsWith('g-'))).toEqual([])
+      await cleanup(label)
+    })
+  })
+})

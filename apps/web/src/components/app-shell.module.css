@@ -59,7 +59,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .nav {
-    animation: g-pop 0.6s var(--ease);
+    animation: global(g-pop) 0.6s var(--ease);
     /* Grows and shrinks from the middle as items appear. Needs
        `interpolate-size: allow-keywords` (globals.css) to interpolate against
        fit-content; without it the width simply jumps. */

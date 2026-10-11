@@ -22,10 +22,10 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .overlay {
-    animation: g-fade 0.35s var(--ease);
+    animation: global(g-fade) 0.35s var(--ease);
   }
   .sheet {
-    animation: g-sheet var(--dur-slow) var(--ease);
+    animation: global(g-sheet) var(--dur-slow) var(--ease);
   }
 }
 

@@ -17,7 +17,7 @@
 /* Animation is opt-in: without this guard the page moves for people who asked it not to. */
 @media (prefers-reduced-motion: no-preference) {
   .blob {
-    animation-name: g-paint;
+    animation-name: global(g-paint);
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
   }

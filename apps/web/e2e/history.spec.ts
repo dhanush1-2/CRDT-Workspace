@@ -9,6 +9,7 @@ import {
   documentPath,
   seedWorkspace,
   sessionCookieFor,
+  settleAnimations,
   signIn,
 } from './fixtures.js'
 
@@ -1161,6 +1162,9 @@ async function openHeld(page: Page, name: string) {
   const rows = panel.getByTestId('history-row')
   await expect(rows).toHaveCount(8)
   await expect.poll(() => requests.held.length).toBe(2)
+  // The panel slides in (g-side); it must have landed before its slider is measured. Not after
+  // freezeClock: a paused clock freezes requestAnimationFrame, which settleAnimations waits on.
+  await settleAnimations(page)
   const elapse = await freezeClock(page)
   // Which two rows the background fetches took first depends on the order the rows
   // scrolled into view, so targets are picked from the rows that are left.

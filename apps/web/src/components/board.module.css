@@ -95,7 +95,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .card {
-    animation: g-in 0.5s var(--ease);
+    animation: global(g-in) 0.5s var(--ease);
     transition:
       transform var(--dur-fast) var(--ease),
       box-shadow var(--dur-fast) var(--ease);
