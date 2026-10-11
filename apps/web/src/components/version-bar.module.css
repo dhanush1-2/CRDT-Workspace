@@ -79,9 +79,9 @@
 }
 
 /*
-  Declared here rather than reusing globals.css's g-up: this build gives an animation
-  name inside a CSS module a per-file hash, so a bare `animation: g-up` points at
-  keyframes that do not exist and nothing animates (the toast's is in that state).
+  A keyframes of this module's own, not globals.css's g-up: the bar rises from above (-8px),
+  where g-up rises from below. Task 12 may fold it into a shared keyframes reached through
+  global().
 */
 @keyframes rise {
   from {

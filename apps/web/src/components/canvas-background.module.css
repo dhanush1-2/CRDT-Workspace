@@ -17,6 +17,7 @@
 /* Animation is opt-in: without this guard the page moves for people who asked it not to. */
 @media (prefers-reduced-motion: no-preference) {
   .blob {
+    /* g-paint animates transform only, so the compositor moves the blurred layer without repainting it. */
     animation-name: global(g-paint);
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;

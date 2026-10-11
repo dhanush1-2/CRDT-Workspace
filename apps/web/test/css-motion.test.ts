@@ -71,4 +71,46 @@ describe('CSS motion', () => {
     }
     expect(problems).toEqual([])
   })
+
+  it('keyframes used by an infinite animation animate only transform and opacity', () => {
+    // An endless animation of anything else (a radius, a size, a position) repaints on the main
+    // thread every frame, for as long as the page is open. The canvas blobs sit under
+    // blur(90px): animating their border-radius took a GPU Mac from 144fps to 134.
+    const COMPOSITOR = new Set(['transform', 'opacity'])
+    const files = sourceFiles(['.css'])
+    const props = new Map<string, Set<string>>()
+    for (const file of files) {
+      for (const d of declarations(readFileSync(file, 'utf8'))) {
+        const frames = d.context.find((prelude) => prelude.startsWith('@keyframes'))
+        if (!frames) continue
+        const name = frames.replace('@keyframes', '').trim()
+        props.set(name, (props.get(name) ?? new Set()).add(d.prop))
+      }
+    }
+    const problems: string[] = []
+    let infinite = 0
+    for (const file of files) {
+      const bySelector = new Map<string, ReturnType<typeof declarations>>()
+      for (const d of declarations(readFileSync(file, 'utf8'))) {
+        if (d.context.some((prelude) => prelude.startsWith('@keyframes'))) continue
+        const key = d.context.join(' | ')
+        bySelector.set(key, [...(bySelector.get(key) ?? []), d])
+      }
+      for (const rule of bySelector.values()) {
+        if (!rule.some((d) => d.prop.startsWith('animation') && /\binfinite\b/.test(d.value))) continue
+        for (const d of rule) {
+          if (d.prop !== 'animation' && d.prop !== 'animation-name') continue
+          for (const { name } of animationNames(d.value)) {
+            infinite += 1
+            for (const prop of props.get(name) ?? []) {
+              if (!COMPOSITOR.has(prop)) problems.push(`${rel(file)} ${d.selector}: ${name} animates ${prop}`)
+            }
+          }
+        }
+      }
+    }
+    // A floor, so a broken walk cannot pass by finding nothing: today the canvas blobs' g-paint.
+    expect(infinite).toBeGreaterThanOrEqual(1)
+    expect(problems).toEqual([])
+  })
 })

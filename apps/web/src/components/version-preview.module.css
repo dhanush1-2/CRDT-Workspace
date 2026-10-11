@@ -4,10 +4,8 @@
   exists to avoid, so the outgoing view simply goes and the incoming one fades up.
 */
 /*
-  Declared here rather than reusing globals.css's g-fade: this build gives an animation
-  name inside a CSS module a per-file hash, so a bare `animation: g-fade` points at
-  keyframes that do not exist and nothing animates (the History panel's g-side is in the
-  same state). A keyframes rule in the same module is hashed with it and does run.
+  A keyframes of this module's own, identical to globals.css's g-fade. It could be reached
+  through global(g-fade) instead; Task 12 may fold it in.
 */
 @keyframes fade {
   from {

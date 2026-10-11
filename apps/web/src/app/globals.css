@@ -279,15 +279,12 @@ textarea {
   0%,
   100% {
     transform: translate(0, 0) rotate(0) scale(1);
-    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
   }
   33% {
     transform: translate(50px, -30px) rotate(12deg) scale(1.08);
-    border-radius: 63% 37% 44% 56% / 55% 62% 38% 45%;
   }
   66% {
     transform: translate(-30px, 40px) rotate(-8deg) scale(0.95);
-    border-radius: 38% 62% 56% 44% / 48% 36% 64% 52%;
   }
 }
 

@@ -1376,9 +1376,11 @@ test('moving on again while the bar is still animating holds its width until the
           const connected =
             document.querySelector('[data-testid="status"]')?.getAttribute('data-status') === 'connected'
           if (thirdIsActive && !connected) out.push(width)
-          // A timer, not a frame: with the canvas blobs running, a headless frame can take 70ms,
-          // and the connecting window (600ms) would hold too few frames to count. The width
-          // only changes on a frame, so sampling more often than that loses nothing.
+          // A timer, not a frame. Headless Chromium rasters in software, so its frame rate (about
+          // 65ms here with the canvas blobs drifting) is not a product signal; this test asserts
+          // that the width holds, and the timer only guarantees enough samples in the 600ms
+          // connecting window. The width changes on frames, so sampling faster loses nothing.
+          // Real-GPU cost is covered by g-paint animating transform only.
           await new Promise((r) => setTimeout(r, 8))
         }
         return { widths: out, clicked: clickedThird }
