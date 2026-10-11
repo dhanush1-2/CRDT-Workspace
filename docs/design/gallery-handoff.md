@@ -37,3 +37,9 @@ Rows are added by the task that made the decision.
 | T4.5 | Syncing dot | Reference `c-pulse 1s` (undefined in the reference) | `g-pulse 1s` infinite, reduced-motion guarded | Decision 22. |
 | T4.6 | `Button` variant | `glass` | `plain` | No glass; no caller used it. |
 | T4.7 | Test premise: reduced-motion nav test (`e2e/gallery.spec.ts`) | The brief samples the bar's inline `width` and expects `''` throughout | Samples the inline `transition` and expects no `width` in it | While a document is still connecting, the bar is held at its old width (an inline width with `transition: none`) whether or not motion is reduced; whether a hold happens depends on how warm the dev server is, so the test passed alone and failed after other nav tests. A tween is what sets an inline width transition, so that is what the test now forbids. Behaviour unchanged. |
+| T5.1 | Card peer ring | Reference `0 0 0 2px #0ea5e9, 0 4px 14px rgba(14,165,233,.18)` | `0 0 0 2px #0ea5e9` | No shadows but the float (decision 5). |
+| T5.2 | Card hover | Reference: white ring plus the floating shadow | `0 0 0 1px #1c1d1b`, no lift | Spec, "Hover" (decision 2). |
+| T5.3 | "+ Add a card" | Reference `#fbfbf9` on the `#fbfbf9` column | White with a hairline; hover darkens the edge | The reference's fill is invisible on its column. |
+| T5.4 | Column transitions | Reference: `background .4s, box-shadow .4s` | None, as before | The held-drag test reads the drag-over ring mid-drag; the column never animated. |
+| T5.5 | Column delete confirm | Code before: red fill | `--danger` text on the Cancel grey | Decision 20 (made in Task 2). |
+| T5.6 | Test premise: board material test (`e2e/gallery.spec.ts`) | The brief reads the card straight after adding it | Parks the pointer at (0, 0) first | The new card lands under the pointer (it takes the "+ Add a card" button's place), so the resting-state test read the hover ring. Behaviour unchanged. |

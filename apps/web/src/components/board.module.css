@@ -2,9 +2,9 @@
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  /* The board's title now sits between the nav and the columns (24px under the nav),
-     so the columns' own top padding drops from 44px to 20px: measured 20px from the
-     title's bottom to the first column's top at 1280px. */
+  /* The board's title sits between the nav and the columns (24px under the nav), so the
+     columns' own top padding is 20px: measured from the title's bottom to the first
+     column's top at 1280px. */
   padding: 20px 16px 16px;
   overflow-x: auto;
   /*
@@ -18,23 +18,22 @@
   margin: 0 auto;
 }
 
-/* Column: 290px, radius 26, glass rgba(255,255,255,.42) — handoff literals. */
+/* Column (spec, "Material"): it was the most see-through glass (.42), so it takes the
+   softer white, with a hairline and 2px corners. */
 .column {
   flex: none;
   width: 290px;
-  border-radius: var(--r-col);
+  border-radius: var(--r);
   padding: 14px;
-  background: var(--glass-col);
-  backdrop-filter: var(--blur-1);
-  -webkit-backdrop-filter: var(--blur-1);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  background: var(--paper-soft);
+  border: 1px solid var(--hairline);
 }
 
-/* Drag-over: fill .75 plus a 2px accent inset — handoff literals. */
+/* Drag-over: white, with a 2px accent ring inside. No transition: the held-drag test
+   reads the ring mid-drag, and the column never had one. */
 .columnOver {
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 2px var(--accent);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .columnHead {
@@ -53,7 +52,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Count chip: 22px pill, rgba(0,0,0,.05) — handoff literals. */
+/* Count chip: 22px, rgba(0,0,0,.05), the reference's literal. */
 .count {
   flex: none;
   display: grid;
@@ -61,7 +60,7 @@
   min-width: 22px;
   height: 22px;
   padding: 0 7px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: rgba(0, 0, 0, 0.05);
   font-size: 12.5px;
   font-weight: 600;
@@ -73,24 +72,27 @@
   gap: 8px;
 }
 
-/*
-  Card. Base fill .92, radius 18, padding 14/16, title 14.5px, and the
-  0 0 0 1px #fff + 0 2px 8px rgba(30,45,40,.06) shadow are handoff literals.
-*/
+/* Card (spec, "Shadows"): white with a 0 0 0 1px hairline ring instead of a border, so a
+   selected or peer ring can replace it without moving anything. */
 .card {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
   padding: 14px 16px;
-  border-radius: var(--r-card);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 0 0 1px #fff, 0 2px 8px rgba(30, 45, 40, 0.06);
+  border-radius: var(--r);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--hairline);
   cursor: grab;
 }
 
 .card[data-readonly='true'] {
   cursor: default;
+}
+
+/* Hover: no lift; the edge turns dark (spec, "Hover"). The press stays. */
+.card:hover {
+  box-shadow: 0 0 0 1px var(--rule);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -100,16 +102,9 @@
       transform var(--dur-fast) var(--ease),
       box-shadow var(--dur-fast) var(--ease);
   }
-  .card:hover {
-    transform: translateY(-3px) scale(1.01);
-  }
   .card:active {
     transform: scale(0.98);
   }
-}
-
-.card:hover {
-  box-shadow: 0 0 0 1px #fff, 0 14px 30px rgba(30, 45, 40, 0.12);
 }
 
 .cardDragging {
@@ -118,12 +113,12 @@
 
 /* Used by the card sheet in a later plan; no caller wires selection yet. */
 .cardSelected {
-  box-shadow: 0 0 0 2px var(--accent), 0 2px 8px rgba(30, 45, 40, 0.06);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* A remote peer on the card — handoff literals, including the peer blue. */
+/* A remote peer on the card: the peer's 2px ring, without the glow under it. */
 .cardPeer {
-  box-shadow: 0 0 0 2px #0ea5e9, 0 4px 14px rgba(14, 165, 233, 0.18);
+  box-shadow: 0 0 0 2px #0ea5e9;
 }
 
 /* Zero basis: with .card wrapping, an auto basis would push the × onto its own row. */
@@ -136,7 +131,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Delete ×: a 24px circle for editors. */
+/* Delete ×: a 24px circle for editors. Round, like the other × buttons. */
 .delete {
   flex: none;
   display: grid;
@@ -165,13 +160,13 @@
   gap: 6px;
 }
 
-/* Peer chip: avatar + name, rgba(14,165,233,.1) with text #0b6e99 — handoff literals. */
+/* Peer chip: avatar + name, rgba(14,165,233,.1) with text #0b6e99, the reference's literals. */
 .peerChip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 3px 9px 3px 3px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: rgba(14, 165, 233, 0.1);
   color: #0b6e99;
   font-size: 12px;
@@ -190,15 +185,15 @@
   font-weight: 600;
 }
 
-/* "+ Add a card": a ghost pill. */
+/* "+ Add a card": white with a hairline. The reference fills it #fbfbf9, the column's own
+   colour, where it disappears. */
 .addCard {
   width: 100%;
   height: 36px;
   margin-top: 8px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(40, 40, 60, 0.08);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r);
+  background: var(--paper);
   color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
@@ -206,20 +201,18 @@
 }
 
 .addCard:hover {
-  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--rule);
+  color: var(--text);
 }
 
-/* "+ Add a list": a 230x54 dashed pill. */
+/* "+ Add a list": 230x54, a dashed edge on white. */
 .addList {
   flex: none;
   width: 230px;
   height: 54px;
   border: 1.5px dashed var(--dash);
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: var(--blur-1);
-  -webkit-backdrop-filter: var(--blur-1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 4px 16px rgba(30, 45, 40, 0.06);
+  border-radius: var(--r);
+  background: var(--paper);
   color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
@@ -227,14 +220,16 @@
 }
 
 .addList:hover {
-  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--rule);
+  color: var(--text);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .addCard,
   .addList {
     transition:
-      background var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease),
       transform 0.4s var(--ease);
   }
   .addList:active,
@@ -250,7 +245,7 @@
   padding: 2px 6px;
   margin: -2px -6px;
   border: 0;
-  border-radius: var(--r-item);
+  border-radius: var(--r);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -260,13 +255,13 @@
 }
 
 .columnTitleInput:hover {
-  background: rgba(255, 255, 255, 0.6); /* the design's hover white for glass rows */
+  background: var(--wash);
 }
 
 .columnTitleInput:focus-visible,
 .columnTitleInput:focus {
   outline: none;
-  background: #fff;
+  background: var(--paper);
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-ring);
 }
 
@@ -277,7 +272,7 @@
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: transparent;
   color: var(--text-muted);
   font-size: 16px;
@@ -285,8 +280,9 @@
   cursor: pointer;
 }
 
+/* Deleting a column is the delete action: its glyph may turn --danger. */
 .columnDelete:hover {
-  background: rgba(0, 0, 0, 0.06); /* same as the count chip's tint, slightly stronger */
+  background: rgba(0, 0, 0, 0.06);
   color: var(--danger);
 }
 
@@ -309,7 +305,7 @@
   height: 28px;
   padding: 0 12px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   font: inherit;
   font-weight: 600;
   cursor: pointer;

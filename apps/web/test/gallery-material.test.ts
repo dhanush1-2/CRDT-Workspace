@@ -12,6 +12,7 @@ const MIGRATED: string[] = [
   'components/app-shell.module.css',
   'components/nav-tabs.module.css',
   'components/user-menu.module.css',
+  'components/board.module.css',
 ]
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])

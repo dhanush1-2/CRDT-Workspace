@@ -412,3 +412,62 @@ test.describe('nav', () => {
     await cleanup(label)
   })
 })
+
+test.describe('board', () => {
+  /** A board with one column and one card; returns their locators. */
+  async function boardWithACard(page: Page, label: string) {
+    const { owner, workspace } = await seedWorkspace(label)
+    const board = await createDocument(workspace.id, 'board')
+    await signIn(page, owner.id)
+    await page.goto(documentPath(board))
+    await expect(page.getByTestId('status')).toHaveAttribute('data-status', 'connected')
+    await page.getByTestId('add-column').click()
+    const column = page.locator('[data-testid^="column-"]').first()
+    await expect(column).toBeVisible()
+    const columnId = (await column.getAttribute('data-testid'))!.replace('column-', '')
+    await page.getByTestId(`add-card-${columnId}`).click()
+    const card = column.locator('article[data-testid^="card-"]').first()
+    await expect(card).toBeVisible()
+    // The new card lands under the pointer (it took the "+ Add a card" button's place),
+    // so park the pointer elsewhere: the resting styles are what the first test reads.
+    await page.mouse.move(0, 0)
+    await settleAnimations(page)
+    return { column, card, addCard: page.getByTestId(`add-card-${columnId}`) }
+  }
+
+  test('columns are the softer white with a hairline; cards are white with a hairline ring', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-board`
+    const { column, card, addCard } = await boardWithACard(page, label)
+    expect(await material(column)).toEqual({
+      background: PAPER_SOFT,
+      backdrop: 'none',
+      shadow: 'none',
+      radius: '2px',
+      borderColor: HAIRLINE,
+      borderWidth: '1px',
+    })
+    expect(await material(card)).toMatchObject({
+      background: WHITE,
+      backdrop: 'none',
+      shadow: `${HAIRLINE} 0px 0px 0px 1px`,
+      radius: '2px',
+    })
+    expect(await material(addCard)).toMatchObject({ background: WHITE, radius: '2px', borderColor: HAIRLINE })
+    const addList = page.getByTestId('add-column')
+    await expect(addList).toHaveCSS('border-top-style', 'dashed')
+    expect(await material(addList)).toMatchObject({ background: WHITE, radius: '2px', backdrop: 'none', shadow: 'none' })
+    await cleanup(label)
+  })
+
+  test('a hovered card does not lift; its edge turns dark', async ({ page }) => {
+    const label = `${LABEL}-cardhover`
+    const { card } = await boardWithACard(page, label)
+    await card.hover()
+    await expect.poll(() => card.evaluate((el) => getComputedStyle(el).boxShadow)).toBe(`${RULE} 0px 0px 0px 1px`)
+    await settleAnimations(page)
+    await expect(card).toHaveCSS('transform', 'none')
+    await cleanup(label)
+  })
+})
