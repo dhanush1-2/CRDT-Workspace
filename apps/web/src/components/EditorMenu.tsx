@@ -40,7 +40,7 @@ const ITEM_SELECTOR = '[data-menu-item]'
 /** Swatches are laid out four to a row (handoff 12.5), so Up/Down move by four. */
 const SWATCH_COLUMNS = 4
 
-export type MenuName = 'style' | 'color' | 'highlight' | 'insert-link'
+export type MenuName = 'style' | 'color' | 'highlight' | 'insert-link' | 'align'
 
 /** What one menu is told by the group: whether it is open, and how to open and close it. */
 export interface MenuControl {
@@ -96,6 +96,8 @@ interface EditorMenuProps {
    * editor hands it back to the editor here, selection restored.
    */
   restoreTo?: () => void
+  /** Extra classes for the panel, for a menu whose size differs from its variant's. */
+  panelClassName?: string
   children: ReactNode
 }
 
@@ -111,6 +113,7 @@ export function EditorMenu({
   text,
   active,
   restoreTo,
+  panelClassName,
   children,
 }: EditorMenuProps) {
   const { open, viaKeyboard, onOpen, onClose } = control
@@ -263,7 +266,7 @@ export function EditorMenu({
                 : variant === 'popover'
                   ? styles.menuPopover
                   : styles.menuSwatches
-            }`}
+            } ${panelClassName ?? ''}`}
             data-testid={`tb-${name}-menu`}
             role={variant === 'popover' ? 'dialog' : undefined}
             aria-label={variant === 'popover' ? menuLabel : undefined}

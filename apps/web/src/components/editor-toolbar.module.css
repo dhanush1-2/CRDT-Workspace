@@ -622,3 +622,56 @@
       box-shadow 0.35s var(--ease);
   }
 }
+
+/* The Alignment dropdown (spec, "Document toolbar"): a trigger with the current alignment's
+   icon and a small caret, and a 170px list of the four, each with its icon. */
+.alignCaret {
+  font-size: 8px;
+  opacity: 0.6;
+}
+
+.menuAlign {
+  width: 170px;
+  padding: 6px;
+}
+
+.alignRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.alignRow:hover {
+  background: var(--wash);
+}
+
+/* The current alignment reads as pressed, as the tool buttons do. */
+.alignRow[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.alignRow svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .alignRow {
+    transition: background 0.2s var(--ease);
+  }
+}

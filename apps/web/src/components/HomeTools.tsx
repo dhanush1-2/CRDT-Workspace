@@ -3,16 +3,16 @@ import { useEditorState, type Editor } from '@tiptap/react'
 import { ToolButton, ToolSeparator } from './ToolButton'
 import { useMenuGroup } from './EditorMenu'
 import {
+  AlignMenu,
   ColourMenu,
   HighlightMenu,
   StyleMenu,
   readBlockStyle,
+  type Alignment,
   type BlockReading,
   type LastColours,
 } from './HomeMenus'
 import styles from './editor-toolbar.module.css'
-
-type Alignment = 'left' | 'center' | 'right' | 'justify'
 
 /** What the Home row shows of the selection. Every field is a flag the bar renders. */
 interface HomeFormat {
@@ -49,13 +49,6 @@ function readFormat(editor: Editor): HomeFormat {
   }
 }
 
-const ALIGNMENTS: { id: Alignment; label: string; path: string }[] = [
-  { id: 'left', label: 'Align left', path: 'M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h8' },
-  { id: 'center', label: 'Center', path: 'M2 3.5h12M4 6.5h8M2 9.5h12M4 12.5h8' },
-  { id: 'right', label: 'Align right', path: 'M2 3.5h12M6 6.5h8M2 9.5h12M6 12.5h8' },
-  { id: 'justify', label: 'Justify', path: 'M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12' },
-]
-
 function Icon({ children }: { children: ReactNode }) {
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -66,8 +59,8 @@ function Icon({ children }: { children: ReactNode }) {
 
 /**
  * The Home tab's controls (handoff 12.2): history, the Style dropdown, the four inline
- * marks, the colour group, lists, alignment and clear formatting. The three menus are
- * built on one shell (EditorMenu) and live in HomeMenus.
+ * marks, the colour group, lists, the alignment dropdown and clear formatting. The four
+ * menus are built on one shell (EditorMenu) and live in HomeMenus.
  *
  * The active states are re-read after every transaction, which covers both a command
  * and a caret move: `useEditorState` re-runs the selector on each one and re-renders
@@ -75,7 +68,7 @@ function Icon({ children }: { children: ReactNode }) {
  */
 export function HomeTools({ editor, lastColours }: { editor: Editor; lastColours: LastColours }) {
   const format = useEditorState({ editor, selector: ({ editor: current }) => readFormat(current) })
-  // One open menu at a time across the three.
+  // One open menu at a time across the four.
   const menu = useMenuGroup()
 
   // No .focus() in the chain. The click never took focus from the editor (ToolButton
@@ -198,21 +191,7 @@ export function HomeTools({ editor, lastColours }: { editor: Editor; lastColours
       </ToolButton>
       <ToolSeparator />
 
-      {ALIGNMENTS.map((entry) => (
-        <ToolButton
-          key={entry.id}
-          label={entry.label}
-          active={format.align === entry.id}
-          data-testid={`tb-align-${entry.id}`}
-          // set, not toggle: alignment is a choice among four, and pressing the one that
-          // is already active should not silently revert to the default.
-          onClick={() => run().setTextAlign(entry.id).run()}
-        >
-          <Icon>
-            <path d={entry.path} />
-          </Icon>
-        </ToolButton>
-      ))}
+      <AlignMenu editor={editor} control={menu('align')} current={format.align} />
       <ToolSeparator />
 
       <ToolButton

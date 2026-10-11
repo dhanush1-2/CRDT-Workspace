@@ -382,18 +382,25 @@ test('each alignment sets the paragraph and marks itself, and only itself, activ
   await page.keyboard.type('aligned')
   const ids = ['left', 'center', 'right', 'justify'] as const
 
-  // An untouched paragraph is left-aligned, and the bar says so.
-  await expect(tb(page, 'align-left')).toHaveAttribute('aria-pressed', 'true')
+  // An untouched paragraph is left-aligned, and the dropdown says so.
+  await openMenu(page, 'align')
+  await expect(tb(page, 'align-left')).toHaveAttribute('aria-selected', 'true')
+  await page.keyboard.press('Escape')
 
   for (const id of [...ids].reverse()) {
+    await openMenu(page, 'align')
     await tb(page, `align-${id}`).click()
+    // Choosing closes the menu.
+    await expect(tb(page, 'align-menu')).toHaveCount(0)
     await expect(prose(page).locator('p').first()).toHaveCSS('text-align', id)
+    await openMenu(page, 'align')
     for (const other of ids) {
       await expect(tb(page, `align-${other}`)).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         other === id ? 'true' : 'false',
       )
     }
+    await page.keyboard.press('Escape')
   }
 })
 
@@ -408,6 +415,7 @@ test('clear formatting removes the marks and returns the block to a paragraph', 
   await page.keyboard.press('ControlOrMeta+a')
   await tb(page, 'bold').click()
   await tb(page, 'italic').click()
+  await openMenu(page, 'align')
   await tb(page, 'align-center').click()
   await expect(prose(page).locator('h1 strong em')).toHaveText('Loud title')
 
@@ -488,6 +496,7 @@ test('formatting made in one browser appears in the other', async ({ browser }) 
   await tb(a.page, 'italic').click()
   await tb(a.page, 'underline').click()
   await tb(a.page, 'strike').click()
+  await openMenu(a.page, 'align')
   await tb(a.page, 'align-center').click()
 
   const text = prose(b.page)
@@ -579,10 +588,35 @@ test('the tool row is one Tab stop, and the arrow keys move within it', async ({
   await expect(tb(page, 'undo')).toHaveAttribute('tabindex', '-1')
 
   // And Enter on a focused tool presses it: the keyboard path works, not only the mouse.
+  // Left of Clear is the Alignment dropdown; Enter opens it on the current choice.
   await page.keyboard.press('ArrowLeft')
+  await expect(tb(page, 'align')).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(tb(page, 'align-left')).toBeFocused()
+  await page.keyboard.press('End')
   await expect(tb(page, 'align-justify')).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(tb(page, 'align-justify')).toHaveAttribute('aria-pressed', 'true')
+  await expect(tb(page, 'align-menu')).toHaveCount(0)
+  await expect(tb(page, 'align')).toBeFocused()
+  await expect(prose(page).locator('p').first()).toHaveCSS('text-align', 'justify')
+})
+
+test('alignment is one dropdown: the four choices live in its menu, not in the row', async ({ page }) => {
+  await openDocument(page, `${LABEL}-align-menu`)
+  await prose(page).click()
+
+  const trigger = tb(page, 'align')
+  await expect(trigger).toHaveAttribute('aria-haspopup', 'listbox')
+  await expect(trigger).toHaveAttribute('aria-label', 'Alignment: Align left')
+  for (const id of ['left', 'center', 'right', 'justify']) {
+    await expect(tb(page, `align-${id}`)).toHaveCount(0)
+  }
+
+  await openMenu(page, 'align')
+  await expect(tb(page, 'align-menu').getByRole('option')).toHaveCount(4)
+  expect((await tb(page, 'align-menu').boundingBox())!.width).toBeCloseTo(170, 0)
+  await tb(page, 'align-center').click()
+  await expect(trigger).toHaveAttribute('aria-label', 'Alignment: Center')
 })
 
 // ---------------------------------------------------------------------------
@@ -603,7 +637,7 @@ const resolved = (page: Page, value: string) =>
 const STYLES = ['title', 'heading', 'subheading', 'normal', 'quote', 'code'] as const
 
 /** Opens a menu with the mouse, the way a person does: focus stays in the editor. */
-async function openMenu(page: Page, id: 'style' | 'color' | 'highlight') {
+async function openMenu(page: Page, id: 'style' | 'color' | 'highlight' | 'align') {
   await tb(page, id).click()
   await expect(tb(page, `${id}-menu`)).toBeVisible()
   await settled(page)
@@ -1082,10 +1116,11 @@ test('a menu’s items are not stops of the tool row', async ({ page }) => {
   await prose(page).click()
   const stops = page.locator('[data-testid="tb-row-home"] [data-roving]')
   const before = await stops.count()
-  // The three triggers joined the row; their items must not.
-  expect(before).toBeGreaterThan(14)
+  // The four triggers joined the row (alignment is one of them now, in place of four
+  // buttons: 13 stops); their items must not.
+  expect(before).toBeGreaterThan(12)
 
-  for (const id of ['style', 'color', 'highlight'] as const) {
+  for (const id of ['style', 'color', 'highlight', 'align'] as const) {
     await openMenu(page, id)
     await expect(stops).toHaveCount(before)
     await expect(page.locator('[data-testid="tb-row-home"] [data-roving][tabindex="0"]')).toHaveCount(1)
@@ -1110,6 +1145,11 @@ test('a menu’s items are not stops of the tool row', async ({ page }) => {
   await expect(tb(page, 'highlight')).toBeFocused()
   await page.keyboard.press('ArrowRight')
   await expect(tb(page, 'bullet')).toBeFocused()
+  await tb(page, 'ordered').focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(tb(page, 'align')).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await expect(tb(page, 'clear')).toBeFocused()
 })
 
 test('modified arrows are left to the browser, in the tool row and on the tab strip', async ({

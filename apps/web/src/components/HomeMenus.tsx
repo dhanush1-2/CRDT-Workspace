@@ -301,3 +301,72 @@ export function HighlightMenu({
     </EditorMenu>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Alignment (spec, "Document toolbar": the alignment controls are one dropdown)
+// ---------------------------------------------------------------------------
+
+export type Alignment = 'left' | 'center' | 'right' | 'justify'
+
+export const ALIGNMENTS: readonly { id: Alignment; label: string; path: string }[] = [
+  { id: 'left', label: 'Align left', path: 'M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h8' },
+  { id: 'center', label: 'Center', path: 'M2 3.5h12M4 6.5h8M2 9.5h12M4 12.5h8' },
+  { id: 'right', label: 'Align right', path: 'M2 3.5h12M6 6.5h8M2 9.5h12M6 12.5h8' },
+  { id: 'justify', label: 'Justify', path: 'M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12' },
+]
+
+/**
+ * One trigger showing the current alignment, and a 170px list of the four. A listbox like
+ * the Style menu: the arrows move through it, Enter chooses, Esc closes. Choosing sets the
+ * alignment rather than toggling it: pressing the one already chosen must not silently
+ * revert to the default.
+ */
+export function AlignMenu({
+  editor,
+  control,
+  current,
+}: {
+  editor: Editor
+  control: MenuControl
+  current: Alignment
+}) {
+  const shown = ALIGNMENTS.find((entry) => entry.id === current) ?? ALIGNMENTS[0]!
+  return (
+    <EditorMenu
+      name="align"
+      control={control}
+      variant="list"
+      label={`Alignment: ${shown.label}`}
+      title="Alignment"
+      menuLabel="Alignment"
+      panelClassName={styles.menuAlign}
+      trigger={
+        <>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d={shown.path} />
+          </svg>
+          <span className={styles.alignCaret} aria-hidden="true">
+            ▼
+          </span>
+        </>
+      }
+    >
+      {ALIGNMENTS.map((entry) => (
+        <MenuItem
+          key={entry.id}
+          role="option"
+          selected={current === entry.id}
+          label={entry.label}
+          className={styles.alignRow}
+          data-testid={`tb-align-${entry.id}`}
+          onChoose={() => editor.chain().setTextAlign(entry.id).run()}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d={entry.path} />
+          </svg>
+          <span>{entry.label}</span>
+        </MenuItem>
+      ))}
+    </EditorMenu>
+  )
+}

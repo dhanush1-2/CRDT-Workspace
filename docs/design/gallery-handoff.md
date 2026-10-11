@@ -52,3 +52,5 @@ Rows are added by the task that made the decision.
 | T6.7 | Narrow/Wide segment | Reference: white with `0 1px 3px` | White on the grey track, no shadow | Decision 10. |
 | T6.8 | Remote caret label | Code before `0 4px 10px` shadow, pill | No shadow, 2px corners | No shadows; the reference's label has none. |
 | T6.9 | Document h3 | Code before 18px (level with the 18px body) | 17px | Moves with the 17px body; the reference's 17px. |
+| T7.1 | Alignment | Code before: four buttons in the Home row | One dropdown (`tb-align`), a 170px listbox of the four; the four test ids move into it | The spec: "grouped into one dropdown"; values from the reference's align menu. |
+| T7.2 | Test premise: tool row stop count (`e2e/editor-toolbar.spec.ts`, "a menu's items are not stops of the tool row") | More than 14 stops (four alignment buttons in the row) | More than 12 (13 stops: the four buttons became one trigger); Alignment joins the menus checked, and the order check gains Numbered list, Alignment, Clear | Not in the plan's "Tests that change" table; the stop count fell by three with the grouping. Behaviour unchanged. |
