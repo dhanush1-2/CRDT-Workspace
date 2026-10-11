@@ -1,15 +1,18 @@
 :root {
   /*
-    The design system of handoff section 2 (2026-10-03). Names and values are that
-    section's, so a value quoted in the handoff can be found here by the same name.
+    The design system. Gallery (2026-10-10; docs/design/gallery-handoff.md) replaces the
+    Glass look of glass-handoff.md section 2. The glass tokens further down are still read
+    by screens that have not moved to Gallery yet, and go once none does.
 
-    Four tokens are ours and are not in section 2, each for a reason:
-      --dur*  the handoff writes durations as literals (.25s, .3s, .4s, .55s, .6s);
-              three tokens are better than scattering those through 16 stylesheets
-      --font  section 2 gives the stack in prose; editor-type.ts stores `var(--font)`
-              in documents so they follow it if it ever changes
-      --ok-text  a contrast-safe variant of --ok, derived here; --ok itself is a dot
-              colour and does not meet 4.5:1 as text
+    Tokens that are ours rather than the spec's, each for a reason:
+      --dur*  the designs write durations as literals (.25s, .3s, .4s, .55s, .6s);
+              three tokens are better than scattering those through every stylesheet
+      --font  the spec names a family; editor-type.ts stores `var(--font)` in documents
+              so they follow it. --font-schibsted is set on <html> by next/font
+              (app/layout.tsx)
+      --ok-text  a contrast-safe variant of --ok, which is a dot colour and does not
+              meet 4.5:1 as text
+      --accent-soft  the toolbar's pressed fill: the reference's accent at 12%
   */
 
   /* text */
@@ -18,29 +21,46 @@
   --text-muted: #5f625d;
   --text-faint: #6c6f6a;
   --icon-faint: #a3a6a0;
+  /* The one red in the UI: error text and the delete action (spec, "Colour"). */
   --danger: #c4372b;
 
-  /* accent: indigo-violet, hue 285 */
-  --accent: oklch(0.42 0.11 285);
-  --accent-hover: oklch(0.37 0.11 285);
-  --accent-text: oklch(0.36 0.11 285);
-  --accent-tint: oklch(0.95 0.02 285);
-  --accent-soft: oklch(0.42 0.11 285 / 0.12);
-  --accent-ring: oklch(0.42 0.11 285 / 0.12);
-  --accent-shadow: oklch(0.42 0.11 285 / 0.22);
+  /* accent: violet, hue 290 (spec, "Colour"). Its hex fallback, #6d3fd6, is used where a
+     CSS colour cannot go: the favicon (app/icon.svg) and the splatter's canvas palette. */
+  --accent: oklch(0.5 0.17 290);
+  --accent-hover: oklch(0.45 0.17 290);
+  --accent-text: oklch(0.44 0.17 290);
+  --accent-tint: oklch(0.95 0.027 290);
+  --accent-soft: oklch(0.5 0.17 290 / 0.12);
+  --accent-ring: oklch(0.5 0.17 290 / 0.12);
+  /* Glass only: nothing in Gallery casts an accent glow. Removed once no screen reads it. */
+  --accent-shadow: oklch(0.5 0.17 290 / 0.22);
 
   /* status */
   --ok: oklch(0.62 0.13 150);
-  /* Ours: text-safe variant of --ok. --ok is a dot colour and fails 4.5:1 as text. */
   --ok-text: oklch(0.5 0.13 150);
   --warn: oklch(0.72 0.15 65);
   --sync: var(--accent);
-  --toast-dot: oklch(0.78 0.12 300);
+  /* The accent 0.14 lighter at its own chroma and hue (spec, "Toast dot"). */
+  --toast-dot: oklch(0.64 0.17 290);
+  --selection: oklch(0.9 0.027 290 / 0.6);
 
   /* canvas */
   --canvas-base: #f1f1ef;
 
-  /* glass */
+  /* Gallery surfaces (spec, "Material") */
+  --paper: #ffffff; /* everything that was 60% or more opaque white glass */
+  --paper-soft: #fbfbf9; /* the more see-through surfaces: board columns, the sign-in card */
+  --ink: #161616; /* dark pills and toasts */
+  --hairline: #e4e4e0; /* replaces every white glass border */
+  --rule: #1c1d1b; /* section rules, and the border a tile or card takes on hover */
+  /* The reference's hover fill for a row or a tool on a white surface. */
+  --wash: rgba(40, 40, 60, 0.06);
+  /* The one shadow: floating menus, sheets and the palette. */
+  --shadow-float: 0 24px 48px -28px rgba(0, 0, 0, 0.25);
+  /* The one corner. Avatars, dots and the logo stay round (50%). */
+  --r: 2px;
+
+  /* glass: read only by screens not yet moved to Gallery */
   --glass-light: rgba(255, 255, 255, 0.55);
   --glass-col: rgba(255, 255, 255, 0.42);
   --glass-mid: rgba(255, 255, 255, 0.72);
@@ -62,13 +82,13 @@
   --dash: rgba(40, 40, 60, 0.22);
   --track: rgba(40, 40, 60, 0.08);
 
-  /* motion: --ease is section 2's; the durations are ours (see above) */
+  /* motion: --ease is the spec's; the durations are ours (see above) */
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   --dur-fast: 0.3s;
   --dur: 0.55s;
   --dur-slow: 0.7s;
 
-  /* radii */
+  /* radii: Glass. Each screen moves to --r; removed once none reads them. */
   --r-pill: 999px;
   --r-tool: 10px;
   --r-item: 12px;
@@ -80,7 +100,7 @@
   --r-panel: 28px;
   --r-sheet: 30px;
 
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --font: var(--font-schibsted), system-ui, sans-serif;
 }
 
 *,
@@ -112,14 +132,17 @@ body {
   background: var(--canvas-base);
   color: var(--text);
   font-family: var(--font);
-  /* 16px, raised from 15 at the owner's request. This is the base that text without
-     a size of its own inherits; the nav, tabs, meta lines and chips all set their
-     own and are deliberately unchanged, so this moves reading text only. */
-  font-size: 16px;
+  /* 15px, the spec's base ("Type"). Text with no size of its own inherits it; the nav,
+     tabs, tiles, meta lines and chips all set their own. The document body sets 17px. */
+  font-size: 15px;
   line-height: 1.47;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--selection);
 }
 
 h1,

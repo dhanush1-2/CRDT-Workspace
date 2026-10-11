@@ -195,7 +195,7 @@ test('the column under the pointer shows the accent outline while a card is drag
 
   const shadow = () => target.evaluate((el) => getComputedStyle(el).boxShadow)
   // The accent as the browser serialises it in a computed box-shadow.
-  const ACCENT_INSET = 'oklch(0.42 0.11 285) 0px 0px 0px 2px inset'
+  const ACCENT_INSET = 'oklch(0.5 0.17 290) 0px 0px 0px 2px inset'
 
   // Resting: no outline. Without this the assertion below could pass on a column
   // that always had one.

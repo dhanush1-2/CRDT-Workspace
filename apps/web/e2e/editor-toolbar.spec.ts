@@ -2206,6 +2206,12 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
   // opening) + 10 characters.
   const BROWN = 1 + text.indexOf('brown')
 
+  // How tall one character's box is at 100%: the body font's ascent plus descent at the
+  // body size, so it moves with the font. 21 for the system stack at 18px. Schibsted
+  // Grotesk at 18px is about 22; the browser snaps each zoom to whole pixels, so it
+  // measures 15, 23 and 33 at 70%, 100% and 150% (Gallery, Task 1). The +-1.5 stays.
+  const GLYPH_HEIGHT = 22
+
   /** Where A would click to put the caret just before "brown", in A's own layout. */
   const brownPoint = (page: Page) =>
     page.evaluate(() => {
@@ -2293,8 +2299,8 @@ test('a peer’s caret and name label stay on their character at 70%, 100% and 1
     expect(Math.abs(m.caretTop - m.charTop)).toBeLessThan(1)
     // It is as tall as the line, so it was scaled with the text and not left at 100%.
     expect(Math.abs(m.caretHeight - m.charHeight)).toBeLessThan(1)
-    expect(m.charHeight).toBeGreaterThan(21 * scale - 1.5)
-    expect(m.charHeight).toBeLessThan(21 * scale + 1.5)
+    expect(m.charHeight).toBeGreaterThan(GLYPH_HEIGHT * scale - 1.5)
+    expect(m.charHeight).toBeLessThan(GLYPH_HEIGHT * scale + 1.5)
     // The name pill hangs off the bar's left edge and rides on its top.
     expect(Math.abs(m.labelLeft - m.caretLeft)).toBeLessThan(1)
     expect(Math.abs(m.labelBottom - m.caretTop)).toBeLessThan(3)

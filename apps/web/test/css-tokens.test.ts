@@ -23,6 +23,12 @@ describe('css custom properties', () => {
     const globalsCss = globals.replace(/\/\*[\s\S]*?\*\//g, '')
     const defined = new Set([...globalsCss.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]))
     expect(defined.size).toBeGreaterThan(10)
+    // Defined outside globals.css, by next/font: app/layout.tsx passes this name as its
+    // `variable` and puts the class on <html>. Checked against the source, so renaming
+    // the variable there without renaming it here fails.
+    const EXTERNAL = ['--font-schibsted']
+    const layout = readFileSync(join(SRC, 'app/layout.tsx'), 'utf8')
+    for (const name of EXTERNAL) expect(layout).toContain(`variable: '${name}'`)
 
     const files = cssFiles(SRC)
     // Floors against a silent no-op: a broken walk or a moved src directory would
@@ -38,7 +44,8 @@ describe('css custom properties', () => {
       // the repo today; if they appear, this test will not catch a dangling one.
       for (const match of css.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)) {
         references += 1
-        if (!defined.has(match[1])) dangling.push(`${match[1]} in ${relative(SRC, file)}`)
+        if (!defined.has(match[1]) && !EXTERNAL.includes(match[1]!))
+          dangling.push(`${match[1]} in ${relative(SRC, file)}`)
       }
     }
 
