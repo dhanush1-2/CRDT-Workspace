@@ -90,8 +90,9 @@
   cursor: default;
 }
 
-/* Hover: no lift; the edge turns dark (spec, "Hover"). The press stays. */
-.card:hover {
+/* Hover: no lift; the edge turns dark (spec, "Hover"). The press stays. A peer's or the
+   selected ring is collaboration state, so hover never replaces it (spec: rings stay). */
+.card:hover:not(.cardPeer):not(.cardSelected) {
   box-shadow: 0 0 0 1px var(--rule);
 }
 

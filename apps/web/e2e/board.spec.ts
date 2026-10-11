@@ -5,6 +5,7 @@ import {
   createDocument,
   documentPath,
   seedWorkspace,
+  settleAnimations,
   sessionCookieFor,
   signIn,
 } from './fixtures.js'
@@ -173,6 +174,16 @@ test('a remote peer on a card gets the ring and a named chip', async ({ browser 
       pageB.getByTestId(`card-${cardId}`).evaluate((el) => getComputedStyle(el).boxShadow),
     )
     .toContain('rgb(14, 165, 233)')
+
+  // Hovering a card a peer is on keeps the peer's ring: the dark hover edge must not
+  // replace collaboration state.
+  // box-shadow transitions, so let the hover transition finish before reading it once:
+  // a poll would pass on the pre-hover value.
+  await pageB.getByTestId(`card-${cardId}`).hover()
+  await settleAnimations(pageB)
+  expect(
+    await pageB.getByTestId(`card-${cardId}`).evaluate((el) => getComputedStyle(el).boxShadow),
+  ).toContain('rgb(14, 165, 233)')
 
   // The viewer's own page must not ring the card it is hovering: only remote peers do.
   expect(
