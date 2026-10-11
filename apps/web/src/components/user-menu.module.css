@@ -85,7 +85,3 @@
   background: rgba(0, 0, 0, 0.05);
   text-decoration: none;
 }
-
-.danger {
-  color: var(--danger);
-}

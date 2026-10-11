@@ -45,7 +45,7 @@
   --selection: oklch(0.9 0.027 290 / 0.6);
 
   /* canvas */
-  --canvas-base: #f1f1ef;
+  --canvas-base: #f6f6f4;
 
   /* Gallery surfaces (spec, "Material") */
   --paper: #ffffff; /* everything that was 60% or more opaque white glass */

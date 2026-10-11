@@ -1,22 +1,11 @@
 import type { Random } from './random'
 
-// Eleven entries, all distinct. Violet is over-represented by having three family
-// members in the set (#7b3fe4, #9d5cf0, #b794f6 -- hues 262, 266 and 261), not by a
-// repeated entry, so `pick` chooses the violet family more often than any other.
-//
-// OPEN with the design owner: the 2026-10-04 spec says "#7b3fe4 (twice, so it appears
-// more often)", while the handoff's Palettes section says eleven distinct entries and
-// "do not add a duplicate". Duplicating it would change the seeded pattern, so it is
-// not being done on a guess. See the note in docs/design/glass-handoff.md.
+// Gallery's splatter (spec, "Painted background and splatter"): violet #6d3fd6 listed three
+// times so `pick` lands on it most often, then three greys and an ochre. No red. This settles
+// the Glass-era question of whether violet was duplicated: it is, three times. The reference's
+// other palettes ("purple", "orange") are settings the spec does not build.
 export const PALETTES = {
-  purple: [
-    '#7b3fe4', '#5b4ee8', '#9d5cf0', '#c13ea6', '#e8559b', '#3d8fdc',
-    '#22b8c9', '#f0b429', '#f2843a', '#4cc38a', '#b794f6',
-  ],
-  orange: [
-    '#f2762e', '#f0b429', '#e2453c', '#f59e0b', '#2e8bd6', '#2aa58a',
-    '#e8559b', '#7b3fe4', '#22b8c9',
-  ],
+  gallery: ['#6d3fd6', '#6d3fd6', '#6d3fd6', '#1c1c1c', '#454545', '#9a9a9a', '#e9a21f'],
 } as const
 
 export type Circle = { x: number; y: number; r: number }

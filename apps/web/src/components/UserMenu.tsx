@@ -71,7 +71,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
 
           <button
             type="button"
-            className={`${styles.item} ${styles.danger}`}
+            className={styles.item}
             data-testid="sign-out"
             disabled={pending}
             onClick={async () => {

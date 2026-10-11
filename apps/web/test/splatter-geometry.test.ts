@@ -3,6 +3,13 @@ import { createRandom } from '@/lib/splatter/random'
 import { makeSplat, makeSpecks, splatCount, PALETTES } from '@/lib/splatter/geometry'
 
 describe('splat geometry', () => {
+  it("the palette is Gallery's: violet three times, three greys and an ochre, no red", () => {
+    expect(PALETTES.gallery).toEqual([
+      '#6d3fd6', '#6d3fd6', '#6d3fd6', '#1c1c1c', '#454545', '#9a9a9a', '#e9a21f',
+    ])
+    expect(Object.keys(PALETTES)).toEqual(['gallery'])
+  })
+
   it('a splat has 9 core circles, 10-23 rays, 40-90 droplets and 0-3 drips', () => {
     for (let seed = 0; seed < 50; seed += 1) {
       const splat = makeSplat(createRandom(seed), '#7b3fe4', 1)
@@ -54,7 +61,7 @@ describe('splat geometry', () => {
   })
 
   it('specks default to about 320 and sit inside the viewport', () => {
-    const specks = makeSpecks(createRandom(3), 800, 600, PALETTES.purple)
+    const specks = makeSpecks(createRandom(3), 800, 600, PALETTES.gallery)
     expect(specks).toHaveLength(320)
     for (const speck of specks) {
       expect(speck.x).toBeGreaterThanOrEqual(0)
@@ -66,7 +73,7 @@ describe('splat geometry', () => {
 
   it('specks stay clear of an exclusion zone, half-side included', () => {
     const minY = 90
-    const specks = makeSpecks(createRandom(5), 800, 600, PALETTES.purple, 320, minY)
+    const specks = makeSpecks(createRandom(5), 800, 600, PALETTES.gallery, 320, minY)
     for (const speck of specks) {
       // The top edge, not the centre: a speck is a square centred on (x, y), so a
       // centre exactly on the line would still paint above it.
@@ -79,7 +86,7 @@ describe('splat geometry', () => {
     // The other half of the test above: clamping y into the band would satisfy it
     // while putting every speck on the boundary.
     const minY = 300
-    const specks = makeSpecks(createRandom(5), 800, 600, PALETTES.purple, 320, minY)
+    const specks = makeSpecks(createRandom(5), 800, 600, PALETTES.gallery, 320, minY)
     const onEdge = specks.filter((speck) => speck.y < minY + 10).length
     expect(onEdge).toBeLessThan(60)
   })

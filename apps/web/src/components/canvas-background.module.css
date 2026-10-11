@@ -28,7 +28,7 @@
   height: 520px;
   left: -140px;
   top: -160px;
-  background: oklch(0.86 0.012 260);
+  background: oklch(0.93 0.004 90);
   animation-duration: 52s;
 }
 
@@ -37,7 +37,7 @@
   height: 460px;
   right: -120px;
   top: -60px;
-  background: oklch(0.9 0.015 80);
+  background: oklch(0.94 0.004 250);
   animation-duration: 60s;
   animation-direction: reverse;
 }
@@ -47,7 +47,7 @@
   height: 420px;
   right: 18%;
   bottom: -180px;
-  background: oklch(0.83 0.01 240);
+  background: oklch(0.92 0.003 60);
   animation-duration: 68s;
 }
 
@@ -56,7 +56,7 @@
   height: 440px;
   left: 12%;
   bottom: -200px;
-  background: oklch(0.92 0.012 60);
+  background: oklch(0.95 0.003 200);
   animation-duration: 76s;
   animation-direction: reverse;
 }
@@ -66,13 +66,13 @@
   height: 320px;
   left: 44%;
   top: 22%;
-  background: oklch(0.88 0.008 200);
+  background: oklch(0.93 0.004 120);
   animation-duration: 84s;
 }
 
 /*
   The splatter sits above the blobs and below the weave, so the texture reads
-  over the paint. Opacity comes from the strength setting (.5 subtle, .9 bold)
+  over the paint. Opacity comes from the strength setting (.38 subtle, .9 bold)
   and is set inline, since it is one number driven by a prop.
 */
 .splatter {

@@ -315,9 +315,10 @@
   cursor: pointer;
 }
 
+/* The delete action: red words on the Cancel button's grey, not a red fill. */
 .columnConfirmDelete {
-  background: var(--danger);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--danger);
 }
 
 .columnConfirmCancel {

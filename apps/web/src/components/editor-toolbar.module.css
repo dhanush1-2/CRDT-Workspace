@@ -514,8 +514,9 @@
   box-shadow: 0 0 0 4px var(--accent-ring);
 }
 
+/* Invalid: a dark edge, not a red one. The message under the field says what is wrong. */
 .linkInput[aria-invalid='true'] {
-  border-color: var(--danger);
+  border-color: var(--rule);
 }
 
 .linkAdd,

@@ -87,3 +87,39 @@ test.describe('foundation', () => {
     await cleanup(label)
   })
 })
+
+test.describe('canvas, splatter and colour', () => {
+  test('the canvas is near-white, its five blobs almost colourless, and the splatter at 0.38', async ({
+    page,
+  }) => {
+    await page.goto('/login')
+    await expect(page.locator('[class*="canvas-background_canvas"]')).toHaveCSS(
+      'background-color',
+      'rgb(246, 246, 244)',
+    )
+    const blobs = [
+      'oklch(0.93 0.004 90)',
+      'oklch(0.94 0.004 250)',
+      'oklch(0.92 0.003 60)',
+      'oklch(0.95 0.003 200)',
+      'oklch(0.93 0.004 120)',
+    ]
+    for (const [index, colour] of blobs.entries()) {
+      await expect(page.locator(`[class*="canvas-background_b${index + 1}"]`)).toHaveCSS(
+        'background-color',
+        await resolveColour(page, colour),
+      )
+    }
+    await expect(page.getByTestId('paint-splatter')).toHaveCSS('opacity', '0.38')
+  })
+
+  test('Sign out is plain text, not red', async ({ page }) => {
+    const label = `${LABEL}-signout`
+    const { owner } = await seedWorkspace(label)
+    await signIn(page, owner.id)
+    await page.goto('/')
+    await page.getByLabel('Account').click()
+    await expect(page.getByTestId('sign-out')).toHaveCSS('color', await resolveColour(page, 'var(--text)'))
+    await cleanup(label)
+  })
+})

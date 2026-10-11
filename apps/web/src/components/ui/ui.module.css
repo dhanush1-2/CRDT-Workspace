@@ -82,7 +82,7 @@
 }
 
 .danger:hover:not(:disabled) {
-  background: rgba(196, 55, 43, 0.08);
+  background: var(--wash);
 }
 
 .field {
@@ -294,11 +294,12 @@
   }
 }
 
+/* An error message: white with a hairline, the words in --danger. The only red is the text. */
 .error {
   padding: 10px 14px;
-  border: 1px solid rgba(196, 55, 43, 0.25);
+  border: 1px solid var(--hairline);
   border-radius: var(--r-card);
-  background: rgba(196, 55, 43, 0.06);
+  background: var(--paper);
   color: var(--danger);
   font-size: 13px;
 }
