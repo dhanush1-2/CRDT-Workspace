@@ -19,21 +19,21 @@ const LAYER_OPACITY = { subtle: 0.38, bold: 0.9 } as const
 const LANDING_MS = 650
 const FADE_OUT_MS = 2400
 const SPECK_PERIOD_MS = 700
-// Capped at 1, below the 2 the owner's spec names, for this layer only. The
-// splats sit at a third opacity under the weave and behind translucent glass, so the
-// extra sharpness is not visible, and the cost is. Re-measured at 1440x900 after the
-// 2026-10-02 resize: the whole layer is 5.9 MiB at this cap, against 13.3 at 1.5 and
-// 23.6 at 2, with raster cost falling roughly in proportion. Do not raise this
-// without re-measuring: the figures and the method are in docs/design/glass-handoff.md.
+// Capped at 1, below the 2 the owner's spec names, for this layer only. The splats sit at
+// 0.38 opacity under the weave, so the extra sharpness is not visible, and the cost is.
+// Re-measured at 1440x900 after the 2026-10-02 resize: the whole layer is 5.9 MiB at this cap,
+// against 13.3 at 1.5 and 23.6 at 2, with raster cost falling roughly in proportion. Do not
+// raise this without re-measuring: the figures and the method are in
+// docs/design/glass-handoff.md.
 const MAX_DPR = 1
 // The loop redraws at about 30 fps, not at the display rate. Fastest motion here is
 // a 650ms landing (about 20 frames at 30 fps). 32 rather than 33.3 so that two 60 Hz
 // frames (33.4ms) always qualify despite timer jitter.
 const MIN_FRAME_MS = 32
-// Nothing is painted in the top 90px of the viewport. The nav is a sticky glass bar
-// there, and splat colour read straight through its backdrop-filter as coloured
-// streaks inside the bar. Viewport space, not document space: the canvas is absolute
-// inside a fixed, full-viewport parent, so canvas y is viewport y.
+// Nothing is painted in the top 90px of the viewport (spec: "No splatter in the top 90px,
+// behind the nav"), so the nav bar always sits on clean canvas and no splat colour shows
+// through or around it. Viewport space, not document space: the canvas is absolute inside a
+// fixed, full-viewport parent, so canvas y is viewport y.
 const NAV_EXCLUSION_PX = 90
 
 // Everything the loop needs per splat. `canvas` is painted once, at build time,

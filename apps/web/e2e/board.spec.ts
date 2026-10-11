@@ -383,6 +383,24 @@ test('deleting a column with cards asks first, naming the count, and Cancel keep
   await cleanup(label)
 })
 
+test('the delete confirmation is red words on grey, not a red fill', async ({ page }) => {
+  const label = `${LABEL}-delete-colours`
+  const [columnId] = await openBoard(page, label, 1)
+  // An empty column deletes at once; a confirmation appears only when it holds cards.
+  await addCard(page, columnId!)
+  await page.getByTestId(`col-delete-${columnId}`).click()
+  const confirm = page.getByTestId(`col-confirm-delete-${columnId}`)
+  // --danger (#c4372b) for the words, the Cancel button's grey (rgba(0,0,0,.05)) behind them.
+  await expect(confirm).toHaveCSS('color', 'rgb(196, 55, 43)')
+  await expect(confirm).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.05)')
+  await expect(page.getByTestId(`col-confirm-cancel-${columnId}`)).toHaveCSS(
+    'background-color',
+    'rgba(0, 0, 0, 0.05)',
+  )
+
+  await cleanup(label)
+})
+
 test('one card is "1 card", not "1 cards"', async ({ page }) => {
   const label = `${LABEL}-delete-one`
   const [columnId] = await openBoard(page, label, 1)

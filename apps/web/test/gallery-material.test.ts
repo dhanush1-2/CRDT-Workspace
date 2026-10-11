@@ -12,6 +12,8 @@ const MIGRATED: string[] = ['components/canvas-background.module.css']
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])
 /** The canvas blobs keep their organic shape: paint, not UI. */
 const RADIUS_EXCEPTIONS = new Set(['components/canvas-background.module.css .blob'])
+/** The canvas blobs are the only elements allowed `filter: blur(...)`: paint, not UI. */
+const BLUR_EXCEPTIONS = new Set(['components/canvas-background.module.css .blob'])
 /** A ring: `[inset] 0 0 0 Npx [colour]`. Focus, selection and the board card's hairline. */
 const RING = /^(inset\s+)?0(px)?\s+0(px)?\s+0(px)?\s+[\d.]+px(\s+\S.*)?$/
 
@@ -35,12 +37,19 @@ function layers(value: string): string[] {
 }
 
 describe('Gallery material in migrated stylesheets', () => {
-  it.each(MIGRATED)('%s: no blur, no glass token, 2px corners, no shadow but the float and rings', (path) => {
+  it.each(MIGRATED)('%s: no blur, no text or drop shadow, no glass token, 2px corners, no shadow but the float and rings', (path) => {
     const problems: string[] = []
     for (const d of declarations(readFileSync(join(SRC, path), 'utf8'))) {
       const where = `${d.selector} { ${d.prop}: ${d.value} }`
       const inKeyframes = d.context.some((prelude) => prelude.startsWith('@keyframes'))
       if (d.prop.endsWith('backdrop-filter')) problems.push(`blur: ${where}`)
+      if (d.prop === 'text-shadow' && d.value !== 'none') problems.push(`text shadow: ${where}`)
+      if (/^(-webkit-)?filter$/.test(d.prop)) {
+        if (/drop-shadow\(/i.test(d.value)) problems.push(`drop shadow: ${where}`)
+        if (/blur\(/i.test(d.value) && !BLUR_EXCEPTIONS.has(`${path} ${d.selector}`)) {
+          problems.push(`blur: ${where}`)
+        }
+      }
       if (/var\(--(glass|blur)-|var\(--accent-shadow\)|var\(--r-[a-z]/.test(d.value)) {
         problems.push(`glass token: ${where}`)
       }
