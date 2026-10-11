@@ -59,7 +59,12 @@ test.describe('foundation', () => {
         family: style.fontFamily,
         size: style.fontSize,
         loaded: [...document.fonts].some(
-          (face) => /Schibsted/i.test(face.family) && face.status === 'loaded',
+          // next/font also emits a metric-matched local Arial face named "… Fallback"; it
+          // loads even when the real download failed, so it must not count.
+          (face) =>
+            /Schibsted/i.test(face.family) &&
+            !/Fallback/i.test(face.family) &&
+            face.status === 'loaded',
         ),
       }
     })
