@@ -60,3 +60,4 @@ Rows are added by the task that made the decision.
 | T8.3 | Page/Board segment | Reference: white with `0 1px 3px` | White on the grey track, no shadow | Decision 10. |
 | T8.4 | People "Manage" link | Reference: beside the People heading | Inside the People card, where it was | Layout is not in scope (decision 21). |
 | T8.5 | `ui` class names | `.glass`, `.bgPill` | `.surface`, `.metaPill` | Names that say what they are now. |
+| T9.1 | Workspace tiles | Reference `#fbfbf9`, hover `#fff` plus the floating shadow | `#ffffff`; hover darkens the edge; no lift | Decisions 2 and 3, as the overview's. |

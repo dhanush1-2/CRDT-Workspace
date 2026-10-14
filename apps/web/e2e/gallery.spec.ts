@@ -654,3 +654,40 @@ test.describe('workspace overview', () => {
     await cleanup(label)
   })
 })
+
+test.describe('dashboard', () => {
+  test('"Workspaces" is a 52px title, tiles are white with a hairline, and the initial is a square', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-dashboard`
+    const { owner, workspace } = await seedWorkspace(label)
+    await signIn(page, owner.id)
+    await page.goto('/')
+    await settleAnimations(page)
+    const title = page.getByRole('heading', { level: 1, name: 'Workspaces' })
+    await expect(title).toHaveCSS('font-size', '52px')
+    await expect(title).toHaveCSS('letter-spacing', '-2.08px')
+
+    const tile = page.getByTestId(`workspace-${workspace.id}`)
+    expect(await material(tile)).toEqual({
+      background: WHITE,
+      backdrop: 'none',
+      shadow: 'none',
+      radius: '2px',
+      borderColor: HAIRLINE,
+      borderWidth: '1px',
+    })
+    expect(await material(tile.locator('span').first())).toMatchObject({
+      background: await resolveColour(page, 'var(--accent)'),
+      radius: '2px',
+      shadow: 'none',
+    })
+    await expect(page.locator('[class*="tileCreate"]')).toHaveCSS('border-top-style', 'dashed')
+
+    await tile.hover()
+    await expect.poll(() => tile.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(RULE)
+    await settleAnimations(page)
+    await expect(tile).toHaveCSS('transform', 'none')
+    await cleanup(label)
+  })
+})

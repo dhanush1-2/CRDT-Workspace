@@ -78,12 +78,9 @@ test('the tiles and the People card are flat white surfaces', async ({ page }) =
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
 
-  // The dashboard tile still carries its own .7 override until the dashboard moves.
   await page.goto('/')
-  await expect(page.getByTestId(`workspace-${workspace.id}`)).toHaveCSS(
-    'background-color',
-    'rgba(255, 255, 255, 0.7)',
-  )
+  await expect(page.getByTestId(`workspace-${workspace.id}`)).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await expect(page.getByTestId(`workspace-${workspace.id}`)).toHaveCSS('backdrop-filter', 'none')
 
   // Two class selectors could tie on specificity and leave the winner to stylesheet order;
   // this is the check that the intended fill wins on the overview.

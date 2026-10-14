@@ -35,7 +35,7 @@ export default async function HomePage() {
       workspaces={memberships.map(({ workspace }) => ({ id: workspace.id, name: workspace.name }))}
     >
       <div className={styles.page}>
-        <h1>Workspaces</h1>
+        <h1 className={ui.pageTitle}>Workspaces</h1>
         <div className={styles.grid}>
           {memberships.map(({ workspace }) => (
             <Link

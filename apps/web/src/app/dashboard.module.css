@@ -18,6 +18,7 @@
   gap: 16px;
 }
 
+/* A workspace tile composes ui.surface and ui.tile for its material. */
 .tile {
   display: flex;
   flex-direction: column;
@@ -26,30 +27,14 @@
   color: var(--text);
 }
 
-/*
-  The design owner raised these three surfaces from .55 to .7 because splatter behind
-  them tinted the content. A literal, not a token: --glass-light is .55 and is also the
-  nav, the sign-in card, the sheets and the popovers, none of which were asked to
-  change.
-
-  Two class selectors on purpose. ui.glass sets a background too, and a single class
-  here would tie with it on specificity, leaving the winner to be whichever stylesheet
-  the bundler emits last. Measured: a single class does win today. The doubling is so
-  that it does not have to -- the import graph decides that order, and moving a route
-  file is enough to change it. A silent revert to .55 is the failure mode this guards.
-*/
-.tile.tile {
-  background: rgba(255, 255, 255, 0.7);
-}
-
+/* The workspace's initial on an accent square, 2px corners, nothing cast. */
 .initial {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--r);
   background: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: #fff;
   font-size: 18px;
   font-weight: 600;
