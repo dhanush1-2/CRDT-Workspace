@@ -509,7 +509,19 @@ test('formatting made in one browser appears in the other', async ({ browser }) 
   // And a block change travels as well as a mark: a list made in B arrives in A.
   await b.page.locator('.editor .ProseMirror p').first().click()
   await tb(b.page, 'bullet').click()
-  await expect(prose(a.page).locator('ul > li')).toContainText('shared styling')
+  // The item's own text, without B's caret widget (a span with B's name in it, which sits
+  // inside the text wherever B clicked and would otherwise be part of what is read).
+  await expect
+    .poll(() =>
+      prose(a.page)
+        .locator('ul > li')
+        .evaluate((li) => {
+          const copy = li.cloneNode(true) as HTMLElement
+          copy.querySelectorAll('.collaboration-carets__caret').forEach((caret) => caret.remove())
+          return copy.textContent
+        }),
+    )
+    .toBe('shared styling')
 
   // B's own bar reflects what arrived, not only what B did: the caret sits in A's bold.
   await expect(tb(b.page, 'bold')).toHaveAttribute('aria-pressed', 'true')
@@ -1773,13 +1785,20 @@ test('the Link popover is a flat white panel with the floating shadow, and nothi
       if (getComputedStyle(el).backdropFilter !== 'none') blurred.push(el.className || el.tagName)
     }
     const style = getComputedStyle(menu)
-    return { blurred, background: style.backgroundColor, shadow: style.boxShadow, radius: style.borderTopLeftRadius }
+    return {
+      blurred,
+      background: style.backgroundColor,
+      shadow: style.boxShadow,
+      radius: style.borderTopLeftRadius,
+      border: style.borderTopColor,
+    }
   })
   expect(found).toEqual({
     blurred: [],
     background: 'rgb(255, 255, 255)',
     shadow: 'rgba(0, 0, 0, 0.25) 0px 24px 48px -28px',
     radius: '2px',
+    border: 'rgb(228, 228, 224)',
   })
 })
 

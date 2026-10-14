@@ -543,4 +543,44 @@ test.describe('document', () => {
     await expect.poll(shadow).toBe('none')
     await cleanup(label)
   })
+
+  test('the toolbar re-reads stuck once the nav has condensed and its sticky top has moved', async ({ page }) => {
+    const label = `${LABEL}-stuck-condense`
+    await page.setViewportSize({ width: 1280, height: 420 })
+    await openDoc(page, label)
+    const root = page.getByTestId('tb-root')
+    // What the position says: the bar is stuck while it sits more than the border below the
+    // sheet's top.
+    const stuckByPosition = () =>
+      root.evaluate((el) => {
+        const sheet = el.parentElement!
+        return String(el.getBoundingClientRect().top - sheet.getBoundingClientRect().top > 2)
+      })
+
+    // A scroll that condenses the nav (past 24px) but leaves the sheet's top (96px at rest)
+    // between the bar's two sticky tops, 64px and 80px: the read on the scroll sees the old
+    // 80px and says stuck; once the top has moved to 64px the bar rides on the sheet again.
+    await page.evaluate(() => window.scrollTo(0, 30))
+    await expect(root).toHaveCSS('top', '64px')
+    await settleAnimations(page)
+    expect(await stuckByPosition()).toBe('false')
+    await expect(root).toHaveAttribute('data-stuck', 'false')
+    await cleanup(label)
+  })
+
+  test('the Style field stays white under the pointer', async ({ page }) => {
+    const label = `${LABEL}-field-hover`
+    await openDoc(page, label)
+    const field = page.getByTestId('tb-style')
+    await expect(field).toHaveCSS('background-color', WHITE)
+    await field.hover()
+    await settleAnimations(page)
+    await expect(field).toHaveCSS('background-color', WHITE)
+    // A plain tool beside it does take the wash, so the hover really is on.
+    const bold = page.getByTestId('tb-bold')
+    await bold.hover()
+    await settleAnimations(page)
+    await expect(bold).toHaveCSS('background-color', await resolveColour(page, 'var(--wash)'))
+    await cleanup(label)
+  })
 })

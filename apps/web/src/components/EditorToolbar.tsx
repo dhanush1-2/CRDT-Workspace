@@ -82,12 +82,19 @@ function useStuck(root: RefObject<HTMLElement | null>): boolean {
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(read)
     }
+    // The sticky top moves 80px to 64px over 0.4s when scrolling condenses the nav, so the
+    // read on that scroll sees the old top. Read again when the move ends.
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target === element && event.propertyName === 'top') schedule()
+    }
     read()
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
+    element.addEventListener('transitionend', onTransitionEnd)
     return () => {
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
+      element.removeEventListener('transitionend', onTransitionEnd)
       if (frame !== 0) cancelAnimationFrame(frame)
     }
   }, [root])

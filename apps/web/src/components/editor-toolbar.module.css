@@ -255,7 +255,8 @@
   color: var(--text);
 }
 
-.toolField:hover:not(.toolActive):not([aria-expanded='true']) {
+/* As specific as the .tool hover wash it must beat (and one more), so the field stays white. */
+.tool.toolField:hover:not(.toolActive):not([aria-expanded='true']):not([aria-disabled='true']) {
   background: var(--paper);
 }
 
@@ -617,9 +618,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .segment {
-    transition:
-      background 0.35s var(--ease),
-      box-shadow 0.35s var(--ease);
+    transition: background 0.35s var(--ease);
   }
 }
 
