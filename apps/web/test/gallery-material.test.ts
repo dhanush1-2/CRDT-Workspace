@@ -15,6 +15,8 @@ const MIGRATED: string[] = [
   'components/board.module.css',
   'app/workspaces/[id]/documents/[docId]/document.module.css',
   'components/editor-toolbar.module.css',
+  'components/ui/ui.module.css',
+  'app/workspaces/[id]/workspace.module.css',
 ]
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])

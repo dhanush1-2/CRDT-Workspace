@@ -1,14 +1,10 @@
 /*
-  The shared glass recipe. Every frosted surface in the app composes this class
-  rather than repeating the four properties, so a change to the blur or the
-  highlight lands everywhere at once.
+  The shared surface (spec, "Material"): solid white with a hairline. Every flat panel that
+  sits on the canvas composes it: the dashboard and overview tiles, the People card.
 */
-.glass {
-  background: var(--glass-light);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-hl), 0 10px 30px rgba(30, 45, 40, 0.08);
+.surface {
+  background: var(--paper);
+  border: 1px solid var(--hairline);
 }
 
 .button {
@@ -30,7 +26,8 @@
   .button {
     transition:
       transform 0.4s var(--ease),
-      background var(--dur-fast) var(--ease);
+      background var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease);
   }
   .button:active:not(:disabled) {
     transform: scale(0.96);
@@ -73,6 +70,7 @@
   color: var(--text);
 }
 
+/* The delete action (Revoke): red words, a neutral hover. */
 .danger {
   background: transparent;
   color: var(--danger);
@@ -106,15 +104,15 @@
   border: 0;
 }
 
+/* A field (the spec keeps fields at rgba(40,40,60,.12)). */
 .pillInput {
   width: 100%;
   height: 40px;
   padding: 0 16px;
   background: var(--field-bg);
   border: 1px solid var(--field-border);
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   font-size: 14.5px;
-  box-shadow: inset 0 1px 2px rgba(30, 30, 50, 0.06);
 }
 
 .pillInput::placeholder {
@@ -123,41 +121,46 @@
 
 .pillInput:focus {
   outline: none;
-  background: #fff;
+  background: var(--paper);
   border-color: var(--accent);
   box-shadow: 0 0 0 5px var(--accent-ring);
 }
 
+/* A page's title: the dashboard's "Workspaces" and the workspace's name (spec, "Type"). */
+.pageTitle {
+  margin: 0;
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+/*
+  A tile: composes .surface for its white and hairline. Hover darkens the edge and does not
+  lift (spec, "Hover"); the press stays.
+*/
 .tile {
-  border-radius: var(--r-tile);
+  border-radius: var(--r);
   padding: 22px;
 }
 
 .tile:hover {
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: var(--glass-hl), 0 10px 28px rgba(30, 45, 40, 0.08);
+  border-color: var(--rule);
   text-decoration: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .tile {
     transition:
-      transform 0.4s var(--ease),
-      box-shadow 0.4s var(--ease),
-      background var(--dur-fast) var(--ease);
-  }
-  .tile:hover {
-    transform: translateY(-2px);
+      border-color var(--dur-fast) var(--ease),
+      transform 0.4s var(--ease);
   }
   .tile:active {
     transform: scale(0.98);
   }
 }
 
-/*
-  The dashed "make a new one" tile that sits at the end of a tile grid. The design
-  specifies these literals for the border, fill, blur and shadow.
-*/
+/* The dashed "make a new one" tile at the end of a tile grid: white, a dashed edge. */
 .tileCreate {
   display: flex;
   flex-direction: column;
@@ -165,27 +168,13 @@
   gap: 12px;
   padding: 22px;
   border: 1.5px dashed var(--dash);
-  border-radius: var(--r-tile);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: var(--blur-1);
-  -webkit-backdrop-filter: var(--blur-1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 4px 16px rgba(30, 45, 40, 0.06);
+  border-radius: var(--r);
+  background: var(--paper);
 }
 
-/*
-  Without backdrop-filter nothing blurs the canvas behind these literal fills, so
-  raise them to the same .92 the --glass-* tokens get in globals.css. A module file
-  cannot extend that block (its class names are hashed), so the override sits here.
-*/
-@supports not (backdrop-filter: blur(1px)) {
-  .tileCreate {
-    background: rgba(255, 255, 255, 0.92);
-  }
-}
-
-/* Inputs on a create tile are solid white (design literal border). */
+/* Inputs on a create tile are white with the reference's literal edge. */
 .tileCreate .pillInput {
-  background: #fff;
+  background: var(--paper);
   border: 1px solid rgba(40, 40, 60, 0.14);
 }
 
@@ -206,6 +195,7 @@
   color: var(--text-muted);
 }
 
+/* The Board and Page labels (spec: --accent-tint). */
 .chipAccent {
   background: var(--accent-tint);
   color: var(--accent-text);
@@ -215,9 +205,9 @@
   display: inline-flex;
   padding: 3px;
   gap: 3px;
-  /* The design specifies this literal track colour. */
+  /* The reference's literal track colour. */
   background: var(--track);
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
 }
 
 .segment {
@@ -228,7 +218,7 @@
   height: 30px;
   padding: 0 14px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: transparent;
   font-size: 13.5px;
   font-weight: 500;
@@ -257,45 +247,34 @@
   outline-offset: 2px;
 }
 
+/* The chosen option: white on the grey track, no shadow. */
 .segmentOn {
-  background: #fff;
+  background: var(--paper);
   color: var(--text);
-  box-shadow: 0 1px 3px rgba(30, 45, 40, 0.14);
 }
 
 /*
-  Small text sitting directly on the painted background gets its own frosted pill,
-  so the canvas cannot show through the letters. The design specifies these literals.
-  width: fit-content, not align-self alone: these land in grid containers too, where
-  align-self is the block axis and would leave the pill stretched full width.
+  Small text sitting on the canvas gets its own white pill: the workspace's meta line and
+  "Nothing here yet." width: fit-content, not align-self alone: these land in grid
+  containers too, where align-self is the block axis and would leave the pill full width.
 */
-.bgPill {
+.metaPill {
   align-self: flex-start;
   width: fit-content;
   padding: 5px 14px;
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(30, 45, 40, 0.06);
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
   color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
-}
-
-/* No blur behind the pill, so make the fill near-opaque (see .tileCreate). */
-@supports not (backdrop-filter: blur(1px)) {
-  .bgPill {
-    background: rgba(255, 255, 255, 0.92);
-  }
 }
 
 /* An error message: white with a hairline, the words in --danger. The only red is the text. */
 .error {
   padding: 10px 14px;
   border: 1px solid var(--hairline);
-  border-radius: var(--r-card);
+  border-radius: var(--r);
   background: var(--paper);
   color: var(--danger);
   font-size: 13px;

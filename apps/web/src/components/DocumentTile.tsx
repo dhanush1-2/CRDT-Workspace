@@ -65,11 +65,11 @@ export function DocumentTile({
   return (
     <div className={classes.wrap}>
       {renaming ? (
-        <div className={`${ui.glass} ${ui.tile} ${classes.tile}`} data-testid={`document-${documentId}`}>
+        <div className={`${ui.surface} ${ui.tile} ${classes.tile}`} data-testid={`document-${documentId}`}>
           {body}
         </div>
       ) : (
-        <Link href={href} className={`${ui.glass} ${ui.tile} ${classes.tile}`} data-testid={`document-${documentId}`}>
+        <Link href={href} className={`${ui.surface} ${ui.tile} ${classes.tile}`} data-testid={`document-${documentId}`}>
           {body}
         </Link>
       )}

@@ -584,3 +584,73 @@ test.describe('document', () => {
     await cleanup(label)
   })
 })
+
+test.describe('workspace overview', () => {
+  async function openOverview(page: Page, label: string) {
+    const { owner, workspace } = await seedWorkspace(label)
+    const document = await createDocument(workspace.id, 'doc')
+    await signIn(page, owner.id)
+    await page.goto(`/workspaces/${workspace.id}`)
+    await settleAnimations(page)
+    return { workspace, document }
+  }
+
+  test('the workspace name is a 52px title; Documents and People are small capitals under a dark rule', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-overview-type`
+    await openOverview(page, label)
+    const title = page.getByRole('heading', { level: 1 })
+    await expect(title).toHaveCSS('font-size', '52px')
+    await expect(title).toHaveCSS('font-weight', '600')
+    await expect(title).toHaveCSS('letter-spacing', '-2.08px')
+    await expect(title).toHaveCSS('line-height', '53.04px')
+    for (const name of ['Documents', 'People']) {
+      const heading = page.getByRole('heading', { level: 2, name })
+      await expect(heading).toHaveCSS('font-size', '12px')
+      await expect(heading).toHaveCSS('font-weight', '600')
+      await expect(heading).toHaveCSS('text-transform', 'uppercase')
+      await expect(heading).toHaveCSS('letter-spacing', '1.2px')
+      await expect(heading).toHaveCSS('padding-top', '10px')
+      await expect(heading).toHaveCSS('border-top', `1px solid ${RULE}`)
+    }
+    await cleanup(label)
+  })
+
+  test('the meta pill, the tiles and the People card are white with a hairline; the create tile is dashed', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-overview-material`
+    const { document } = await openOverview(page, label)
+    const flat = {
+      background: WHITE,
+      backdrop: 'none',
+      shadow: 'none',
+      radius: '2px',
+      borderColor: HAIRLINE,
+      borderWidth: '1px',
+    }
+    expect(await material(page.getByText(/1 document · 1 person/))).toEqual(flat)
+    expect(await material(page.getByTestId(`document-${document.id}`))).toEqual(flat)
+    expect(await material(page.locator('[class*="people"]').first())).toEqual(flat)
+    const kind = page.getByTestId('document-kind')
+    await expect(kind).toHaveCSS('background-color', await resolveColour(page, 'var(--accent-tint)'))
+    await expect(kind).toHaveCSS('border-top-left-radius', '2px')
+    const create = page.locator('[class*="tileCreate"]')
+    await expect(create).toHaveCSS('border-top-style', 'dashed')
+    expect(await material(create)).toMatchObject({ background: WHITE, radius: '2px', shadow: 'none', backdrop: 'none' })
+    await cleanup(label)
+  })
+
+  test('a hovered tile does not lift; its edge turns dark', async ({ page }) => {
+    const label = `${LABEL}-overview-hover`
+    const { document } = await openOverview(page, label)
+    const tile = page.getByTestId(`document-${document.id}`)
+    await tile.hover()
+    await expect.poll(() => tile.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(RULE)
+    await settleAnimations(page)
+    await expect(tile).toHaveCSS('transform', 'none')
+    await expect(tile).toHaveCSS('box-shadow', 'none')
+    await cleanup(label)
+  })
+})

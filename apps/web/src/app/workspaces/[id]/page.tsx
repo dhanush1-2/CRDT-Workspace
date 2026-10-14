@@ -37,17 +37,17 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1>{name}</h1>
-        <p className={ui.bgPill}>
+        <h1 className={ui.pageTitle}>{name}</h1>
+        <p className={ui.metaPill}>
           {formatCount(documents.length, 'document')} ·{' '}
           {formatCount(members.length, 'person', 'people')}
         </p>
       </div>
 
       <section className={styles.section} aria-labelledby="documents-heading">
-        <h2 id="documents-heading">Documents</h2>
+        <h2 id="documents-heading" className={styles.sectionHeading}>Documents</h2>
         {documents.length === 0 && !canCreate ? (
-          <p className={ui.bgPill}>Nothing here yet.</p>
+          <p className={ui.metaPill}>Nothing here yet.</p>
         ) : (
           <div className={styles.grid}>
             <div className={styles.docs} data-testid="document-list">
@@ -78,8 +78,8 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
       </section>
 
       <section className={styles.section} aria-labelledby="people-heading">
-        <h2 id="people-heading">People</h2>
-        <div className={`${ui.glass} ${styles.people}`}>
+        <h2 id="people-heading" className={styles.sectionHeading}>People</h2>
+        <div className={`${ui.surface} ${styles.people}`}>
           <MembersPanel members={members} canManage={role === 'owner'} />
         </div>
       </section>

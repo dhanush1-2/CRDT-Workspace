@@ -41,7 +41,7 @@ export default async function HomePage() {
             <Link
               key={workspace.id}
               href={`/workspaces/${workspace.id}`}
-              className={`${ui.glass} ${ui.tile} ${styles.tile}`}
+              className={`${ui.surface} ${ui.tile} ${styles.tile}`}
               data-testid={`workspace-${workspace.id}`}
             >
               <span className={styles.initial} aria-hidden="true">

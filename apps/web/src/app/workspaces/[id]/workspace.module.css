@@ -25,6 +25,17 @@
   gap: 14px;
 }
 
+/* Documents, People (spec, "Section headings"): small capitals under a full-width dark rule. */
+.sectionHeading {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -36,29 +47,13 @@
   display: contents;
 }
 
+/* A document tile composes ui.surface and ui.tile for its material. */
 .docTile {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 40px;
   color: var(--text);
-}
-
-/*
-  The design owner raised these three surfaces from .55 to .7 because splatter behind
-  them tinted the content. A literal, not a token: --glass-light is .55 and is also the
-  nav, the sign-in card, the sheets and the popovers, none of which were asked to
-  change.
-
-  Two class selectors on purpose. ui.glass sets a background too, and a single class
-  here would tie with it on specificity, leaving the winner to be whichever stylesheet
-  the bundler emits last. Measured: a single class does win today. The doubling is so
-  that it does not have to -- the import graph decides that order, and moving a route
-  file is enough to change it. A silent revert to .55 is the failure mode this guards.
-*/
-.docTile.docTile,
-.people.people {
-  background: rgba(255, 255, 255, 0.7);
 }
 
 /* Titles run to 200 characters. overflow-wrap is inherited, so this covers title and time. */
@@ -107,8 +102,9 @@
   flex: 1;
 }
 
+/* The People card composes ui.surface for its white and hairline. */
 .people {
-  border-radius: 22px;
+  border-radius: var(--r);
   overflow: hidden;
 }
 
@@ -201,9 +197,8 @@
   width: 28px;
   height: 28px;
   border: 1px solid var(--field-border);
-  border-radius: var(--r-pill);
-  /* Raw white: a solid chip over a glass tile, not a glass surface, so no glass token. */
-  background: #fff;
+  border-radius: var(--r);
+  background: var(--paper);
   color: var(--text-2);
   font-size: 13px;
   cursor: pointer;
@@ -227,9 +222,8 @@
   padding: 2px 6px;
   margin: -2px -6px;
   border: 0;
-  border-radius: var(--r-item);
-  /* Raw white: the field must read as a solid input over the translucent tile. */
-  background: #fff;
+  border-radius: var(--r);
+  background: var(--paper);
   color: var(--text);
   font: inherit;
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-ring);
