@@ -866,7 +866,12 @@ test.describe('share sheet, palette and toasts', () => {
     const veil = page.getByTestId('sheet-overlay')
     await expect(veil).toHaveCSS('backdrop-filter', 'none')
     await expect(veil).toHaveCSS('background-color', 'rgba(30, 40, 35, 0.16)')
-    const invite = page.getByTestId('member-email').locator('xpath=ancestor::form[1]')
+    const email = page.getByTestId('member-email')
+    const invite = email.locator('xpath=ancestor::form[1]')
+    // The sheet opens with the email field focused, which draws the focus ring; this reads
+    // the resting row, so take the focus off first (the focus state has its own test).
+    await email.evaluate((el) => (el as HTMLInputElement).blur())
+    await expect(invite).toHaveCSS('box-shadow', 'none')
     expect(await material(invite)).toMatchObject({ background: WHITE, radius: '2px', borderColor: HAIRLINE, shadow: 'none' })
 
     // A role change raises a toast.
