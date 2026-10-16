@@ -9,6 +9,13 @@ const NAMED_REDS = [
   'red', 'crimson', 'tomato', 'firebrick', 'darkred', 'indianred', 'orangered',
   'maroon', 'brown', 'lightcoral', 'salmon', 'darksalmon', 'lightsalmon', 'coral',
 ]
+/**
+ * The names a TS or TSX string is not held to. `brown`, `coral` and `salmon` are also plain
+ * words in UI copy ("Coral Cloud", "salmon pink"), where they are not colours; a stylesheet
+ * value is still held to the full list.
+ */
+const COPY_WORDS = new Set(['brown', 'coral', 'salmon'])
+const STRING_NAMED_REDS = NAMED_REDS.filter((name) => !COPY_WORDS.has(name))
 
 const FUNCTIONS = 'rgba?|hsla?|hwb|oklab|oklch|lab|lch'
 
@@ -178,7 +185,7 @@ function colours(path: string, text: string): string[] {
       // A string that names a thing (`id: 'red'`) is an identifier, not a colour.
       if (/\b(id|name|key|label|type|variant|testid)\s*[:=]\s*$/i.test(text.slice(0, string.index))) continue
       for (const word of string[2]!.split(/[\s,()/;:]+/)) {
-        if (NAMED_REDS.includes(word.toLowerCase())) named.push(word.toLowerCase())
+        if (STRING_NAMED_REDS.includes(word.toLowerCase())) named.push(word.toLowerCase())
       }
     }
   }
@@ -239,6 +246,11 @@ describe('no red', () => {
     expect(colours('x.ts', 'const c = "#e11d48ff"')).toEqual(['#e11d48ff'])
     // A capitalised name is a red too: CSS reads names case-insensitively.
     expect(colours('x.ts', "const a = 'Red'; const b = 'CRIMSON'; const c = '1px solid Tomato'")).toEqual(['red', 'crimson', 'tomato'])
+    // Words that are also ordinary copy are not flagged in a string...
+    expect(colours('x.ts', "const a = 'Coral Cloud Resorts'; const b = 'brown fox'; const c = 'salmon'")).toEqual([])
+    // ...but the rest still are, and a stylesheet value is held to the full list.
+    expect(colours('x.ts', "const a = 'Firebrick'; const b = 'darkred'; const c = 'orangered'; const d = 'indianred'")).toEqual(['firebrick', 'darkred', 'orangered', 'indianred'])
+    expect(colours('x.css', '.a { color: brown; border-color: coral; fill: Salmon }')).toEqual(['brown', 'coral', 'salmon'])
   })
 
   it('no red literal appears in src outside the three allowed uses', () => {

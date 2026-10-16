@@ -331,7 +331,7 @@ test('the panel is a tall column at the right of the page, not confined to the n
 
   const main = (await page.locator('main').boundingBox())!
   expect(box.x).toBeGreaterThan(main.x + main.width / 2)
-  // Not a DOM descendant of the nav, whose backdrop-filter would contain and flatten it.
+  // Not a DOM descendant of the nav bar: the panel belongs to the viewport, not to the bar's box.
   await expect(page.getByTestId('nav-bar').getByTestId('history-panel')).toHaveCount(0)
 })
 
@@ -662,6 +662,23 @@ test('a preview that cannot be fetched leaves the live document on screen with a
   await panel.getByTestId('history-row').nth(1).click()
 
   await expect(page.getByTestId('preview-notice')).toContainText('Could not load that version')
+  // Gallery material: a white note with a hairline and the 2px corner.
+  expect(
+    await page.getByTestId('preview-notice').evaluate((el) => {
+      const style = getComputedStyle(el)
+      return {
+        background: style.backgroundColor,
+        border: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+        radius: style.borderTopLeftRadius,
+        shadow: style.boxShadow,
+      }
+    }),
+  ).toEqual({
+    background: 'rgb(255, 255, 255)',
+    border: '1px solid rgb(228, 228, 224)',
+    radius: '2px',
+    shadow: 'none',
+  })
   await expect(page.getByTestId('version-preview')).toHaveCount(0)
   await expect(page.locator('.ProseMirror')).toHaveText('Hello world!!')
   await expect(panel.getByTestId('history-row').nth(1)).toHaveAttribute('aria-pressed', 'true')
@@ -1982,6 +1999,34 @@ test('the panel is a white floating sheet, the chosen row is tinted violet, and 
   await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(() => rows.nth(1).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(tint)
   await expect(rows.nth(1)).toHaveCSS('border-top-left-radius', '2px')
+
+  // The chosen row's secondary line passes AA on the tint: --text-faint is 4.39:1 there, so
+  // the row takes --text-muted. The other rows keep --text-faint on white.
+  const selectedMeta = rows.nth(1).locator('[class*="meta"]')
+  await expect(selectedMeta).toHaveCSS('color', 'rgb(95, 98, 93)')
+  await expect(rows.nth(0).locator('[class*="meta"]')).toHaveCSS('color', 'rgb(108, 111, 106)')
+  const ratio = await selectedMeta.evaluate((el) => {
+    // Any CSS colour (the tint is oklch) to sRGB, by painting a pixel.
+    const rgb = (colour: string) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 1
+      const context = canvas.getContext('2d', { willReadFrequently: true })!
+      context.fillStyle = colour
+      context.fillRect(0, 0, 1, 1)
+      return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+    }
+    const luminance = (colour: string) => {
+      const [r, g, b] = rgb(colour).map((v) => {
+        const c = v! / 255
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+    }
+    const fg = luminance(getComputedStyle(el).color)
+    const bg = luminance(getComputedStyle(el.closest('[aria-pressed]')!).backgroundColor)
+    return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05)
+  })
+  expect(ratio).toBeGreaterThanOrEqual(4.5)
 
   await rows.nth(2).click()
   await expect(pill(page)).toBeVisible()

@@ -21,6 +21,8 @@ const KEYFRAMES_BLUR_EXCEPTIONS = new Set([
   'app/globals.css @keyframes g-in',
   'app/globals.css @keyframes g-pop',
 ])
+/** The exempt entrance blur is a whisper (the reference uses 6px), never a backdrop-sized smear. */
+const MAX_ENTRANCE_BLUR_PX = 6
 /** A ring: `[inset] 0 0 0 Npx [colour]`. Focus, selection and the board card's hairline. */
 const RING = /^(inset\s+)?0(px)?\s+0(px)?\s+0(px)?\s+[\d.]+px(\s+\S.*)?$/
 
@@ -62,6 +64,16 @@ function findings(path: string, css: string): string[] {
         !BLUR_EXCEPTIONS.has(`${path} ${d.selector}`)
       ) {
         problems.push(`blur: ${where}`)
+      }
+      // The exemption is for a small entrance blur only: every radius in it is a px length
+      // of 6 or less, so a g-in that blurs by 60px fails here like any other blur.
+      if (exemptKeyframes) {
+        for (const [, radius] of d.value.matchAll(/blur\(\s*([^)]*?)\s*\)/gi)) {
+          const px = /^(\d+\.?\d*|\.\d+)px$/i.exec(radius!)
+          if (!px || Number(px[1]) > MAX_ENTRANCE_BLUR_PX) {
+            problems.push(`entrance blur over ${MAX_ENTRANCE_BLUR_PX}px: ${where}`)
+          }
+        }
       }
     }
     if (/var\(--(glass|blur)-|var\(--accent-shadow\)|var\(--r-[a-z]/.test(d.value)) {
@@ -122,6 +134,18 @@ describe('Gallery material in every stylesheet', () => {
     ])
     expect(findings('components/x.module.css', entrance)).toEqual(['blur: from { filter: blur(6px) }'])
     expect(findings('app/globals.css', '.a { filter: blur(4px) }')).toEqual(['blur: .a { filter: blur(4px) }'])
+    // The exemption is pinned to the reference's size: anything above 6px, in either
+    // keyframes, or a length that is not plain px, fails.
+    for (const name of ['g-in', 'g-pop']) {
+      const frames = (blur: string) => `@keyframes ${name} { from { opacity: 0; filter: ${blur} } to { filter: none } }`
+      expect(findings('app/globals.css', frames('blur(60px)'))).toEqual([
+        `entrance blur over 6px: from { filter: blur(60px) }`,
+      ])
+      expect(findings('app/globals.css', frames('blur(6.5px)'))).toHaveLength(1)
+      expect(findings('app/globals.css', frames('blur(1rem)'))).toHaveLength(1)
+      expect(findings('app/globals.css', frames('blur(4px)'))).toEqual([])
+      expect(findings('app/globals.css', frames('blur(6px)'))).toEqual([])
+    }
   })
 
   it.each(MIGRATED)('%s: no blur, no text or drop shadow, no glass token, 2px corners, no shadow but the float and rings', (path) => {

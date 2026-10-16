@@ -274,6 +274,61 @@ test.describe('nav', () => {
     await cleanup(label)
   })
 
+  test('the underline is re-measured when the fonts are ready, though nothing resized', async ({ page }) => {
+    const label = `${LABEL}-fontsready`
+    const { owner, workspace } = await seedWorkspace(label)
+    const document = await createDocument(workspace.id, 'doc')
+    // document.fonts.ready becomes a promise this test resolves, so "the fonts arrive" is a
+    // moment it chooses rather than a race with the network.
+    await page.addInitScript(() => {
+      let release!: () => void
+      const gate = new Promise<FontFaceSet>((resolve) => {
+        release = () => resolve(window.document.fonts)
+      })
+      Object.defineProperty(window.document.fonts, 'ready', { configurable: true, get: () => gate })
+      ;(window as unknown as { __releaseFonts: () => void }).__releaseFonts = release
+    })
+    await signIn(page, owner.id)
+    await page.goto(documentPath(document))
+    await settleAnimations(page)
+
+    const active = page.getByTestId(`tab-${document.id}`)
+    const underline = page.locator('[class*="indicator"]')
+    const gap = async () => {
+      const [tab, line] = await Promise.all([active.boundingBox(), underline.boundingBox()])
+      return { width: Math.abs(tab!.width - line!.width), left: Math.abs(tab!.x - line!.x) }
+    }
+    expect((await gap()).width).toBeLessThan(1)
+    expect((await gap()).left).toBeLessThan(1)
+
+    // Pin the strip's own size, then widen two tabs inside it, the way a web font arriving
+    // does: the strip's box does not change, so its ResizeObserver stays silent.
+    await underline.evaluate((line) => {
+      const strip = line.parentElement!
+      strip.style.width = `${strip.getBoundingClientRect().width}px`
+      strip.style.flex = 'none'
+    })
+    await page.addStyleTag({
+      content: `[data-testid="tab-overview"] { padding-left: 30px !important; padding-right: 30px !important; }
+        [data-testid="tab-${document.id}"] { padding-left: 40px !important; padding-right: 40px !important; }`,
+    })
+    await expect.poll(async () => (await active.boundingBox())!.width).toBeGreaterThan(80)
+    // Several frames on: the underline is still where the narrow tab was.
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    )
+    await settleAnimations(page)
+    const stale = await gap()
+    expect(stale.width).toBeGreaterThan(20)
+    expect(stale.left).toBeGreaterThan(20)
+
+    // The fonts arrive: the underline is measured again and lands on the tab.
+    await page.evaluate(() => (window as unknown as { __releaseFonts: () => void }).__releaseFonts())
+    await expect.poll(async () => (await gap()).width, { timeout: 5000 }).toBeLessThan(1)
+    await expect.poll(async () => (await gap()).left, { timeout: 5000 }).toBeLessThan(1)
+    await cleanup(label)
+  })
+
   test('the nav tweens its width when it is built anew, from the dashboard into a workspace', async ({
     page,
   }) => {
@@ -678,10 +733,17 @@ test.describe('workspace overview', () => {
       })
     const text = await read(title)
     expect(text).toMatchObject({ size: '18px', weight: '600' })
+    const tileHeight = async () => (await tile.boundingBox())!.height
+    const heightBefore = await tileHeight()
+    // The title is replaced by the field, so read its line box before the swap.
+    const lineHeight = await title.evaluate((el) => getComputedStyle(el).lineHeight)
     await page.getByTestId(`rename-${document.id}`).click()
     const field = page.getByTestId(`tile-title-${document.id}`)
     await expect(field).toBeFocused()
     expect(await read(field)).toEqual(text)
+    // Same type, so the same line box: entering rename does not make the tile jump.
+    await expect(field).toHaveCSS('line-height', lineHeight)
+    expect(await tileHeight()).toBe(heightBefore)
     await cleanup(label)
   })
 })
@@ -834,6 +896,62 @@ test.describe('share sheet, palette and toasts', () => {
     const chosen = results.getByRole('option', { selected: true })
     await expect(chosen).toHaveCSS('background-color', await resolveColour(page, 'var(--accent)'))
     await expect(chosen).toHaveCSS('border-top-left-radius', '2px')
+    await cleanup(label)
+  })
+
+  test('the invite row shows focus: an accent edge and a 4px ring while its input has it', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-invite-focus`
+    const { owner, workspace } = await seedWorkspace(label)
+    await signIn(page, owner.id)
+    await page.goto(`/workspaces/${workspace.id}`)
+    await page.getByTestId('share').click()
+    await settleAnimations(page)
+    const input = page.getByTestId('member-email')
+    const invite = input.locator('xpath=ancestor::form[1]')
+    const accent = await resolveColour(page, 'var(--accent)')
+    const ring = await resolveColour(page, 'var(--accent-ring)')
+
+    // Unfocused, the row is the hairline it always was. (The sheet may focus its first
+    // control on open; take the focus off the input so both states are read.)
+    await input.evaluate((el) => (el as HTMLInputElement).blur())
+    await expect(input).not.toBeFocused()
+    await expect(invite).toHaveCSS('border-top-color', HAIRLINE)
+    await expect(invite).toHaveCSS('box-shadow', 'none')
+
+    await input.focus()
+    await expect(input).toBeFocused()
+    await expect(invite).toHaveCSS('border-top-color', accent)
+    await expect(invite).toHaveCSS('box-shadow', `${ring} 0px 0px 0px 4px`)
+    // The input itself still draws no outline of its own: the row is the indicator.
+    await expect(input).toHaveCSS('outline-style', 'none')
+    await cleanup(label)
+  })
+
+  test('the ⌘K palette input shows focus: an accent rule under it and an inset ring', async ({ page }) => {
+    const label = `${LABEL}-palette-focus`
+    const { owner, workspace } = await seedWorkspace(label)
+    await signIn(page, owner.id)
+    await page.goto(`/workspaces/${workspace.id}`)
+    await page.getByTestId('search').click()
+    await expect(page.getByRole('listbox', { name: 'Results' })).toBeVisible()
+    await settleAnimations(page)
+    const input = page.getByTestId('palette-input')
+    const accent = await resolveColour(page, 'var(--accent)')
+    const ring = await resolveColour(page, 'var(--accent-ring)')
+    const rule = await resolveColour(page, 'rgba(40, 40, 60, 0.12)')
+
+    // The palette opens focused, so the indicator is on screen at once.
+    await expect(input).toBeFocused()
+    await expect(input).toHaveCSS('border-bottom-color', accent)
+    await expect(input).toHaveCSS('box-shadow', `${ring} 0px 0px 0px 3px inset`)
+
+    // And it is the focus that draws it: with the input blurred it is the plain rule again.
+    await input.evaluate((el) => (el as HTMLInputElement).blur())
+    await expect(input).not.toBeFocused()
+    await expect(input).toHaveCSS('border-bottom-color', rule)
+    await expect(input).toHaveCSS('box-shadow', 'none')
     await cleanup(label)
   })
 })
