@@ -80,7 +80,6 @@ The `:root` block of `src/app/globals.css`, as built.
 | `--accent-soft` | `oklch(0.5 0.17 290 / 0.12)` | The toolbar's pressed fill |
 | `--accent-ring` | `oklch(0.5 0.17 290 / 0.12)` | Focus halos |
 | `--ok` | `oklch(0.62 0.13 150)` | Connected dot |
-| `--ok-text` | `oklch(0.5 0.13 150)` | A contrast-safe green for text |
 | `--warn` | `oklch(0.72 0.15 65)` | Offline dot |
 | `--sync` | `var(--accent)` | Syncing dot |
 | `--toast-dot` | `oklch(0.64 0.17 290)` | The toast's dot: the accent 0.14 lighter |
@@ -114,7 +113,7 @@ Rules:
   round close and delete buttons (the card ×, the history close). The canvas blobs keep their
   organic radius; they are paint.
 - **One shadow.** `var(--shadow-float)` on floating menus, sheets and the palette, and
-  nowhere else. Decision 15 lists the surfaces: the share sheet and card sheet, the ⌘K
+  nowhere else. Decision 15 lists the surfaces: the share sheet, a future card sheet, the ⌘K
   palette, the History panel, the sign-in card (and the invite and privacy cards that share
   its look), the document's page sheet, the document toolbar while stuck, every popover and
   dropdown. These get none: the nav bar, tiles, columns, board cards, the People card, toasts,
@@ -124,7 +123,7 @@ Rules:
   open-tab ring, the avatars' white ring.
 - **No blur.** No `backdrop-filter` anywhere. The only `filter: blur` is the canvas blobs'
   `blur(90px)` and the entrance blur inside `@keyframes g-in` and `g-pop` (T13.4).
-- **No hover lifts.** Tiles and cards turn their edge `--rule`; nothing moves. Presses
+- **No hover lifts.** Tiles and cards turn their edge `--rule` and do not lift. The logo and the swatches do scale on hover. Presses
   (`scale(.92 to .98)`) stay.
 
 ---
@@ -468,7 +467,8 @@ white on the person's colour, 2px corners, no shadow.
   `4px 4px 4px 14px`, gap 6px. Inside: a borderless 34px input at 14.5px, a role select (30px
   high, `rgba(0,0,0,.05)`, 13.5px) and the Add button. Fields elsewhere in the sheet, such as
   the invite link input, keep **`--field-border`**: the container is a surface, the link input
-  is a field (T11.4). The link input is 36px high, white, 13px; focus turns the edge `--accent`
+  is a field (T11.4). While its input has focus the row's edge turns `--accent` with a 4px
+  `--accent-ring` halo (T14.1); the input draws no outline of its own. The link input is 36px high, white, 13px; focus turns the edge `--accent`
   with a 4px `--accent-ring` halo.
 - **Link panel:** `--accent-tint` fill, 2px corners, padding 12px, shown after inviting or
   after Copy link. The note is 13px `--text-2`.
@@ -482,7 +482,8 @@ white on the person's colour, 2px corners, no shadow.
   `g-fade 0.35s`.
 - **Sheet:** `max-width: 580px`, white, hairline, 2px corners, `overflow: hidden`, **float**;
   entrance `g-sheet --dur-slow` (T11.3).
-- **Input:** 60px high, padding `0 22px`, 16px, a field-edge rule below. List padding 8px, max
+- **Input:** 60px high, padding `0 22px`, 16px, a field-edge rule below. On focus (it opens
+  focused) the rule turns `--accent` and an inset 3px `--accent-ring` washes the edge (T14.2). List padding 8px, max
   height 46vh. Rows are 46px high, padding `0 14px`, 14.5px `--text-2`. The chosen row is
   `--accent` with white text. The kind label is 12px at opacity 0.7.
 
@@ -499,12 +500,12 @@ white on the person's colour, 2px corners, no shadow.
   12px faint.
 - **Rows:** padding `10px 12px`, 2px corners; hover `--wash`; the chosen row
   (`aria-pressed`) `--accent-tint` (T12.1). A 32px round avatar, description 14px/500, meta
-  12.5px faint. Notes 14px `--text-muted`; errors 14px `--danger`; Retry `rgba(0,0,0,.05)`.
+  12.5px faint (`--text-muted` on the chosen row, T14.3). Notes 14px `--text-muted`; errors 14px `--danger`; Retry `rgba(0,0,0,.05)`.
 - **Version pill** (`.bar`): fixed at `calc(var(--nav-bottom, 68px) + 8px)`, centred with auto
   margins, z-index 26. `--ink` fill, white 14px/500 text, padding `6px 6px 6px 18px`, 2px
   corners, **no shadow** (T12.3). Its buttons are 30px high, `rgba(255,255,255,.12)`; the primary
   one is white with `--text`. Entrance: its own `rise 0.55s`.
-- **Preview:** the incoming view fades up over 0.4s. If a version cannot be previewed, a white
+- **Preview:** the incoming view fades in over 0.4s (`g-fade`, through `global()`). If a version cannot be previewed, a white
   note with a hairline sits above the live view (max-width 780px, 13px).
 
 ### Toasts
@@ -576,7 +577,8 @@ The reference is `docs/design/Workspace F - Gallery.dc.html`, built at its defau
 canvas "gallery", splashes "subtle", splash colour "gallery", toolbar placement "sheet").
 Each row is a place the build differs from it, or from the code before Gallery, and why.
 Rows were added by the task that made the decision, numbered `T<task>.<n>`. Three were added
-when the records were written, from review findings: T5.7, T10.4 and T11.4.
+when the records were written, from review findings: T5.7, T10.4 and T11.4. T14.1 to T14.3 came
+from the final review.
 
 | # | Where | Reference or before | Built | Why |
 |---|---|---|---|---|
@@ -585,12 +587,12 @@ when the records were written, from review findings: T5.7, T10.4 and T11.4.
 | T1.3 | `--accent-soft` | The reference writes the accent at 12% inline | A token, equal to `--accent-ring` | One name for the toolbar's pressed fill. |
 | T1.4 | Test premise: character height in the peer-caret zoom test (`e2e/editor-toolbar.spec.ts`) | A character box about 21px tall at 100% (system font, 18px) | `GLYPH_HEIGHT = 22`, band unchanged (+-1.5) | Schibsted Grotesk's box is taller (measures 15, 23 and 33 at 70, 100 and 150%). The font moved the premise, not the behaviour. Task 6 changes the body to 17px and must recheck it. |
 | T2.1 | Splatter palette | Reference "gallery": eight entries, `#1c1c1c` twice, reds mapped to violet | `#6d3fd6` ×3, `#1c1c1c`, `#454545`, `#9a9a9a`, `#e9a21f` | The spec's list (decision 6). |
-| T2.2 | Splatter geometry | Reference: its own generator (sizes 14–40px) | `lib/splatter/geometry.ts` unchanged: core 11px, rays `scale × range(1.5, 4)` wide and `coreR × range(1.5, 5)` long, tip `scale × range(1, 2.5)`, droplets out to ×4 and shrinking, `10 + 8·√(W·H)/1100` splats | The spec keeps the agreed numbers (decision 7). |
+| T2.2 | Splatter geometry | Reference: its own generator (sizes 14–40px) | `lib/splatter/geometry.ts` unchanged: core 11px, rays `scale × range(1.5, 4)` wide and `coreR × range(1.5, 5)` long, tip `scale × range(1, 2.5)`, droplets out to about ×5 and shrinking (`coreR * (1 + t*4 + range(0, 0.2))`, so the spec's "×4" understates the code; section 6 has the real figure), `10 + 8·√(W·H)/1100` splats | The spec keeps the agreed numbers (decision 7); the code is the record, and the spec's "×4" is the one that is off. |
 | T2.3 | Splat scale | Spec table `range(0.6, 1.2)` | `range(0.7, 1.4)`, as shipped | Dhanush's 2026-10-03 decision; the spec asks for the choice to be recorded (decision 11, question 2). |
 | T2.4 | Offline status dot | Code before: `--danger` (red) | `--warn` (amber) | The spec's status table (decision 14). |
 | T2.5 | Sign out | Reference `#c4372b` | `--text` | Red is for errors and delete only (decision 8, question 5). |
 | T2.6 | Error box, invalid field, column delete confirm | Code before: red tint and border; red field border; red fill | White box with a hairline; `--rule` field edge; `--danger` text on grey | Only error and delete *text* is red (decision 20). |
-| T2.7 | Red that stays | — | Editor "Red" text colour and the "None" highlight swatch's stroke | Content colours, not chrome (decision 16). Named in `test/no-red.test.ts`. |
+| T2.7 | Red that stays | None | Editor "Red" text colour and the "None" highlight swatch's stroke | Content colours, not chrome (decision 16). Named in `test/no-red.test.ts`. |
 | T2.8 | Person colour `#e11d48` | Plan decision 16 and the reference (`Margaret: #e11d48`): kept | Indigo `#4f46e5`, same palette index (`lib/color.ts`) | Dhanush's ruling on question 3: no red anywhere but error and delete text. People whose hash lands on index 0 change colour; the colour is derived per session from the user id, nothing stored. `no-red.test.ts` does not allow `#e11d48`. |
 | T3.1 | Entrance animations | Reference: inline `animation: g-pop …` | `global(g-pop)` and friends in every CSS module; one set of keyframes in `globals.css` | CSS modules hashed the names, so 16 module animations (the canvas blobs among them) never ran; the toast's own `up` makes 17 declarations (T3.2). Guarded by `test/css-motion.test.ts`. |
 | T3.2 | Toast entrance | Reference `g-up` (translate −50%) | A module-local `up` without the −50% | The toast here is centred by its wrapper (decision 23). |
@@ -642,7 +644,10 @@ when the records were written, from review findings: T5.7, T10.4 and T11.4.
 | T13.1 | Document tile while the pointer is on its rename pencil | Reference: the tile's own `:hover` only | The wrapper's `:hover` keeps the tile's dark edge | The pencil is a sibling over the tile, so the tile lost its `:hover` under it and the edge flickered back to the hairline. |
 | T13.2 | Document tile rename field | Code before: the tile's 15px/400 (`font: inherit`) | 18px, weight 600, line-height 1.3, the family inherited | It replaces an 18px/600 title; the text jumped when the field opened. |
 | T13.3 | Glass tokens | Plan: `--glass-*`, `--blur-*`, `--r-*`, `--accent-shadow`, the `@supports` fallback | All deleted; nothing in src, test or e2e read them | Gallery is the only material. |
-| T13.4 | Entrance blur in `g-in` and `g-pop` | Spec: "Blur. None anywhere." | Kept; the material guard exempts exactly `@keyframes g-in` and `@keyframes g-pop` in `globals.css`, by keyframes name | The reference's own short entrance animations fade from `filter: blur()` to `none`: motion, not a blurred backdrop, and the owner kept existing motion. A blur in any other keyframes or rule still fails the guard. |
+| T13.4 | Entrance blur in `g-in` and `g-pop` | Spec: "Blur. None anywhere." | Kept; the material guard exempts exactly `@keyframes g-in` and `@keyframes g-pop` in `globals.css`, by keyframes name, and only up to `blur(6px)` | The reference's own short entrance animations fade from `filter: blur()` to `none`: motion, not a blurred backdrop, and the owner kept existing motion. A blur in any other keyframes or rule still fails the guard. |
+| T14.1 | Invite input focus | Reference: no focus style (the input has `outline: none` inside a hairline row) | `.invite:focus-within`: border `--accent`, `0 0 0 4px var(--accent-ring)`; the colour and ring ease over `--dur-fast`, motion-guarded | The hairline is about 1.3:1 on white, so keyboard focus was invisible. Found in the final review. `e2e/gallery.spec.ts` reads it focused and blurred. |
+| T14.2 | ⌘K palette input focus | Reference: no focus style | On focus the rule under the input turns `--accent` and an inset `0 0 0 3px var(--accent-ring)` is drawn | The sheet is `overflow: hidden`, so an outer ring would be clipped; the indicator is drawn from inside. Final review. Tested focused and blurred. |
+| T14.3 | Chosen history row's meta line | Reference: `--text-faint` throughout | `--text-muted` on `.row[aria-pressed='true'] .meta` | `--text-faint` on `--accent-tint` is 4.39:1, below AA; `--text-muted` is about 5.3:1. Final review. The history test asserts both colours and a computed ratio of at least 4.5. |
 
 ---
 
@@ -745,7 +750,8 @@ in brackets).
 
 - Reused unchanged: `lastNavWidth` (module-level in `AppShell.tsx`), `naturalWidth()`, the
   `ResizeObserver` that keeps `lastNavWidth` equal to the bar on screen, the whole
-  settling-and-hold logic for documents that are still connecting, the `transitionend` handler
+  settling-and-hold logic for documents that are still connecting (except that the take-over reads
+  `offsetWidth`, not the bounding box, because the `g-pop` entrance scales the bar), the `transitionend` handler
   that accepts only the bar's own `width`, its 1000ms timeout fallback, the reduced-motion
   early return, and the condensed state. In `NavTabs.tsx`: `lastMetrics`, `measureIndicator`,
   the two-frame `animated` gate, the `scrollTo` that keeps the open tab in view, the
