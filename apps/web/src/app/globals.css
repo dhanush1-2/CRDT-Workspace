@@ -9,8 +9,6 @@
       --font  the spec names a family; editor-type.ts stores `var(--font)` in documents
               so they follow it. --font-schibsted is set on <html> by next/font
               (app/layout.tsx)
-      --ok-text  a contrast-safe variant of --ok, which is a dot colour and does not
-              meet 4.5:1 as text
       --accent-soft  the toolbar's pressed fill: the reference's accent at 12%
   */
 
@@ -34,7 +32,6 @@
 
   /* status */
   --ok: oklch(0.62 0.13 150);
-  --ok-text: oklch(0.5 0.13 150);
   --warn: oklch(0.72 0.15 65);
   --sync: var(--accent);
   /* The accent 0.14 lighter at its own chroma and hue (spec, "Toast dot"). */

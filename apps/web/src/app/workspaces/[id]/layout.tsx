@@ -11,7 +11,7 @@ import { loadWorkspaceContext } from '@/lib/workspace-context'
  * It lives here rather than in each page so that it is not remounted when you move
  * between them. The sliding tab indicator can only animate across a navigation if
  * the node it lives on survives that navigation; while each page rendered its own
- * AppShell, the pill appeared at its destination instead of travelling there.
+ * AppShell, the underline appeared at its destination instead of travelling there.
  *
  * This layout does NOT gate the pages under it. Next renders a layout and its page
  * together, and a client-side navigation can fetch a page's RSC payload on its own,

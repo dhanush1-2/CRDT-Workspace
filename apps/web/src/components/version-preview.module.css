@@ -1,25 +1,13 @@
 /*
   One side of the page's 0.4s cross-fade: whichever view mounts fades in. A true
   cross-fade would need the live view and the preview mounted together, which the preview
-  exists to avoid, so the outgoing view simply goes and the incoming one fades up.
+  exists to avoid, so the outgoing view simply goes and the incoming one fades in.
+  The keyframes are the shared g-fade, reached through global() (see css-motion.test.ts).
 */
-/*
-  Declared here rather than reusing globals.css's g-fade: a keyframes rule in the same
-  module is hashed with it and runs. (Modules can also reach the shared ones through
-  `global(g-fade)`; see css-motion.test.ts.)
-*/
-@keyframes fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 
 @media (prefers-reduced-motion: no-preference) {
   .fade {
-    animation: fade 0.4s var(--ease);
+    animation: global(g-fade) 0.4s var(--ease);
   }
 }
 
