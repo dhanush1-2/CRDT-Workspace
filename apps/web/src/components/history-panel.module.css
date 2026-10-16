@@ -221,6 +221,11 @@
   white-space: nowrap;
 }
 
+/* --text-faint on the chosen row's --accent-tint is 4.39:1; --text-muted is about 5.3:1. */
+.row[aria-pressed='true'] .meta {
+  color: var(--text-muted);
+}
+
 /* Loading, empty and error states share the list's footprint. */
 .note {
   margin: 0;
