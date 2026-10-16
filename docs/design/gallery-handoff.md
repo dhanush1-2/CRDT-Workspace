@@ -64,3 +64,6 @@ Rows are added by the task that made the decision.
 | T10.1 | GitHub sign-in hover | Reference `translateY(-1px)` plus the floating shadow | No lift, no shadow, colour unchanged; the press stays | No hover lifts (decision 2); the owner's earlier "colour stays" rule. |
 | T10.2 | Sign-in, invite and privacy card shadow | Spec lists "sheets" | The floating shadow, as the reference draws it | The card enters as a sheet does (decision 15, question 4). |
 | T10.3 | Class name | `.providerGlass` | `.providerSecondary` | No glass. |
+| T11.1 | Toast | Reference: floating shadow | No shadow; padding kept at 10px 18px | The spec's shadow list excludes toasts (decision 4); sizes are not in scope. |
+| T11.2 | Sheet veil | Code before `rgba(30,40,35,.16)` with `blur(8px)` | The same colour, no blur | No blur anywhere. |
+| T11.3 | Palette entrance | Reference `g-pop .5s` | `g-sheet` over `--dur-slow`, as before | Existing motion is kept. |

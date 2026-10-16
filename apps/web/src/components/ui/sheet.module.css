@@ -1,7 +1,7 @@
 /*
-  Overlay and sheet, shared by the share sheet now and the card sheet later.
-  The handoff specifies these literals: overlay rgba(30,40,35,.16) + blur(8px),
-  sheet shadow 0 40px 90px rgba(30,45,40,.22).
+  Overlay and sheet, shared by the share sheet and the card sheet. The veil keeps the
+  reference's rgba(30,40,35,.16) and loses its blur; the sheet is white with a hairline and
+  the floating shadow.
 */
 .overlay {
   position: fixed;
@@ -12,19 +12,15 @@
   padding: 72px 16px 16px;
   overflow-y: auto;
   background: rgba(30, 40, 35, 0.16);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .sheet {
   width: 100%;
-  border-radius: var(--r-sheet);
+  border-radius: var(--r);
   padding: 26px 26px 22px;
-  background: var(--glass-sheet);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-hl), 0 40px 90px rgba(30, 45, 40, 0.22);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -43,7 +39,7 @@
   letter-spacing: -0.02em;
 }
 
-/* Dark variant per the handoff: rgba(28,29,27,.82) + blur(24px). */
+/* A toast (spec, "Material"): solid #161616, 2px corners, no blur and no shadow. */
 .toastWrap {
   position: fixed;
   left: 50%;
@@ -61,21 +57,20 @@
   align-items: center;
   gap: 10px;
   padding: 10px 18px;
-  border-radius: var(--r-pill);
-  background: rgba(28, 29, 27, 0.82);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  border-radius: var(--r);
+  background: var(--ink);
   color: #fff;
   font-size: 14px;
   font-weight: 500;
 }
 
+/* The accent 0.14 lighter (spec, "Toast dot"). */
 .toastDot {
   flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: oklch(0.78 0.12 300);
+  background: var(--toast-dot);
 }
 
 /*

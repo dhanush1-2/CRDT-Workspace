@@ -20,6 +20,9 @@ const MIGRATED: string[] = [
   'app/dashboard.module.css',
   'app/(auth)/auth.module.css',
   'app/privacy/privacy.module.css',
+  'components/ui/sheet.module.css',
+  'components/share-sheet.module.css',
+  'components/command-palette.module.css',
 ]
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])

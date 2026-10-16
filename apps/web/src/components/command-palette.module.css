@@ -1,3 +1,4 @@
+/* The palette's veil: the reference's lighter rgba(30,40,35,.1), never blurred. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -8,16 +9,15 @@
   background: rgba(30, 40, 35, 0.1);
 }
 
+/* The palette (spec, "Shadows"): white, a hairline, 2px corners and the floating shadow. */
 .sheet {
   width: 100%;
   max-width: 580px;
-  border-radius: 28px;
+  border-radius: var(--r);
   overflow: hidden;
-  background: var(--glass-sheet);
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-hl), 0 40px 90px rgba(30, 45, 40, 0.22);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -58,12 +58,13 @@
   gap: 10px;
   height: 46px;
   padding: 0 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   font-size: 14.5px;
   color: var(--text-2);
   cursor: pointer;
 }
 
+/* The chosen row: the accent with white text. */
 .itemOn {
   background: var(--accent);
   color: #fff;

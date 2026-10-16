@@ -740,3 +740,61 @@ test.describe('sign-in, invite and privacy', () => {
     expect(await material(page.getByTestId('privacy-card'))).toEqual(card)
   })
 })
+
+test.describe('share sheet, palette and toasts', () => {
+  const floating = {
+    background: WHITE,
+    backdrop: 'none',
+    shadow: FLOAT,
+    radius: '2px',
+    borderColor: HAIRLINE,
+    borderWidth: '1px',
+  }
+
+  test('the share sheet is a white floating sheet over an unblurred veil, and a toast is flat and dark', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-share`
+    const { owner, workspace } = await seedWorkspace(label)
+    const member = await addMember(workspace.id, label, 'viewer')
+    await signIn(page, owner.id)
+    await page.goto(`/workspaces/${workspace.id}`)
+    await page.getByTestId('share').click()
+    await settleAnimations(page)
+    expect(await material(page.getByTestId('sheet'))).toEqual(floating)
+    const veil = page.getByTestId('sheet-overlay')
+    await expect(veil).toHaveCSS('backdrop-filter', 'none')
+    await expect(veil).toHaveCSS('background-color', 'rgba(30, 40, 35, 0.16)')
+    const invite = page.getByTestId('member-email').locator('xpath=ancestor::form[1]')
+    expect(await material(invite)).toMatchObject({ background: WHITE, radius: '2px', borderColor: HAIRLINE, shadow: 'none' })
+
+    // A role change raises a toast.
+    await page.getByTestId(`role-for-${member.id}`).selectOption('editor')
+    const toast = page.getByTestId('toast').first()
+    await expect(toast).toBeVisible()
+    await settleAnimations(page)
+    expect(await material(toast)).toMatchObject({ background: INK, backdrop: 'none', shadow: 'none', radius: '2px' })
+    await expect(toast.locator('span').first()).toHaveCSS(
+      'background-color',
+      await resolveColour(page, 'oklch(0.64 0.17 290)'),
+    )
+    await cleanup(label)
+  })
+
+  test('the ⌘K palette is a white floating sheet and its chosen row is the accent', async ({ page }) => {
+    const label = `${LABEL}-palette`
+    const { owner, workspace } = await seedWorkspace(label)
+    await createDocument(workspace.id, 'doc')
+    await signIn(page, owner.id)
+    await page.goto(`/workspaces/${workspace.id}`)
+    await page.getByTestId('search').click()
+    const results = page.getByRole('listbox', { name: 'Results' })
+    await expect(results).toBeVisible()
+    await settleAnimations(page)
+    expect(await material(page.getByTestId('palette'))).toEqual(floating)
+    const chosen = results.getByRole('option', { selected: true })
+    await expect(chosen).toHaveCSS('background-color', await resolveColour(page, 'var(--accent)'))
+    await expect(chosen).toHaveCSS('border-top-left-radius', '2px')
+    await cleanup(label)
+  })
+})
