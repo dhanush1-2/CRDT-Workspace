@@ -709,7 +709,7 @@ in brackets).
 
 **Where the spec was silent or ambiguous:**
 
-15. **Which panels are "sheets".** The share and card sheets, the ⌘K palette, the History
+15. **Which panels are "sheets".** The share sheet (and a future card sheet), the ⌘K palette, the History
     panel, the sign-in card (and the invite and privacy cards that share its look), the
     document's page sheet (the spec itself calls it "the page sheet") and every popover or
     dropdown get `var(--shadow-float)`, as the reference draws them. The nav bar, tiles,
