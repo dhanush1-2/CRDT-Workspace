@@ -71,3 +71,6 @@ Rows are added by the task that made the decision.
 | T12.2 | History panel shadow | Spec lists "sheets" | The floating shadow, as the reference draws it | A floating side sheet (decision 15). |
 | T12.3 | Version pill | Reference: floating shadow | No shadow | Dark pills take none (decision 4). |
 | T12.4 | Slider thumb | Code before: accent glow | No glow, still round | No shadows. |
+| T13.1 | Document tile while the pointer is on its rename pencil | Reference: the tile's own `:hover` only | The wrapper's `:hover` keeps the tile's dark edge | The pencil is a sibling over the tile, so the tile lost its `:hover` under it and the edge flickered back to the hairline. |
+| T13.2 | Document tile rename field | Code before: the tile's 15px/400 (`font: inherit`) | 18px, weight 600, line-height 1.3, the family inherited | It replaces an 18px/600 title; the text jumped when the field opened. |
+| T13.3 | Glass tokens | Plan: `--glass-*`, `--blur-*`, `--r-*`, `--accent-shadow`, the `@supports` fallback | All deleted; nothing in src, test or e2e read them | Gallery is the only material. |

@@ -1,10 +1,12 @@
 /*
   The shared surface (spec, "Material"): solid white with a hairline. Every flat panel that
-  sits on the canvas composes it: the dashboard and overview tiles, the People card.
+  sits on the canvas combines it with its own class in JSX: the dashboard and overview
+  tiles, the People card. (Combined in JSX, not with CSS `composes`.)
 */
 .surface {
   background: var(--paper);
   border: 1px solid var(--hairline);
+  border-radius: var(--r);
 }
 
 .button {
@@ -136,7 +138,7 @@
 }
 
 /*
-  A tile: composes .surface for its white and hairline. Hover darkens the edge and does not
+  A tile: combined with .surface in JSX for its white and hairline. Hover darkens the edge and does not
   lift (spec, "Hover"); the press stays.
 */
 .tile {
@@ -257,6 +259,7 @@
   Small text sitting on the canvas gets its own white pill: the workspace's meta line and
   "Nothing here yet." width: fit-content, not align-self alone: these land in grid
   containers too, where align-self is the block axis and would leave the pill full width.
+  It repeats .surface's fill and edge on purpose: it is not always combined with .surface.
 */
 .metaPill {
   align-self: flex-start;
@@ -270,7 +273,8 @@
   font-weight: 500;
 }
 
-/* An error message: white with a hairline, the words in --danger. The only red is the text. */
+/* An error message: white with a hairline, the words in --danger. The only red is the text.
+   Repeats .surface's fill and edge on purpose, like .metaPill. */
 .error {
   padding: 10px 14px;
   border: 1px solid var(--hairline);

@@ -47,7 +47,7 @@
   display: contents;
 }
 
-/* A document tile composes ui.surface and ui.tile for its material. */
+/* A document tile combines ui.surface and ui.tile (in JSX) for its material. */
 .docTile {
   display: flex;
   flex-direction: column;
@@ -102,7 +102,7 @@
   flex: 1;
 }
 
-/* The People card composes ui.surface for its white and hairline. */
+/* The People card combines ui.surface (in JSX) for its white and hairline. */
 .people {
   border-radius: var(--r);
   overflow: hidden;
@@ -188,6 +188,12 @@
   min-width: 0;
 }
 
+/* The rename pencil sits over the tile but is not inside it, so hovering the pencil would
+   drop the tile's own :hover. Keep the dark edge while the pointer is anywhere on the wrap. */
+.docTileWrap:hover > .docTile {
+  border-color: var(--rule);
+}
+
 .docRename {
   position: absolute;
   top: 10px;
@@ -225,7 +231,12 @@
   border-radius: var(--r);
   background: var(--paper);
   color: var(--text);
+  /* The size, weight and leading of .docTitle, which this replaces: `font: inherit` alone
+     gave the tile's 15px/400. */
   font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-ring);
 }
 

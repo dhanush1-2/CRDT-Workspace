@@ -313,7 +313,7 @@ test.describe('nav', () => {
   test.describe('with prefers-reduced-motion: reduce', () => {
     test.use({ reducedMotion: 'reduce' })
 
-    test('the bar and the underline change size without animating', async ({ page }) => {
+    test('the bar never sets a width transition and the underline has a 0s transition', async ({ page }) => {
       const label = `${LABEL}-navreduced`
       const { owner, workspace } = await seedWorkspace(label)
       const document = await createDocument(workspace.id, 'doc')
@@ -653,6 +653,37 @@ test.describe('workspace overview', () => {
     await expect(tile).toHaveCSS('box-shadow', 'none')
     await cleanup(label)
   })
+
+  test('the tile keeps its dark edge while the pointer is on its rename pencil', async ({ page }) => {
+    const label = `${LABEL}-overview-pencil`
+    const { document } = await openOverview(page, label)
+    const tile = page.getByTestId(`document-${document.id}`)
+    // The pencil sits over the tile but is a sibling of it, so the tile's own :hover is off.
+    await page.getByTestId(`rename-${document.id}`).hover()
+    await expect.poll(() => tile.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(RULE)
+    await cleanup(label)
+  })
+
+  test('the rename field is set like the tile title it replaces: 18px, weight 600, same family', async ({
+    page,
+  }) => {
+    const label = `${LABEL}-overview-rename`
+    const { document } = await openOverview(page, label)
+    const tile = page.getByTestId(`document-${document.id}`)
+    const title = tile.locator('[class*="docTitle"]')
+    const read = (locator: Locator) =>
+      locator.evaluate((el) => {
+        const style = getComputedStyle(el)
+        return { size: style.fontSize, weight: style.fontWeight, family: style.fontFamily }
+      })
+    const text = await read(title)
+    expect(text).toMatchObject({ size: '18px', weight: '600' })
+    await page.getByTestId(`rename-${document.id}`).click()
+    const field = page.getByTestId(`tile-title-${document.id}`)
+    await expect(field).toBeFocused()
+    expect(await read(field)).toEqual(text)
+    await cleanup(label)
+  })
 })
 
 test.describe('dashboard', () => {
@@ -666,7 +697,9 @@ test.describe('dashboard', () => {
     await settleAnimations(page)
     const title = page.getByRole('heading', { level: 1, name: 'Workspaces' })
     await expect(title).toHaveCSS('font-size', '52px')
+    await expect(title).toHaveCSS('font-weight', '600')
     await expect(title).toHaveCSS('letter-spacing', '-2.08px')
+    await expect(title).toHaveCSS('line-height', '53.04px')
 
     const tile = page.getByTestId(`workspace-${workspace.id}`)
     expect(await material(tile)).toEqual({
@@ -688,6 +721,7 @@ test.describe('dashboard', () => {
     await expect.poll(() => tile.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(RULE)
     await settleAnimations(page)
     await expect(tile).toHaveCSS('transform', 'none')
+    await expect(tile).toHaveCSS('box-shadow', 'none')
     await cleanup(label)
   })
 })
@@ -723,10 +757,14 @@ test.describe('sign-in, invite and privacy', () => {
     await page.goto('/login')
     await settleAnimations(page)
     for (const id of ['signin-github', 'signin-google']) {
-      await page.getByTestId(id).hover()
+      const button = page.getByTestId(id)
+      const before = await button.evaluate((el) => getComputedStyle(el).backgroundColor)
+      await button.hover()
       await settleAnimations(page)
-      await expect(page.getByTestId(id)).toHaveCSS('transform', 'none')
-      await expect(page.getByTestId(id)).toHaveCSS('box-shadow', 'none')
+      await expect(button).toHaveCSS('transform', 'none')
+      await expect(button).toHaveCSS('box-shadow', 'none')
+      // The GitHub button stays its accent on hover; Google stays white.
+      await expect(button).toHaveCSS('background-color', before)
     }
   })
 
@@ -737,6 +775,7 @@ test.describe('sign-in, invite and privacy', () => {
     expect(await material(page.getByTestId('auth-card'))).toEqual(card)
 
     await page.goto('/privacy')
+    await settleAnimations(page)
     expect(await material(page.getByTestId('privacy-card'))).toEqual(card)
   })
 })

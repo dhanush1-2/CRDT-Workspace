@@ -18,7 +18,7 @@
   gap: 16px;
 }
 
-/* A workspace tile composes ui.surface and ui.tile for its material. */
+/* A workspace tile combines ui.surface and ui.tile (in JSX) for its material. */
 .tile {
   display: flex;
   flex-direction: column;
@@ -35,7 +35,7 @@
   height: 44px;
   border-radius: var(--r);
   background: var(--accent);
-  color: #fff;
+  color: var(--paper);
   font-size: 18px;
   font-weight: 600;
 }
