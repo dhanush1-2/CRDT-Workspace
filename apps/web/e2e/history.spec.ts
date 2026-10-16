@@ -1941,3 +1941,55 @@ test('a peer typing during a preview leaves the preview alone and is in the live
     await contextB.close()
   }
 })
+
+test('the panel is a white floating sheet, the chosen row is tinted violet, and the version pill is flat and dark', async ({
+  page,
+}) => {
+  const { owner, document } = await seedThree(labelFor('gallery'))
+  await signIn(page, owner.id)
+  await page.goto(documentPath(document))
+
+  const panel = await openPanel(page)
+  await settleAnimations(page)
+  const look = (el: Element) => {
+    const style = getComputedStyle(el)
+    return {
+      background: style.backgroundColor,
+      backdrop: style.backdropFilter,
+      shadow: style.boxShadow,
+      radius: style.borderTopLeftRadius,
+      border: style.borderTopColor,
+    }
+  }
+  expect(await panel.evaluate(look)).toEqual({
+    background: 'rgb(255, 255, 255)',
+    backdrop: 'none',
+    shadow: 'rgba(0, 0, 0, 0.25) 0px 24px 48px -28px',
+    radius: '2px',
+    border: 'rgb(228, 228, 224)',
+  })
+
+  const tint = await page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent-tint)'
+    document.body.append(probe)
+    const out = getComputedStyle(probe).color
+    probe.remove()
+    return out
+  })
+  const rows = panel.getByTestId('history-row')
+  await sliderOf(panel).fill('1')
+  await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => rows.nth(1).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(tint)
+  await expect(rows.nth(1)).toHaveCSS('border-top-left-radius', '2px')
+
+  await rows.nth(2).click()
+  await expect(pill(page)).toBeVisible()
+  await settleAnimations(page)
+  expect(await pill(page).evaluate(look)).toMatchObject({
+    background: 'rgb(22, 22, 22)',
+    backdrop: 'none',
+    shadow: 'none',
+    radius: '2px',
+  })
+})

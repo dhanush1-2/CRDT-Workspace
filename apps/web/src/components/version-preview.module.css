@@ -4,8 +4,9 @@
   exists to avoid, so the outgoing view simply goes and the incoming one fades up.
 */
 /*
-  A keyframes of this module's own, identical to globals.css's g-fade. It could be reached
-  through global(g-fade) instead; Task 12 may fold it in.
+  Declared here rather than reusing globals.css's g-fade: a keyframes rule in the same
+  module is hashed with it and runs. (Modules can also reach the shared ones through
+  `global(g-fade)`; see css-motion.test.ts.)
 */
 @keyframes fade {
   from {
@@ -22,15 +23,14 @@
   }
 }
 
-/* Shown above the live view when the chosen version cannot be previewed. */
+/* Shown above the live view when the chosen version cannot be previewed: a white note. */
 .notice {
   max-width: 780px;
   margin: 20px auto 0;
   padding: 10px 16px;
-  border-radius: var(--r-item);
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-hl);
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
   font-size: 13px;
   color: var(--text);
 }

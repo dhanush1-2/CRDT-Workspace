@@ -1,7 +1,7 @@
 /*
   The pill that says a past version is on screen. Fixed just under the nav, centred, and
-  read off the shell's --nav-bottom (68px, or 52px once the nav condenses), which
-  cascades here because the document page renders inside the shell. Inset auto margins
+  read off the shell's --nav-bottom (68px, or 52px once the nav condenses). A dark pill
+  (spec, "Material"): solid #161616, 2px corners, no blur and no shadow. Inset auto margins
   centre it instead of a transform, so the entrance below can use the transform alone.
 */
 .bar {
@@ -17,11 +17,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 6px 6px 18px;
-  border-radius: var(--r-pill);
-  /* The toast's dark glass. */
-  background: rgba(28, 29, 27, 0.82);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  border-radius: var(--r);
+  background: var(--ink);
   color: #fff;
   font-size: 14px;
   font-weight: 500;
@@ -40,7 +37,7 @@
   height: 30px;
   padding: 0 14px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font: inherit;
@@ -59,7 +56,7 @@
 }
 
 .primary {
-  background: #fff;
+  background: var(--paper);
   color: var(--text);
 }
 
@@ -78,11 +75,7 @@
   outline-offset: 2px;
 }
 
-/*
-  A keyframes of this module's own, not globals.css's g-up: the bar rises from above (-8px),
-  where g-up rises from below. Task 12 may fold it into a shared keyframes reached through
-  global().
-*/
+/* The pill's own keyframes, local to this module (its name is hashed with it). */
 @keyframes rise {
   from {
     opacity: 0;

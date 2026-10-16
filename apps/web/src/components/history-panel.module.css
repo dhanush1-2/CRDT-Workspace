@@ -1,9 +1,7 @@
 /*
-  Handoff section 13. Rendered through a portal into <body>, never inside the nav: the
-  nav's backdrop-filter would make it the containing block for this position:fixed box
-  (confining it to the 68px bar) and a backdrop root (so the blur below would sample the
-  nav instead of the page). --nav-bottom is set on the shell, which the panel is no longer
-  inside, so HistoryButton copies it onto the panel as an inline custom property.
+  The History panel: a white floating sheet with a hairline, 2px corners and the floating
+  shadow (decision 15). Rendered through a portal into <body> (see HistoryButton), so
+  --nav-bottom is copied onto it as an inline custom property.
 */
 .panel {
   position: fixed;
@@ -16,21 +14,10 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-radius: var(--r-panel);
-  /* Handoff 13's literal: .66 white, which no --glass-* token matches. */
-  background: rgba(255, 255, 255, 0.66);
-  backdrop-filter: var(--blur-3);
-  -webkit-backdrop-filter: var(--blur-3);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-hl);
-}
-
-/* Without backdrop-filter nothing blurs what is behind, so the text needs a denser white
-   for contrast, as every other glass surface does in globals.css. */
-@supports not (backdrop-filter: blur(1px)) {
-  .panel {
-    background: rgba(255, 255, 255, 0.92);
-  }
+  border-radius: var(--r);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -102,18 +89,18 @@
 .slider:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
 }
 
 .slider::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--track);
 }
 
 .slider::-moz-range-track {
   height: 4px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--track);
 }
 
@@ -125,7 +112,6 @@
   border: 2px solid #fff;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 1px 4px var(--accent-shadow);
   appearance: none;
   -webkit-appearance: none;
 }
@@ -137,7 +123,6 @@
   border: 2px solid #fff;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 1px 4px var(--accent-shadow);
 }
 
 .slider:not(:disabled):hover::-webkit-slider-thumb {
@@ -172,7 +157,7 @@
   width: 100%;
   padding: 10px 12px;
   border: 0;
-  border-radius: var(--r-card);
+  border-radius: var(--r);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -181,13 +166,13 @@
 }
 
 .row:hover {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--wash);
 }
 
-/* The chosen version. The slider moves this between rows, so it is a background the
-   row's own transition can ease. While the live document shows, no row is chosen. */
+/* The chosen version. The slider moves this between rows, so it is a background the row's
+   own transition can ease. The reference's #fff would not show on the white panel. */
 .row[aria-pressed='true'] {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--accent-tint);
 }
 
 .row:focus-visible {
@@ -262,7 +247,7 @@
 .retry {
   padding: 7px 14px;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: rgba(0, 0, 0, 0.05);
   color: var(--text);
   font: inherit;

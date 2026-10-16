@@ -23,6 +23,9 @@ const MIGRATED: string[] = [
   'components/ui/sheet.module.css',
   'components/share-sheet.module.css',
   'components/command-palette.module.css',
+  'components/history-panel.module.css',
+  'components/version-bar.module.css',
+  'components/version-preview.module.css',
 ]
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])
