@@ -82,8 +82,9 @@ test('the tiles and the People card are flat white surfaces', async ({ page }) =
   await expect(page.getByTestId(`workspace-${workspace.id}`)).toHaveCSS('background-color', 'rgb(255, 255, 255)')
   await expect(page.getByTestId(`workspace-${workspace.id}`)).toHaveCSS('backdrop-filter', 'none')
 
-  // Two class selectors could tie on specificity and leave the winner to stylesheet order;
-  // this is the check that the intended fill wins on the overview.
+  // The overview's document tile and People card take their white from ui.surface alone; no
+  // second class sets a background on them. This reads it on the overview as well as the
+  // dashboard, so a rule added later that out-ranks or overrides it is caught here.
   await page.goto(`/workspaces/${workspace.id}`)
   for (const surface of [
     page.getByTestId(`document-${document.id}`),
@@ -148,7 +149,7 @@ test('a board shows its title above the columns', async ({ page }) => {
 })
 
 test('the nav is a bar sized to its contents and centred', async ({ page }) => {
-  const label = `${LABEL}-navpill`
+  const label = `${LABEL}-navbar`
   const { owner, workspace } = await seedWorkspace(label)
   const document = await createDocument(workspace.id, 'doc')
   await signIn(page, owner.id)
@@ -258,7 +259,7 @@ test('the board title sits below the nav, the columns follow it, and they are ce
  */
 async function sampleEachFrame(
   page: Page,
-  mode: 'pill-in-strip' | 'nav-width',
+  mode: 'underline-in-strip' | 'nav-width',
   act: () => Promise<void>,
 ): Promise<number[]> {
   const sampling = page.evaluate(async (what) => {
@@ -269,15 +270,15 @@ async function sampleEachFrame(
         const nav = document.querySelector('nav[aria-label="Primary"]')
         if (nav) out.push(nav.getBoundingClientRect().width)
       } else {
-        // The pill's offset INSIDE the strip, not its position in the viewport.
+        // The underline's offset INSIDE the strip, not its position in the viewport.
         // The bar is centred and resizes at the same time, which moves every tab
         // sideways -- so a viewport-relative x drifts smoothly whether or not the
-        // pill itself is animating, and an earlier version of this test passed with
+        // underline itself is animating, and an earlier version of this test passed with
         // the fix removed.
-        const pill = document.querySelector('[class*="indicator"]')
+        const underline = document.querySelector('[class*="indicator"]')
         const strip = document.querySelector('[class*="strip"]')
-        if (pill && strip) {
-          out.push(pill.getBoundingClientRect().x - strip.getBoundingClientRect().x)
+        if (underline && strip) {
+          out.push(underline.getBoundingClientRect().x - strip.getBoundingClientRect().x)
         }
       }
       await new Promise((resolve) => requestAnimationFrame(resolve))
@@ -288,7 +289,7 @@ async function sampleEachFrame(
   return sampling
 }
 
-/** A tab's offset inside the strip, measured the same way the pill is. */
+/** A tab's offset inside the strip, measured the same way the underline is. */
 async function tabOffset(page: Page, testId: string): Promise<number> {
   return page.getByTestId(testId).evaluate((el) => {
     const strip = el.closest('[class*="strip"]')!
@@ -299,7 +300,7 @@ async function tabOffset(page: Page, testId: string): Promise<number> {
 test('the underline slides to the new tab across a navigation instead of appearing there', async ({
   page,
 }) => {
-  const label = `${LABEL}-pillslide`
+  const label = `${LABEL}-underlineslide`
   const { owner, workspace } = await seedWorkspace(label)
   const first = await createDocument(workspace.id, 'doc')
   const second = await prisma.document.create({
@@ -311,7 +312,7 @@ test('the underline slides to the new tab across a navigation instead of appeari
   await expect(page.getByTestId(`tab-${first.id}`)).toHaveAttribute('data-active', 'true')
 
   const from = await tabOffset(page, `tab-${first.id}`)
-  const samples = await sampleEachFrame(page, 'pill-in-strip', async () => {
+  const samples = await sampleEachFrame(page, 'underline-in-strip', async () => {
     await page.getByTestId(`tab-${second.id}`).click()
     await expect(page.getByTestId(`tab-${second.id}`)).toHaveAttribute('data-active', 'true')
   })
@@ -665,7 +666,7 @@ test('the nav shows a tab per document and marks the open one active', async ({ 
   await expect(page.getByTestId(`tab-${doc.id}`)).not.toHaveAttribute('aria-current')
 
   // The indicator is measured from the active tab at hydration, so an unsized
-  // or misplaced pill means the measurement never ran: the bug this test is for.
+  // or misplaced underline means the measurement never ran: the bug this test is for.
   await expect.poll(() => indicatorGap(page, `tab-${board.id}`)).toBeLessThanOrEqual(1)
 
   await cleanup(label)
@@ -714,7 +715,7 @@ test('the indicator tracks the active tab', async ({ page }) => {
 
   await page.getByTestId(`tab-${second.id}`).click()
   await expect(page.getByTestId(`tab-${second.id}`)).toHaveAttribute('data-active', 'true')
-  // Polled, not slept on: the slide takes 0.55s and the pill has to land on the
+  // Polled, not slept on: the slide takes 0.55s and the underline has to land on the
   // new tab's box, width included.
   await expect.poll(() => indicatorGap(page, `tab-${second.id}`)).toBeLessThanOrEqual(1)
 

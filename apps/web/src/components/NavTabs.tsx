@@ -12,13 +12,13 @@ import styles from './nav-tabs.module.css'
 type Metrics = { x: number; w: number }
 
 /**
- * The pill's last position, kept outside the component so it survives a client
+ * The underline's last position, kept outside the component so it survives a client
  * navigation.
  *
  * Every page renders its own AppShell, so this component is a new instance on every
- * navigation and its state starts empty -- which made the pill appear at its
+ * navigation and its state starts empty -- which made the underline appear at its
  * destination instead of travelling there. Seeded from this, the new nav first draws
- * the pill where the old one left it and then slides to the new tab.
+ * the underline where the old one left it and then slides to the new tab.
  *
  * Safe despite being module scope on the server: it is only ever written from
  * measureIndicator, which runs in a layout effect, and layout effects do not run
@@ -26,7 +26,7 @@ type Metrics = { x: number; w: number }
  * nothing for hydration to disagree about.
  *
  * It can be stale across workspaces -- a position measured in one workspace's strip
- * means little in another's -- in which case the pill slides from a slightly wrong
+ * means little in another's -- in which case the underline slides from a slightly wrong
  * place. Still better than materialising out of nothing. Within a workspace the nav now
  * lives in the workspace layout and is not rebuilt, so this only matters for a navigation
  * to or from the dashboard, which is outside that layout.
@@ -68,7 +68,7 @@ export function NavTabs({
   const [overflowing, setOverflowing] = useState(false)
   // The transition is withheld until the indicator has been placed and painted
   // once. On a hard load the server renders the indicator at width 0 and it is only
-  // sized during hydration, so animating from that first state would make the pill
+  // sized during hydration, so animating from that first state would make the underline
   // visibly grow from nothing.
   //
   // After a client navigation there is a remembered position to start from, so the
@@ -151,9 +151,18 @@ export function NavTabs({
       setOverflowing(isOverflowing(element))
     })
     observer.observe(element)
+    // A web font arriving can change the tabs' widths without resizing the clamped, scrolling
+    // strip, so the observer above never fires. Measure once more when the fonts are ready.
+    let live = true
+    void document.fonts?.ready.then(() => {
+      if (!live) return
+      measureIndicator(element)
+      setOverflowing(isOverflowing(element))
+    })
     const onScroll = () => setOverflowing(isOverflowing(element))
     element.addEventListener('scroll', onScroll, { passive: true })
     return () => {
+      live = false
       observer.disconnect()
       element.removeEventListener('scroll', onScroll)
     }
