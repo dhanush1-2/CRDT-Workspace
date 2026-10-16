@@ -1,3 +1,8 @@
+> **Superseded on 2026-10-10 by `docs/design/gallery-handoff.md`.** The app now uses the
+> Gallery look (flat white surfaces, 2px corners, violet, Schibsted Grotesk). This file is
+> kept as history: its Implementation status section still records why the nav, the toolbar,
+> the history panel and the splatter work the way they do, and Gallery kept those behaviours.
+
 # Handoff: CRDT Workspace, "Glass" redesign (Direction D)
 
 **Source of truth:** `Workspace D - Glass.dc.html` in this folder. Open it in a browser with `support.js` next to it. Every value below is taken from that file; if this README and the prototype disagree, the prototype wins.
