@@ -178,7 +178,7 @@ function colours(path: string, text: string): string[] {
       // A string that names a thing (`id: 'red'`) is an identifier, not a colour.
       if (/\b(id|name|key|label|type|variant|testid)\s*[:=]\s*$/i.test(text.slice(0, string.index))) continue
       for (const word of string[2]!.split(/[\s,()/;:]+/)) {
-        if (NAMED_REDS.includes(word)) named.push(word)
+        if (NAMED_REDS.includes(word.toLowerCase())) named.push(word.toLowerCase())
       }
     }
   }
@@ -234,9 +234,11 @@ describe('no red', () => {
     const css = '.a { color: #f00f; background: hsl(5 70% 45%); border-color: Crimson; fill: var(--red) }'
     expect(colours('x.css', css)).toEqual(['#f00f', 'hsl(5 70% 45%)', 'crimson'])
     expect(colours('x.css', '/* red */ .red { color: #c4372b80 }')).toEqual(['#c4372b80'])
-    expect(colours('x.ts', "const c = 'tomato'; // red\nconst red = 1; label('Red tint', '1px solid red')")).toEqual(['tomato', 'red'])
+    expect(colours('x.ts', "const c = 'tomato'; // red\nconst red = 1; const l = { label: 'Red tint', border: '1px solid red' }")).toEqual(['tomato', 'red'])
     expect(colours('x.ts', "const swatch = { id: 'red', value: 'red' }")).toEqual(['red'])
     expect(colours('x.ts', 'const c = "#e11d48ff"')).toEqual(['#e11d48ff'])
+    // A capitalised name is a red too: CSS reads names case-insensitively.
+    expect(colours('x.ts', "const a = 'Red'; const b = 'CRIMSON'; const c = '1px solid Tomato'")).toEqual(['red', 'crimson', 'tomato'])
   })
 
   it('no red literal appears in src outside the three allowed uses', () => {

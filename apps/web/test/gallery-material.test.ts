@@ -55,39 +55,66 @@ function layers(value: string): string[] {
   return out
 }
 
-describe('Gallery material in migrated stylesheets', () => {
-  it.each(MIGRATED)('%s: no blur, no text or drop shadow, no glass token, 2px corners, no shadow but the float and rings', (path) => {
-    const problems: string[] = []
-    for (const d of declarations(readFileSync(join(SRC, path), 'utf8'))) {
-      const where = `${d.selector} { ${d.prop}: ${d.value} }`
-      const inKeyframes = d.context.some((prelude) => prelude.startsWith('@keyframes'))
-      if (d.prop.endsWith('backdrop-filter')) problems.push(`blur: ${where}`)
-      if (d.prop === 'text-shadow' && d.value !== 'none') problems.push(`text shadow: ${where}`)
-      if (/^(-webkit-)?filter$/.test(d.prop)) {
-        if (/drop-shadow\(/i.test(d.value)) problems.push(`drop shadow: ${where}`)
-        if (/blur\(/i.test(d.value) && !BLUR_EXCEPTIONS.has(`${path} ${d.selector}`)) {
-          problems.push(`blur: ${where}`)
-        }
+/** Everything in a stylesheet that is not Gallery material, one line per finding. */
+function findings(path: string, css: string): string[] {
+  const problems: string[] = []
+  for (const d of declarations(css)) {
+    const where = `${d.selector} { ${d.prop}: ${d.value} }`
+    const inKeyframes = d.context.some((prelude) => prelude.startsWith('@keyframes'))
+    if (d.prop.endsWith('backdrop-filter')) problems.push(`blur: ${where}`)
+    if (d.prop === 'text-shadow' && d.value !== 'none') problems.push(`text shadow: ${where}`)
+    if (/^(-webkit-)?filter$/.test(d.prop)) {
+      if (/drop-shadow\(/i.test(d.value)) problems.push(`drop shadow: ${where}`)
+      if (/blur\(/i.test(d.value) && !BLUR_EXCEPTIONS.has(`${path} ${d.selector}`)) {
+        problems.push(`blur: ${where}`)
       }
-      if (/var\(--(glass|blur)-|var\(--accent-shadow\)|var\(--r-[a-z]/.test(d.value)) {
-        problems.push(`glass token: ${where}`)
-      }
-      if (
-        !inKeyframes &&
-        /^border(-[a-z]+)*-radius$/.test(d.prop) &&
-        !RADII.has(d.value) &&
-        !RADIUS_EXCEPTIONS.has(`${path} ${d.selector}`)
-      ) {
-        problems.push(`radius: ${where}`)
-      }
-      if (!inKeyframes && d.prop === 'box-shadow') {
-        for (const layer of layers(d.value)) {
-          if (layer !== 'none' && layer !== 'var(--shadow-float)' && !RING.test(layer)) {
-            problems.push(`shadow: ${where}`)
-          }
+    }
+    if (/var\(--(glass|blur)-|var\(--accent-shadow\)|var\(--r-[a-z]/.test(d.value)) {
+      problems.push(`glass token: ${where}`)
+    }
+    if (
+      !inKeyframes &&
+      /^border(-[a-z]+)*-radius$/.test(d.prop) &&
+      !RADII.has(d.value) &&
+      !RADIUS_EXCEPTIONS.has(`${path} ${d.selector}`)
+    ) {
+      problems.push(`radius: ${where}`)
+    }
+    if (!inKeyframes && d.prop === 'box-shadow') {
+      for (const layer of layers(d.value)) {
+        if (layer !== 'none' && layer !== 'var(--shadow-float)' && !RING.test(layer)) {
+          problems.push(`shadow: ${where}`)
         }
       }
     }
-    expect(problems).toEqual([])
+  }
+  return problems
+}
+
+describe('Gallery material in migrated stylesheets', () => {
+  it('the text shadow, drop shadow and blur branches each catch a violation', () => {
+    const other = 'components/x.module.css'
+    expect(findings(other, '.a { text-shadow: 0 1px 2px #000 }')).toEqual([
+      'text shadow: .a { text-shadow: 0 1px 2px #000 }',
+    ])
+    expect(findings(other, '.a { filter: drop-shadow(0 2px 4px #000) }')).toEqual([
+      'drop shadow: .a { filter: drop-shadow(0 2px 4px #000) }',
+    ])
+    expect(findings(other, '.a { filter: blur(4px) }')).toEqual(['blur: .a { filter: blur(4px) }'])
+    expect(findings(other, '.a { -webkit-filter: blur(4px) }')).toEqual([
+      'blur: .a { -webkit-filter: blur(4px) }',
+    ])
+    expect(findings(other, '.a { backdrop-filter: blur(4px) }')).toEqual([
+      'blur: .a { backdrop-filter: blur(4px) }',
+    ])
+    // The allowed cases: no text shadow, and the canvas blob's blur, which is paint.
+    expect(findings(other, '.a { text-shadow: none }')).toEqual([])
+    const canvas = 'components/canvas-background.module.css'
+    expect(findings(canvas, '.blob { filter: blur(90px) }')).toEqual([])
+    expect(findings(canvas, '.other { filter: blur(90px) }')).toEqual(['blur: .other { filter: blur(90px) }'])
+  })
+
+  it.each(MIGRATED)('%s: no blur, no text or drop shadow, no glass token, 2px corners, no shadow but the float and rings', (path) => {
+    expect(findings(path, readFileSync(join(SRC, path), 'utf8'))).toEqual([])
   })
 })
