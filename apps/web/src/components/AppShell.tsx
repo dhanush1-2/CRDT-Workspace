@@ -394,10 +394,10 @@ export function AppShell({
         <main className={styles.content}>{children}</main>
 
         {/*
-          Outside the nav on purpose: the nav has a backdrop-filter, which makes it
-          the containing block for any position:fixed descendant. Rendered inside
-          it, the overlay would be confined to the nav's 56px bar instead of
-          covering the viewport.
+          Outside the nav on purpose. When the nav was glass its backdrop-filter made it the
+          containing block for position:fixed descendants, which would have confined these
+          overlays to the bar. Gallery's bar has no filter, but the overlays belong to the
+          page, not to the bar, so they stay here.
         */}
         {overlay === 'palette' && (
           <CommandPalette

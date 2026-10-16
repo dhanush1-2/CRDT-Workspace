@@ -19,7 +19,7 @@ import styles from './editor-toolbar.module.css'
  * The toolbar's dropdown shell (handoff 12.5). The Style menu, the text colour menu and
  * the highlight menu are one container with three contents, so they cannot drift.
  *
- * The menus are custom, not a native <select>: the design is a glass panel with styled
+ * The menus are custom, not a native <select>: the design is a panel with styled
  * previews and swatch grids, none of which a native popup can render.
  *
  * Where the panel sits: inside its trigger's wrapper in the row, as the design has it

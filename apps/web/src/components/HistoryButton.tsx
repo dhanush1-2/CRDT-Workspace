@@ -16,13 +16,12 @@ const DEFAULT_NAV_BOTTOM = '68px'
  * A disclosure, not a menu: the panel is a list the user reads and picks from, so
  * aria-expanded plus aria-controls describes it and no menu semantics are invented.
  *
- * The panel is rendered into document.body, not here. This button sits inside the nav,
- * and the nav's backdrop-filter makes it the containing block for position:fixed
- * descendants and a backdrop root: a fixed panel left inside it would be placed in the
- * 68px bar, and its blur would sample the nav instead of the page. A portal keeps the
- * React tree (state, props, context) while moving the DOM out. The open/Escape/outside-
- * click logic stays here, with the panel ref standing in for "inside": DOM `contains`
- * works across a portal, which React's synthetic events do not rely on.
+ * The panel is rendered into document.body, not here. This button sits inside the nav;
+ * the panel belongs to the page. (When the nav was glass, its backdrop-filter also made it
+ * the containing block for position:fixed descendants, which is why this was first done.)
+ * A portal keeps the React tree (state, props, context) while moving the DOM out. The
+ * open/Escape/outside-click logic stays here, with the panel ref standing in for "inside":
+ * DOM `contains` works across a portal, which React's synthetic events do not rely on.
  */
 export function HistoryButton({
   documentId,

@@ -1,8 +1,7 @@
 :root {
   /*
-    The design system. Gallery (2026-10-10; docs/design/gallery-handoff.md) replaces the
-    Glass look of glass-handoff.md section 2. The glass tokens further down are still read
-    by screens that have not moved to Gallery yet, and go once none does.
+    The design system. Gallery (2026-10-10; docs/design/gallery-handoff.md) replaced the
+    Glass look of glass-handoff.md section 2; no glass token remains.
 
     Tokens that are ours rather than the spec's, each for a reason:
       --dur*  the designs write durations as literals (.25s, .3s, .4s, .55s, .6s);
@@ -32,8 +31,6 @@
   --accent-tint: oklch(0.95 0.027 290);
   --accent-soft: oklch(0.5 0.17 290 / 0.12);
   --accent-ring: oklch(0.5 0.17 290 / 0.12);
-  /* Glass only: nothing in Gallery casts an accent glow. Removed once no screen reads it. */
-  --accent-shadow: oklch(0.5 0.17 290 / 0.22);
 
   /* status */
   --ok: oklch(0.62 0.13 150);
@@ -60,20 +57,6 @@
   /* The one corner. Avatars, dots and the logo stay round (50%). */
   --r: 2px;
 
-  /* glass: read only by screens not yet moved to Gallery */
-  --glass-light: rgba(255, 255, 255, 0.55);
-  --glass-col: rgba(255, 255, 255, 0.42);
-  --glass-mid: rgba(255, 255, 255, 0.72);
-  --glass-tool: rgba(255, 255, 255, 0.76);
-  --glass-page: rgba(255, 255, 255, 0.78);
-  --glass-sheet: rgba(255, 255, 255, 0.82);
-  --glass-menu: rgba(255, 255, 255, 0.88);
-  --glass-border: rgba(255, 255, 255, 0.85);
-  --glass-hl: inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  --blur-1: blur(20px) saturate(180%);
-  --blur-2: blur(28px) saturate(190%);
-  --blur-3: blur(30px) saturate(190%);
-
   /* fields & lines */
   --field-bg: rgba(240, 240, 244, 0.9);
   --field-border: rgba(40, 40, 60, 0.12);
@@ -87,18 +70,6 @@
   --dur-fast: 0.3s;
   --dur: 0.55s;
   --dur-slow: 0.7s;
-
-  /* radii: Glass. Each screen moves to --r; removed once none reads them. */
-  --r-pill: 999px;
-  --r-tool: 10px;
-  --r-item: 12px;
-  --r-card: 18px;
-  --r-menu: 18px;
-  --r-pop: 22px;
-  --r-tile: 24px;
-  --r-col: 26px;
-  --r-panel: 28px;
-  --r-sheet: 30px;
 
   --font: var(--font-schibsted), system-ui, sans-serif;
 }
@@ -285,23 +256,6 @@ textarea {
   }
   66% {
     transform: translate(-30px, 40px) rotate(-8deg) scale(0.95);
-  }
-}
-
-/*
-  Browsers without backdrop-filter get opaque surfaces instead of transparent
-  ones. Without this the glass reads as barely-tinted white and text over the
-  canvas blobs loses contrast.
-*/
-@supports not (backdrop-filter: blur(1px)) {
-  :root {
-    --glass-light: rgba(255, 255, 255, 0.92);
-    --glass-col: rgba(255, 255, 255, 0.92);
-    --glass-mid: rgba(255, 255, 255, 0.92);
-    --glass-tool: rgba(255, 255, 255, 0.92);
-    --glass-page: rgba(255, 255, 255, 0.92);
-    --glass-sheet: rgba(255, 255, 255, 0.92);
-    --glass-menu: rgba(255, 255, 255, 0.92);
   }
 }
 

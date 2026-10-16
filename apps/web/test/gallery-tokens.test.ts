@@ -57,6 +57,13 @@ describe('Gallery tokens (spec: "Colour", "Material", "Type")', () => {
     expect(body).toMatch(/font-size:\s*15px;/)
   })
 
+  it('the glass tokens are gone', () => {
+    expect(globals).not.toMatch(/--(glass|blur)-[\w-]+\s*:/)
+    expect(globals).not.toMatch(/--accent-shadow\s*:/)
+    expect(globals).not.toMatch(/--r-[a-z]+\s*:/)
+    expect(globals).not.toMatch(/backdrop-filter/)
+  })
+
   it('the favicon is a violet disc around the unchanged three-dot glyph', () => {
     const icon = readFileSync(join(SRC, 'app/icon.svg'), 'utf8')
     expect(icon).toContain('<circle cx="26" cy="26" r="26" fill="#6d3fd6"/>')
