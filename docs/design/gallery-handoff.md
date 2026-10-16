@@ -61,3 +61,6 @@ Rows are added by the task that made the decision.
 | T8.4 | People "Manage" link | Reference: beside the People heading | Inside the People card, where it was | Layout is not in scope (decision 21). |
 | T8.5 | `ui` class names | `.glass`, `.bgPill` | `.surface`, `.metaPill` | Names that say what they are now. |
 | T9.1 | Workspace tiles | Reference `#fbfbf9`, hover `#fff` plus the floating shadow | `#ffffff`; hover darkens the edge; no lift | Decisions 2 and 3, as the overview's. |
+| T10.1 | GitHub sign-in hover | Reference `translateY(-1px)` plus the floating shadow | No lift, no shadow, colour unchanged; the press stays | No hover lifts (decision 2); the owner's earlier "colour stays" rule. |
+| T10.2 | Sign-in, invite and privacy card shadow | Spec lists "sheets" | The floating shadow, as the reference draws it | The card enters as a sheet does (decision 15, question 4). |
+| T10.3 | Class name | `.providerGlass` | `.providerSecondary` | No glass. |

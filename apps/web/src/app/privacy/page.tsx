@@ -10,7 +10,7 @@ const CONTACT = 'cdhanush1223@gmail.com'
 export default function PrivacyPage() {
   return (
     <main className={styles.shell}>
-      <article className={styles.card}>
+      <article className={styles.card} data-testid="privacy-card">
         <h1 className={styles.heading}>Privacy</h1>
         <p className={styles.lede}>Last updated October 9, 2026</p>
 

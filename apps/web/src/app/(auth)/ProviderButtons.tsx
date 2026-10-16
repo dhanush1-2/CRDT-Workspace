@@ -20,7 +20,7 @@ export function ProviderButtons({ next }: { next: string }) {
       {providers.map((id) => (
         <a
           key={id}
-          className={`${styles.provider} ${id === 'github' ? styles.providerAccent : styles.providerGlass}`}
+          className={`${styles.provider} ${id === 'github' ? styles.providerAccent : styles.providerSecondary}`}
           href={`/api/auth/oauth/${id}?next=${encodeURIComponent(next)}`}
           data-testid={`signin-${id}`}
         >

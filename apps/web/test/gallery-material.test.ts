@@ -18,6 +18,8 @@ const MIGRATED: string[] = [
   'components/ui/ui.module.css',
   'app/workspaces/[id]/workspace.module.css',
   'app/dashboard.module.css',
+  'app/(auth)/auth.module.css',
+  'app/privacy/privacy.module.css',
 ]
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])

@@ -24,7 +24,7 @@ export function InviteSignOut() {
       )}
       <button
         type="button"
-        className={`${styles.provider} ${styles.providerGlass} ${styles.providerButton}`}
+        className={`${styles.provider} ${styles.providerSecondary} ${styles.providerButton}`}
         disabled={pending}
         data-testid="invite-sign-out"
         onClick={async () => {

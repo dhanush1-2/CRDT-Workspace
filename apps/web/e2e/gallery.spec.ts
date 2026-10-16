@@ -691,3 +691,52 @@ test.describe('dashboard', () => {
     await cleanup(label)
   })
 })
+
+test.describe('sign-in, invite and privacy', () => {
+  const card = {
+    background: PAPER_SOFT,
+    backdrop: 'none',
+    shadow: FLOAT,
+    radius: '2px',
+    borderColor: HAIRLINE,
+    borderWidth: '1px',
+  }
+
+  test('the sign-in card is the softer white with a hairline and the floating shadow', async ({ page }) => {
+    await page.goto('/login')
+    await settleAnimations(page)
+    expect(await material(page.getByTestId('auth-card'))).toEqual(card)
+    expect(await material(page.getByTestId('auth-mark'))).toMatchObject({
+      background: await resolveColour(page, 'var(--accent)'),
+      radius: '2px',
+      shadow: 'none',
+    })
+    expect(await material(page.getByTestId('signin-github'))).toMatchObject({ radius: '2px', shadow: 'none' })
+    expect(await material(page.getByTestId('signin-google'))).toMatchObject({
+      background: WHITE,
+      radius: '2px',
+      borderColor: HAIRLINE,
+    })
+  })
+
+  test('the sign-in buttons do not lift on hover', async ({ page }) => {
+    await page.goto('/login')
+    await settleAnimations(page)
+    for (const id of ['signin-github', 'signin-google']) {
+      await page.getByTestId(id).hover()
+      await settleAnimations(page)
+      await expect(page.getByTestId(id)).toHaveCSS('transform', 'none')
+      await expect(page.getByTestId(id)).toHaveCSS('box-shadow', 'none')
+    }
+  })
+
+  test('the invite page and the privacy page wear the same card', async ({ page }) => {
+    await page.goto('/invite/not-a-real-token')
+    await expect(page.getByTestId('invite-invalid')).toBeVisible()
+    await settleAnimations(page)
+    expect(await material(page.getByTestId('auth-card'))).toEqual(card)
+
+    await page.goto('/privacy')
+    expect(await material(page.getByTestId('privacy-card'))).toEqual(card)
+  })
+})

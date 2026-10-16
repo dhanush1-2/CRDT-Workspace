@@ -5,19 +5,17 @@
   padding: 24px 16px;
 }
 
-/* The sign-in card's glass, widened for reading and left-aligned. */
+/* The sign-in card's look, widened for reading and left-aligned. */
 .card {
   width: 100%;
   max-width: 640px;
   display: grid;
   gap: 14px;
   padding: 40px;
-  border-radius: var(--r-panel);
-  background: var(--glass-light);
-  backdrop-filter: var(--blur-2);
-  -webkit-backdrop-filter: var(--blur-2);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-hl), 0 24px 60px rgba(30, 45, 40, 0.12);
+  border-radius: var(--r);
+  background: var(--paper-soft);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-float);
 }
 
 .card h2 {
