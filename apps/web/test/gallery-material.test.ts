@@ -1,38 +1,26 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { declarations, SRC } from './css-walk.js'
+import { declarations, rel, SRC, sourceFiles } from './css-walk.js'
 
-/**
- * Stylesheets that have moved to Gallery, relative to src. Each screen's task appends its
- * files; the cleanup task replaces the list with every stylesheet in src.
- */
-const MIGRATED: string[] = [
-  'components/canvas-background.module.css',
-  'components/app-shell.module.css',
-  'components/nav-tabs.module.css',
-  'components/user-menu.module.css',
-  'components/board.module.css',
-  'app/workspaces/[id]/documents/[docId]/document.module.css',
-  'components/editor-toolbar.module.css',
-  'components/ui/ui.module.css',
-  'app/workspaces/[id]/workspace.module.css',
-  'app/dashboard.module.css',
-  'app/(auth)/auth.module.css',
-  'app/privacy/privacy.module.css',
-  'components/ui/sheet.module.css',
-  'components/share-sheet.module.css',
-  'components/command-palette.module.css',
-  'components/history-panel.module.css',
-  'components/version-bar.module.css',
-  'components/version-preview.module.css',
-]
+/** Every stylesheet in src: Gallery is the only material now. */
+const MIGRATED: string[] = sourceFiles(['.css']).map(rel)
 
 const RADII = new Set(['var(--r)', '50%', '0', 'inherit'])
 /** The canvas blobs keep their organic shape: paint, not UI. */
 const RADIUS_EXCEPTIONS = new Set(['components/canvas-background.module.css .blob'])
 /** The canvas blobs are the only elements allowed `filter: blur(...)`: paint, not UI. */
 const BLUR_EXCEPTIONS = new Set(['components/canvas-background.module.css .blob'])
+/**
+ * The reference's own short entrance animations fade in from `filter: blur(...)` to `none`.
+ * That is motion, not a blurred backdrop, and the owner kept existing motion. Keyed on the
+ * keyframes name (`path @keyframes name`), so a blur in any other keyframes, or in any
+ * ordinary rule, still fails.
+ */
+const KEYFRAMES_BLUR_EXCEPTIONS = new Set([
+  'app/globals.css @keyframes g-in',
+  'app/globals.css @keyframes g-pop',
+])
 /** A ring: `[inset] 0 0 0 Npx [colour]`. Focus, selection and the board card's hairline. */
 const RING = /^(inset\s+)?0(px)?\s+0(px)?\s+0(px)?\s+[\d.]+px(\s+\S.*)?$/
 
@@ -65,7 +53,14 @@ function findings(path: string, css: string): string[] {
     if (d.prop === 'text-shadow' && d.value !== 'none') problems.push(`text shadow: ${where}`)
     if (/^(-webkit-)?filter$/.test(d.prop)) {
       if (/drop-shadow\(/i.test(d.value)) problems.push(`drop shadow: ${where}`)
-      if (/blur\(/i.test(d.value) && !BLUR_EXCEPTIONS.has(`${path} ${d.selector}`)) {
+      const exemptKeyframes = d.context.some((prelude) =>
+        KEYFRAMES_BLUR_EXCEPTIONS.has(`${path} ${prelude.replace(/\s+/g, ' ')}`),
+      )
+      if (
+        /blur\(/i.test(d.value) &&
+        !exemptKeyframes &&
+        !BLUR_EXCEPTIONS.has(`${path} ${d.selector}`)
+      ) {
         problems.push(`blur: ${where}`)
       }
     }
@@ -91,7 +86,13 @@ function findings(path: string, css: string): string[] {
   return problems
 }
 
-describe('Gallery material in migrated stylesheets', () => {
+describe('Gallery material in every stylesheet', () => {
+  it('covers every stylesheet', () => {
+    // 19 today: globals.css and 18 modules. A floor, so a broken walk cannot pass on nothing.
+    expect(MIGRATED.length).toBeGreaterThanOrEqual(19)
+    expect(MIGRATED).toContain('app/globals.css')
+  })
+
   it('the text shadow, drop shadow and blur branches each catch a violation', () => {
     const other = 'components/x.module.css'
     expect(findings(other, '.a { text-shadow: 0 1px 2px #000 }')).toEqual([
@@ -112,6 +113,15 @@ describe('Gallery material in migrated stylesheets', () => {
     const canvas = 'components/canvas-background.module.css'
     expect(findings(canvas, '.blob { filter: blur(90px) }')).toEqual([])
     expect(findings(canvas, '.other { filter: blur(90px) }')).toEqual(['blur: .other { filter: blur(90px) }'])
+    // The reference's entrance blur is exempt by keyframes name, and only there.
+    const entrance = '@keyframes g-in { from { opacity: 0; filter: blur(6px) } to { filter: none } }'
+    expect(findings('app/globals.css', entrance)).toEqual([])
+    expect(findings('app/globals.css', entrance.replace('g-in', 'g-pop'))).toEqual([])
+    expect(findings('app/globals.css', entrance.replace('g-in', 'foo'))).toEqual([
+      'blur: from { filter: blur(6px) }',
+    ])
+    expect(findings('components/x.module.css', entrance)).toEqual(['blur: from { filter: blur(6px) }'])
+    expect(findings('app/globals.css', '.a { filter: blur(4px) }')).toEqual(['blur: .a { filter: blur(4px) }'])
   })
 
   it.each(MIGRATED)('%s: no blur, no text or drop shadow, no glass token, 2px corners, no shadow but the float and rings', (path) => {
